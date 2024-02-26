@@ -1,9 +1,8 @@
-#include <cstdint>
-#include <string>
-
 #include <cuda_runtime.h>
 
+#include <cstdint>
 #include <libgpuc_cuda.hpp>
+#include <string>
 
 Tensor makeTensor1D(uint64_t n) {
   Tensor tensor = Tensor{ndim : 1};
@@ -21,7 +20,7 @@ Tensor makeTensor2D(uint64_t m, uint64_t n) {
 }
 
 Tensor makeTensor(uint64_t* dims, uint8_t ndim) {
-  if(ndim > 10) {
+  if (ndim > 10) {
     throw std::string("Tensors are capped at 10 dimensions");
   } else if (ndim < 1) {
     throw std::string("Tensors must have at least 1 dimension");
@@ -84,7 +83,7 @@ uint64_t getTensorN(Tensor t) {
   return t.dim[t.ndim - 1];
 }
 
-uint64_t getTensorBatchCount(Tensor t) {
+uint64_t getTensorCountMat(Tensor t) {
   if (t.ndim < 2) {
     throw std::string("Tensor must have at least 2 dimensions");
   }
@@ -94,4 +93,18 @@ uint64_t getTensorBatchCount(Tensor t) {
     count *= t.dim[i];
   }
   return count;
+}
+
+Tensor reshapeTensor(Tensor t, uint64_t* dims, uint8_t ndim) {
+  if (ndim > 10) {
+    throw std::string("Tensors are capped at 10 dimensions");
+  } else if (ndim < 1) {
+    throw std::string("Tensors must have at least 1 dimension");
+  }
+  Tensor tensor = Tensor{ndim : ndim};
+  if (getTensorNel(tensor) != getTensorNel(t)) {
+    throw std::string("Size mismatch");
+  }
+  tensor.mem = t.mem;
+  return tensor;
 }

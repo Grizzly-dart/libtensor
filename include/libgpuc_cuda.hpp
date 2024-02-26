@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define MAX_THREADS_PER_BLOCK 1024
+#define MAX_THREADS_PER_BLOCK 1024U
 
 typedef struct Tensor_t {
   double* mem = nullptr;
@@ -22,9 +22,21 @@ extern void releaseTensor(Tensor t);
 extern uint64_t getTensorNel(Tensor t);
 extern void writeTensor(Tensor t, double* inp, uint64_t size);
 extern void readTensor(Tensor t, double* out, uint64_t size);
+
+/// @brief Calculates the number of rows in the tensor
+/// @param t Tensor
+/// @return Returns the number of rows in the tensor
 extern uint64_t getTensorM(Tensor t);
+
+/// @brief Calculates the number of columns in the tensor
+/// @param t Tensor
+/// @return Returns the number of columns in the tensor
 extern uint64_t getTensorN(Tensor t);
-extern uint64_t getTensorBatchCount(Tensor t);
+
+/// @brief Calculates the number of matrices in the tensor
+/// @param t Tensor
+/// @return Returns the number of matrices in the tensor
+extern uint64_t getTensorCountMat(Tensor t);
 
 extern void ewiseF64Add2(Tensor out, Tensor in1, Tensor in2);
 extern void matmulF64(Tensor out, Tensor in1, Tensor in2);

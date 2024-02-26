@@ -22,7 +22,7 @@ void ewiseF64Add2(Tensor out, Tensor in1, Tensor in2) {
   uint32_t threads = n;
   uint32_t blocks = 1;
   if (n > MAX_THREADS_PER_BLOCK) {
-    threads = 1024;
+    threads = MAX_THREADS_PER_BLOCK;
     blocks = (n + threads - 1) / threads;
   }
   cudaLaunchConfig_t config = {};

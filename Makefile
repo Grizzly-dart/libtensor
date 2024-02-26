@@ -3,7 +3,7 @@ HOST_COMPILER?=g++
 NVCC:=$(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER)
 
 build/libgpuc_cuda.o:
-	$(NVCC) -I ./include --compiler-options '-fPIC' --shared -o build/libgpuc_cuda.so src/tensor.cpp src/vector_add.cu src/matmul.cu
+	$(NVCC) -I ./include --compiler-options '-fPIC' --shared -o build/libgpuc_cuda.so src/tensor.cpp src/vector.cu src/matmul.cu
 
 build: build/libgpuc_cuda.o
 

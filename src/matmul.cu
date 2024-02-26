@@ -48,7 +48,7 @@ void matmulF64(Tensor out, Tensor in1, Tensor in2) {
     config.blockDim.y = k;
   }
   config.gridDim = dim3((m + config.blockDim.x - 1) / config.blockDim.x, (k + config.blockDim.y - 1) / config.blockDim.y);
-  for(int i = 0; i < getTensorBatchCount(in1); i++) {
+  for(int i = 0; i < getTensorCountMat(in1); i++) {
     auto err = cudaLaunchKernelEx(&config, matmulKernel<double>, out.mem + i * m * k, in1.mem + i * m * n, in2.mem + i * n * k, m, n, k);
     if(err != cudaSuccess) {
       throw std::string("Failed to launch kernel: ") + cudaGetErrorString(err);
