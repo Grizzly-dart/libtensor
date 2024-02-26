@@ -4,12 +4,14 @@
 #include <libgpuc_cuda.hpp>
 #include <string>
 
-// TODO two dimensional blocks
 template <typename T>
-__global__ void sum2DKernel(T* out, T* in, uint32_t n) {
+__global__ void sum2DKernel(T* out, T* in, uint32_t numCols) {
+  uint32_t numThreads = blockDim.x * gridDim.x;
+  uint32_t numRows = gridDim.y;
+  uint32_t row = blockIdx.y;
   T sum = 0;
-  for (uint32_t i = threadIdx.x; i < n; i += blockDim.x) {
-    uint32_t idx = blockIdx.x * blockDim.x + i;
+  for (uint32_t colId = threadIdx.x + blockIdx.x * blockDim.x; i < numCols; i += numThreads) {
+    uint32_t idx = row * numCols + colId;
     sum += in[idx];
   }
   __syncthreads();
@@ -21,29 +23,29 @@ __global__ void sum2DKernel(T* out, T* in, uint32_t n) {
   __syncthreads();
 
   uint8_t lane = threadId.x % warpSize;
-  uint8_t wrap = threadId.x / warpSize;
+  uint8_t warp = threadId.x / warpSize;
 
   extern __shared__ T sdata[32];
 
   if (lane == 0) {
-    sdata[wrap] = sum;
+    sdata[warp] = sum;
   }
   __syncthreads();
 
-  if (wrap == 0) {
+  if (warp == 0) {
     sum = (lane < blockDim.x / warpSize) ? sdata[lane] : 0;
     for (int offset = warpSize / 2; offset > 0; offset /= 2) {
       sum += __shfl_down_sync(0xffffffff, sum, offset);
     }
   }
+  __syncthreads();
 
-  // TODO atomic add across blocks
   if (threadIdx.x == 0) {
-    out[blockIdx.x] = sum;
+    atomicAdd(out + row, sum);
   }
 }
 
-void sum2D(Tensor out, Tensor in) {
+void sum2DTensor(Tensor out, Tensor in) {
   if (in.ndim != 2) {
     throw std::string("Input tensor must be 2D");
   } else if (out.ndim != 1) {
@@ -53,7 +55,14 @@ void sum2D(Tensor out, Tensor in) {
   }
 
   cudaLaunchConfig_t config = {};
-  // TODO decide num blocks and threads
+  if(in.dim[1] < MAX_THREADS_PER_BLOCK) {
+    config.blockDim.x = in.dim[1];
+    config.gridDim.x = 1;
+  } else {
+    config.blockDim.x = MAX_THREADS_PER_BLOCK;
+    config.gridDim.x = (in.dim[1] + MAX_THREADS_PER_BLOCK - 1) / MAX_THREADS_PER_BLOCK;
+  }
+  config.gridDim.y = in.dim[0];
 
   auto err = cudaLaunchKernelEx(&config, sum2DKernel<double>, out.mem, in.mem, n);
   if (err != cudaSuccess) {

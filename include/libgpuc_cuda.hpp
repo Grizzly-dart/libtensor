@@ -39,6 +39,12 @@ extern uint64_t getTensorN(Tensor t);
 extern uint64_t getTensorCountMat(Tensor t);
 
 extern void ewiseF64Add2(Tensor out, Tensor in1, Tensor in2);
+
+/// @brief Computes row-wise sum of a 2D tensor
+/// @param out Sum of each row
+/// @param in Input 2D tensor
+extern void sum2DTensor(Tensor out, Tensor in);
+
 extern void matmulF64(Tensor out, Tensor in1, Tensor in2);
 
 #ifdef __cplusplus
