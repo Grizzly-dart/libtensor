@@ -9,11 +9,23 @@ extern "C" {
 
 #define MAX_THREADS_PER_BLOCK 1024U
 
+typedef struct {
+  uint32_t x;
+  uint32_t y;
+} Dim2;
+
 typedef struct Tensor_t {
   double* mem = nullptr;
   uint64_t dim[10] = {0,0,0,0,0,0,0,0,0,0};
   uint8_t ndim = 0;
 } Tensor;
+
+typedef enum {
+  CONSTANT,
+  CIRCULAR,
+  REFLECT,
+  REPLICATION
+} PaddingMode;
 
 extern Tensor makeTensor1D(uint64_t n);
 extern Tensor makeTensor2D(uint64_t m, uint64_t n);
