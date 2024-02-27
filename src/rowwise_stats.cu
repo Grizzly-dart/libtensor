@@ -7,11 +7,11 @@
 template <typename T>
 __global__ void sum2DKernel(T* out, T* in, uint32_t numCols) {
   uint32_t numThreads = blockDim.x * gridDim.x;
-  uint32_t numRows = gridDim.y;
+  // uint32_t numRows = gridDim.y;
   uint32_t row = blockIdx.y;
   T sum = 0;
-  for (uint32_t colId = threadIdx.x + blockIdx.x * blockDim.x; i < numCols; i += numThreads) {
-    uint32_t idx = row * numCols + colId;
+  for (uint32_t col = threadIdx.x + blockIdx.x * blockDim.x; col < numCols; col += numThreads) {
+    uint32_t idx = row * numCols + col;
     sum += in[idx];
   }
   __syncthreads();
@@ -22,10 +22,10 @@ __global__ void sum2DKernel(T* out, T* in, uint32_t numCols) {
   }
   __syncthreads();
 
-  uint8_t lane = threadId.x % warpSize;
-  uint8_t warp = threadId.x / warpSize;
+  uint8_t lane = threadIdx.x % warpSize;
+  uint8_t warp = threadIdx.x / warpSize;
 
-  extern __shared__ T sdata[32];
+  __shared__ T sdata[32];
 
   if (lane == 0) {
     sdata[warp] = sum;
@@ -64,7 +64,7 @@ void sum2DTensor(Tensor out, Tensor in) {
   }
   config.gridDim.y = in.dim[0];
 
-  auto err = cudaLaunchKernelEx(&config, sum2DKernel<double>, out.mem, in.mem, n);
+  auto err = cudaLaunchKernelEx(&config, sum2DKernel<double>, out.mem, in.mem, in.dim[1]);
   if (err != cudaSuccess) {
     throw std::string(cudaGetErrorString(err));
   }
