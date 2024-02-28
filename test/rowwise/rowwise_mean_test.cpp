@@ -2,25 +2,26 @@
 #include <iostream>
 #include <libgpuc_cuda.hpp>
 
-double sum(double* in, uint64_t n) {
-  double sum = 0;
+double mean(double* in, uint64_t n) {
+  double mean = 0;
   for (int i = 0; i < n; i++) {
-    sum += in[i];
+    double delta = in[i] - mean;
+    mean += delta / (i + 1);
   }
-  return sum;
+  return mean;
 }
 
-void test_sum2D(double* in, uint64_t m, uint64_t n) {
+void test_mean2D(double* in, uint64_t m, uint64_t n) {
   auto t1 = makeTensor2D(m, n);
   writeTensor(t1, (double*)in, m * n);
   auto t2 = makeTensor1D(m);
-  sum2DTensor(t2, t1);
+  mean2DTensor(t2, t1);
 
   double* result = new double[m];
   readTensor(t2, (double*)result, m);
 
   for (int i = 0; i < m; i++) {
-    double s = sum(in + i * n, n);
+    double s = mean(in + i * n, n);
     double diff = std::abs(s - result[i]);
     if (diff > 1e-6) {
       std::cout << "Test failed at index " << i << " expected: " << s << " found: " << result[i] << std::endl;
@@ -35,7 +36,7 @@ void testForMN(uint64_t m, uint64_t n) {
   for (int i = 0; i < m * n; i++) {
     in[i] = drand48();
   }
-  test_sum2D(in, m, n);
+  test_mean2D(in, m, n);
   std::cout << "Test passed!" << std::endl;
 }
 

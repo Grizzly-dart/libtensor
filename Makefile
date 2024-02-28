@@ -2,6 +2,7 @@ CUDA_PATH?=/usr/local/cuda
 HOST_COMPILER?=g++
 NVCC:=$(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER) -arch=sm_60
 SOURCES = ${shell find src/ -type f -regextype egrep -regex ".*\.(cpp|cu|c)$$"}
+TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$"}
 
 build/libgpuc_cuda.so: $(SOURCES)
 	echo $(REGEXP) $(SOURCES)
@@ -27,7 +28,8 @@ build_test_rowwise_sum:
 test_rowwise_sum: build build_test_rowwise_sum
 	LD_LIBRARY_PATH=./build ./build/rowwise_sum_test
 
-test_all: test_vector_add test_matmul test_rowwise_sum
+test_all:
+	echo $(TESTS)
 
 clean:
 	rm -rf build/*
