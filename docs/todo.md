@@ -1,3 +1,4 @@
++ Performance comparison of various sum2d implementations
 + Max pooling
 + addmm
 + multi GPU support

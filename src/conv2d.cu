@@ -11,7 +11,7 @@
 // TODO implement groups
 /// https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md
 template <typename T>
-__global__ void conv2dKernel(T* output, const T* input, const T* kernel, uint32_t inChannels, uint32_t groups,
+__global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t inChannels, uint32_t groups,
     Dim2 inS, Dim2 kernS, 
     Dim2 padding, PaddingMode paddingMode, T pad, Dim2 stride, Dim2 dilation) {
   uint32_t kernNel = kernS.x * kernS.y;
@@ -42,7 +42,7 @@ __global__ void conv2dKernel(T* output, const T* input, const T* kernel, uint32_
         if (input_row < inS.y && input_col < inS.x) {
           uint32_t firstInpChannelId = (outChannels/groups)/groupLen;
           for (uint32_t g = 0; g < groupLen; g++) {
-            const T* inputStart = input + (firstInpChannelId + g) * inS.x * inS.y;
+            T* inputStart = input + (firstInpChannelId + g) * inS.x * inS.y;
             uint32_t kIdx = outId * groupLen + g;
             T inputValue = padder(inputStart, inS, padding, paddingMode, pad, input_col, input_row);
             value += inputValue * kernel[kIdx * kernNel + kRow * kernS.y + kCol];
@@ -56,6 +56,7 @@ __global__ void conv2dKernel(T* output, const T* input, const T* kernel, uint32_
   }
 }
 
+#ifdef FALSE
 // TODO implement batches
 void conv2d(Tensor out, Tensor in, Tensor kernel, Dim2 padding, PaddingMode paddingMode, double pad, Dim2 stride, Dim2 dilation) {
   // TODO handle batches
@@ -71,3 +72,4 @@ void conv2d(Tensor out, Tensor in, Tensor kernel, Dim2 padding, PaddingMode padd
     throw std::string(cudaGetErrorString(err));
   }
 }
+#endif

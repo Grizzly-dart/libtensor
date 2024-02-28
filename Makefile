@@ -5,7 +5,6 @@ SOURCES = ${shell find src/ -type f -regextype egrep -regex ".*\.(cpp|cu|c)$$"}
 TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$"}
 
 build/libgpuc_cuda.so: $(SOURCES)
-	echo $(REGEXP) $(SOURCES)
 	$(NVCC) -I ./include --compiler-options '-fPIC' --shared -o $@ $^
 
 build: build/libgpuc_cuda.so
@@ -22,16 +21,21 @@ build_test_matmul:
 test_matmul: build build_test_matmul
 	LD_LIBRARY_PATH=./build ./build/matmul_test
 
-build_test_rowwise_sum:
-	$(NVCC) -I ./include -L ./build -lgpuc_cuda -o build/rowwise_sum_test test/rowwise/rowwise_sum_test.cpp
+build_test_sum2d:
+	$(NVCC) -I ./include -L ./build -lgpuc_cuda -o build/sum2d_test test/stat2d/sum2d_test.cpp
 
-test_rowwise_sum: build build_test_rowwise_sum
-	LD_LIBRARY_PATH=./build ./build/rowwise_sum_test
+test_sum2d: build build_test_sum2d
+	LD_LIBRARY_PATH=./build ./build/sum2d_test
 
-test_all:
-	echo $(TESTS)
+build_test_mean2d:
+	$(NVCC) -I ./include -L ./build -lgpuc_cuda -o build/mean2d_test test/stat2d/mean2d_test.cpp
+
+test_mean2d: build build_test_mean2d
+	LD_LIBRARY_PATH=./build ./build/mean2d_test
+
+test_all: test_vector_add test_matmul test_sum2d
 
 clean:
 	rm -rf build/*
 
-.PHONY: build clean vector_add
+.PHONY: build clean test_vector_add test_matmul test_sum2d test_all test_mean2d
