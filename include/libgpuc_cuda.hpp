@@ -60,6 +60,10 @@ extern void sum2DTensor(Tensor out, Tensor in);
 /// @param out Mean of each row
 /// @param in Input 2D tensor
 extern void mean2DTensor(Tensor out, Tensor in);
+/// @brief Computes row-wise variance of a 2D tensor
+/// @param out Variance of each row
+/// @param in Input 2D tensor
+extern void variance2DTensor(Tensor out, Tensor in);
 
 extern void matmulF64(Tensor out, Tensor in1, Tensor in2);
 
