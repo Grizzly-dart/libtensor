@@ -1,3 +1,4 @@
++ Max pooling
 + addmm
 + multi GPU support
 
