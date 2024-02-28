@@ -51,7 +51,6 @@ __global__ void conv2dKernel(T* output, const T* input, const T* kernel,
 }
 
 // TODO implement batches
-#ifdef FALSE
 void conv2d(Tensor out, Tensor in, Tensor kernel, Dim2 padding, PaddingMode paddingMode, double pad, Dim2 stride, Dim2 dilation) {
   
   // TODO
@@ -60,9 +59,9 @@ void conv2d(Tensor out, Tensor in, Tensor kernel, Dim2 padding, PaddingMode padd
   // TODO
 
   // TODO
-  auto err = cudaLaunchKernelEx(&config, conv2dKernel<double>, out.mem, in.mem, in.dim[1]);
+  auto err = cudaLaunchKernelEx(&config, conv2dKernel<double>, out.mem, in.mem,
+      padding, paddingMode, pad, stride, dilation);
   if (err != cudaSuccess) {
     throw std::string(cudaGetErrorString(err));
   }
 }
-#endif
