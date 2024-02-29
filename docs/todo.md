@@ -2,6 +2,7 @@
 + Max pooling
 + addmm
 + multi GPU support
++ check that it is easy append tensor batches
 
 # Low prio
 + DepthWiseConv2D

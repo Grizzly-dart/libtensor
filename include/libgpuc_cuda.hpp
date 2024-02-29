@@ -45,6 +45,16 @@ extern uint64_t getTensorM(Tensor t);
 /// @return Returns the number of columns in the tensor
 extern uint64_t getTensorN(Tensor t);
 
+/// @brief Calculates the number of channels in the tensor
+/// @param t Tensor
+/// @return Returns the number of channels in the tensor
+extern uint64_t getTensorC(Tensor t);
+
+/// @brief Calculates the number of batches in the tensor
+/// @param t Tensor
+/// @return Returns the number of batches in the tensor
+extern uint64_t getTensorB(Tensor t);
+
 /// @brief Calculates the number of matrices in the tensor
 /// @param t Tensor
 /// @return Returns the number of matrices in the tensor

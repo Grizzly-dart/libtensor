@@ -83,6 +83,28 @@ uint64_t getTensorN(Tensor t) {
   return t.dim[t.ndim - 1];
 }
 
+uint64_t getTensorC(Tensor t) {
+  if (t.ndim < 2) {
+    throw std::string("Tensor must have at least 2 dimensions");
+  } else if (t.ndim == 2) {
+    return 1;
+  }
+  return t.dim[t.ndim - 3];
+}
+
+uint64_t getTensorB(Tensor t) {
+  if (t.ndim < 2) {
+    throw std::string("Tensor must have at least 2 dimensions");
+  } else if (t.ndim < 3) {
+    return 1;
+  }
+  uint64_t ret = 1;
+  for (int i = 0; i < t.ndim - 3; i++) {
+    ret *= t.dim[i];
+  }
+  return ret;
+}
+
 uint64_t getTensorCountMat(Tensor t) {
   if (t.ndim < 2) {
     throw std::string("Tensor must have at least 2 dimensions");
