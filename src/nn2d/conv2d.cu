@@ -9,7 +9,7 @@
 #define BLOCK_SIZE 16
 
 // TODO if kernel size < 16, use shared memory
-
+ 
 /// https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md
 template <typename T>
 __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t inChannels, uint32_t groups,
