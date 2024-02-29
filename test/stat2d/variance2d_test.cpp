@@ -10,6 +10,7 @@ double var(double* in, uint64_t n) {
     double delta = in[i] - mean;
     mean += delta / (i + 1);
     m2 += delta * (in[i] - mean);
+    // printf("i: %d, m2: %f\n", i, m2);
   }
   return m2 / n;
 }
@@ -45,7 +46,7 @@ void testForMN(uint64_t m, uint64_t n) {
 
 int main() {
   // testForMN(10, 512 * 512 * 10);
-  testForMN(1, 17);
+  testForMN(1, 31);
 
   std::cout << "All tests passed!" << std::endl;
   return 0;

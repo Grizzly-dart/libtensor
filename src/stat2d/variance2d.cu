@@ -1,10 +1,9 @@
-#include <string>
-#include <cstdint>
-
 #include <cuda_runtime.h>
 
+#include <cstdint>
 #include <libgpuc_cuda.hpp>
 #include <reducers.hpp>
+#include <string>
 
 template <typename T>
 __global__ void variance2DKernel(T* out, T* in, uint32_t numCols) {
@@ -13,8 +12,10 @@ __global__ void variance2DKernel(T* out, T* in, uint32_t numCols) {
   uint32_t row = blockIdx.x;
   Variance<T> record{};
   for (uint32_t col = threadIdx.x; col < numCols; col += numThreads) {
-    uint32_t idx = row * numCols + col;
-    record.consume(in[idx]);
+    if (col < numCols) {
+      uint32_t idx = row * numCols + col;
+      record.consume(in[idx]);
+    }
   }
   __syncthreads();
 
@@ -61,7 +62,7 @@ void variance2DTensor(Tensor out, Tensor in) {
   }
 
   cudaLaunchConfig_t config = {};
-  if(in.dim[1] < MAX_THREADS_PER_BLOCK) {
+  if (in.dim[1] < MAX_THREADS_PER_BLOCK) {
     config.blockDim.x = in.dim[1];
   } else {
     config.blockDim.x = MAX_THREADS_PER_BLOCK;

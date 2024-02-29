@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdio>
 
 #include <cuda_runtime.h>
 
@@ -59,6 +60,7 @@ __device__ void Variance<T>::merge(const Variance<T>& other) {
   auto delta = other.mean - mean;
   mean += delta * other.n / n;
   m2 += other.m2 + delta * delta * n * other.n / (n + other.n);
+  printf("n: %d, mean: %f, m2: %f\n", n, mean, m2);
 }
 
 template <typename T>
