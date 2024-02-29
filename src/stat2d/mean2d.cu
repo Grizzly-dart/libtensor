@@ -28,6 +28,10 @@ __global__ void mean2DKernel(T* out, T* in, uint32_t numCols) {
   uint8_t warp = threadIdx.x / warpSize;
 
   __shared__ Mean<T> sdata[32];
+  if (warp == 0) {
+    sdata[threadIdx.x] = {0};
+  }
+  __syncthreads();
 
   if (lane == 0) {
     sdata[warp] = record;
@@ -35,7 +39,7 @@ __global__ void mean2DKernel(T* out, T* in, uint32_t numCols) {
   __syncthreads();
 
   if (warp == 0) {
-    record = (lane < blockDim.x / warpSize) ? sdata[lane] : Mean<T>{};
+    record = sdata[lane];
     for (int offset = warpSize / 2; offset > 0; offset /= 2) {
       record.merge(record.shfl_down(offset));
     }

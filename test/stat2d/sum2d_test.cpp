@@ -41,7 +41,9 @@ void testForMN(uint64_t m, uint64_t n) {
 
 int main() {
   testForMN(10, 512 * 512 * 10);
-  testForMN(100, 17);
+  testForMN(10, 1000);
+  testForMN(1, 31);
+  testForMN(10000, 31);
 
   std::cout << "All tests passed!" << std::endl;
   return 0;
