@@ -1,8 +1,9 @@
+#include <string>
+#include <cstdint>
+
 #include <cuda_runtime.h>
 
-#include <cstdint>
 #include <libgpuc_cuda.hpp>
-#include <string>
 
 template <typename T>
 __global__ void sum2DKernel(T* out, T* in, uint32_t numCols) {

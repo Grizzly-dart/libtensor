@@ -1,43 +1,10 @@
+#include <string>
+#include <cstdint>
+
 #include <cuda_runtime.h>
 
-#include <cstdint>
 #include <libgpuc_cuda.hpp>
-#include <string>
-
-template <typename T>
-class Mean {
-public:
-  T mean = 0;
-  uint32_t n = 0;
-
-  __device__ void comsume(T sample) {
-    n++;
-    T delta = sample - mean;
-    mean += delta / n;
-  }
-
-  __device__ void merge(const Mean<T>& other) {
-    if (other.n == 0) {
-      return;
-    }
-    if (n == 0) {
-      mean = other.mean;
-      n = other.n;
-      return;
-    }
-
-    n = n + other.n;
-    T delta = other.mean - mean;
-    mean += delta * other.n / n;
-  }
-
-  __device__ Mean<T> shfl_down(int offset) {
-    Mean<T> other;
-    other.mean = __shfl_down_sync(0xffffffff, mean, offset);
-    other.n = __shfl_down_sync(0xffffffff, n, offset);
-    return other;
-  }
-};
+#include <reducers.hpp>
 
 template <typename T>
 __global__ void mean2DKernel(T* out, T* in, uint32_t numCols) {
@@ -47,7 +14,7 @@ __global__ void mean2DKernel(T* out, T* in, uint32_t numCols) {
   Mean<T> record{};
   for (uint32_t col = threadIdx.x; col < numCols; col += numThreads) {
     uint32_t idx = row * numCols + col;
-    record.comsume(in[idx]);
+    record.consume(in[idx]);
   }
   __syncthreads();
 

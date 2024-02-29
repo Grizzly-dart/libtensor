@@ -1,6 +1,6 @@
 CUDA_PATH?=/usr/local/cuda
 HOST_COMPILER?=g++
-NVCC:=$(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER) -arch=sm_60
+NVCC:=$(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER) -arch=sm_60 -rdc=true 
 SOURCES = ${shell find src/ -type f -regextype egrep -regex ".*\.(cpp|cu|c)$$"}
 TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$"}
 BUILD_TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$" | xargs basename -a -s .cpp  | awk '{print "build_"$$0}'}
@@ -16,6 +16,8 @@ build_%: build $(TESTS)
 
 run_%: build_% $(TESTS)
 	LD_LIBRARY_PATH=./build ./build/$*
+
+build_all: $(BUILD_TESTS)
 
 test_all: $(RUN_TESTS) 
 

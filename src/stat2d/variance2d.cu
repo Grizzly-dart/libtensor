@@ -1,48 +1,10 @@
+#include <string>
+#include <cstdint>
+
 #include <cuda_runtime.h>
 
-#include <cstdint>
 #include <libgpuc_cuda.hpp>
-#include <string>
-
-template <typename T>
-class Variance {
-public:
-  T mean = 0;
-  uint32_t n = 0;
-  T m2 = 0;
-
-  __device__ void comsume(T sample) {
-    n++;
-    T delta = sample - mean;
-    mean += delta / n;
-    m2 += delta * (sample - mean);
-  }
-
-  __device__ void merge(const Variance<T>& other) {
-    if (other.n == 0) {
-      return;
-    }
-    if (n == 0) {
-      mean = other.mean;
-      n = other.n;
-      m2 = other.m2;
-      return;
-    }
-
-    n = n + other.n;
-    T delta = other.mean - mean;
-    mean += delta * other.n / n;
-    m2 += other.m2 + delta * delta * n * other.n / (n + other.n);
-  }
-
-  __device__ Variance<T> shfl_down(int offset) {
-    Variance<T> other;
-    other.mean = __shfl_down_sync(0xffffffff, mean, offset);
-    other.n = __shfl_down_sync(0xffffffff, n, offset);
-    other.m2 = __shfl_down_sync(0xffffffff, m2, offset);
-    return other;
-  }
-};
+#include <reducers.hpp>
 
 template <typename T>
 __global__ void variance2DKernel(T* out, T* in, uint32_t numCols) {
@@ -52,7 +14,7 @@ __global__ void variance2DKernel(T* out, T* in, uint32_t numCols) {
   Variance<T> record{};
   for (uint32_t col = threadIdx.x; col < numCols; col += numThreads) {
     uint32_t idx = row * numCols + col;
-    record.comsume(in[idx]);
+    record.consume(in[idx]);
   }
   __syncthreads();
 
@@ -81,7 +43,7 @@ __global__ void variance2DKernel(T* out, T* in, uint32_t numCols) {
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    out[row] = record.m2;
+    out[row] = record.m2 / numCols;
   }
 }
 

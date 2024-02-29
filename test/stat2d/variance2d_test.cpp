@@ -1,27 +1,30 @@
 #include <cassert>
 #include <iostream>
+
 #include <libgpuc_cuda.hpp>
 
-double mean(double* in, uint64_t n) {
+double var(double* in, uint64_t n) {
   double mean = 0;
+  double m2 = 0;
   for (int i = 0; i < n; i++) {
     double delta = in[i] - mean;
     mean += delta / (i + 1);
+    m2 += delta * (in[i] - mean);
   }
-  return mean;
+  return m2 / n;
 }
 
 void test_mean2D(double* in, uint64_t m, uint64_t n) {
   auto t1 = makeTensor2D(m, n);
   writeTensor(t1, (double*)in, m * n);
   auto t2 = makeTensor1D(m);
-  mean2DTensor(t2, t1);
+  variance2DTensor(t2, t1);
 
   double* result = new double[m];
   readTensor(t2, (double*)result, m);
 
   for (int i = 0; i < m; i++) {
-    double s = mean(in + i * n, n);
+    double s = var(in + i * n, n);
     double diff = std::abs(s - result[i]);
     if (diff > 1e-6) {
       std::cout << "Test failed at index " << i << " expected: " << s << " found: " << result[i] << std::endl;
