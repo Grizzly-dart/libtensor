@@ -74,11 +74,11 @@ void matmulF64(Tensor out, Tensor in1, Tensor in2) {
 
   cudaLaunchConfig_t config = {};
   config.blockDim = dim3(BLOCK_SIZE, BLOCK_SIZE);
-  if (m < BLOCK_SIZE) {
-    config.blockDim.x = m;
-  }
   if (k < BLOCK_SIZE) {
-    config.blockDim.y = k;
+    config.blockDim.x = k;
+  }
+  if (m < BLOCK_SIZE) {
+    config.blockDim.y = m;
   }
   config.gridDim = dim3((m + config.blockDim.x - 1) / config.blockDim.x, (k + config.blockDim.y - 1) / config.blockDim.y);
   for (int i = 0; i < getTensorCountMat(in1); i++) {
