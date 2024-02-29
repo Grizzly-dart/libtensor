@@ -7,7 +7,7 @@
 
 /// Adds two vectors
 template<typename T>
-__global__ void ewiseAdd2Kernel(T* out, const T* in1, const T* in2, uint32_t n) {
+__global__ void add2DKernel(T* out, const T* in1, const T* in2, uint32_t n) {
   int i = blockDim.x * blockIdx.x + threadIdx.x;
 
   if (i >= n) return;
@@ -28,7 +28,7 @@ void ewiseF64Add2(Tensor out, Tensor in1, Tensor in2) {
   cudaLaunchConfig_t config = {};
   config.blockDim.x = threads;
   config.gridDim.x = blocks;
-  auto err = cudaLaunchKernelEx(&config, ewiseAdd2Kernel<double>, out.mem, in1.mem, in2.mem, n);
+  auto err = cudaLaunchKernelEx(&config, add2DKernel<double>, out.mem, in1.mem, in2.mem, n);
   if (err != cudaSuccess) {
     throw std::string(cudaGetErrorString(err));
   }

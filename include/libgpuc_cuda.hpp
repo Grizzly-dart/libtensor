@@ -60,7 +60,7 @@ extern uint64_t getTensorB(Tensor t);
 /// @return Returns the number of matrices in the tensor
 extern uint64_t getTensorCountMat(Tensor t);
 
-extern void ewiseF64Add2(Tensor out, Tensor in1, Tensor in2);
+extern void add2D(Tensor out, Tensor in1, Tensor in2);
 
 /// @brief Computes row-wise sum of a 2D tensor
 /// @param out Sum of each row
@@ -75,7 +75,7 @@ extern void mean2DTensor(Tensor out, Tensor in);
 /// @param in Input 2D tensor
 extern void variance2DTensor(Tensor out, Tensor in);
 
-extern void matmulF64(Tensor out, Tensor in1, Tensor in2);
+extern void matmul(Tensor out, Tensor in1, Tensor in2);
 
 #ifdef __cplusplus
 }

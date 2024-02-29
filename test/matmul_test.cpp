@@ -10,13 +10,13 @@ double matmulVal(double* in1, double* in2, uint64_t m, uint64_t n, uint64_t k, u
   return sum;
 }
 
-void test_matmulF64(double* in1, double* in2, uint64_t m, uint64_t n, uint64_t k) {
+void test_matmul(double* in1, double* in2, uint64_t m, uint64_t n, uint64_t k) {
   auto t1 = makeTensor2D(m, n);
   writeTensor(t1, (double*)in1, m * n);
   auto t2 = makeTensor2D(n, k);
   writeTensor(t2, (double*)in2, n * k);
   auto t3 = makeTensor2D(m, k);
-  matmulF64(t3, t1, t2);
+  matmul(t3, t1, t2);
 
   double* result = new double[m * k];
   readTensor(t3, (double*)result, m * k);

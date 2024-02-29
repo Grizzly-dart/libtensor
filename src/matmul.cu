@@ -56,7 +56,7 @@ __global__ void matmulKernel(T* matOut, T* matIn1, T* matIn2, uint32_t m, uint32
   matOut[row * k + col] = sum;
 }
 
-void matmulF64(Tensor out, Tensor in1, Tensor in2) {
+void matmul(Tensor out, Tensor in1, Tensor in2) {
   if (in1.ndim != in2.ndim || in1.ndim != out.ndim) {
     throw std::string("All input tensors must have the same number of dimensions");
   }
