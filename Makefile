@@ -8,7 +8,7 @@ BUILD_TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$
 RUN_TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$" | xargs basename -a -s .cpp  | awk '{print "run_"$$0}'}
 
 build/libgpuc_cuda.so: $(SOURCES) $(HEADERS)
-	$(NVCC) -I ./include --compiler-options '-fPIC' --shared -o $@ $^
+	$(NVCC) -I ./include --compiler-options '-fPIC' --shared -o $@ $(SOURCES)
 
 build: build/libgpuc_cuda.so
 

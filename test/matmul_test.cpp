@@ -45,7 +45,7 @@ int main() {
   {
     double in1[2][2]{{1.0, 2.0}, {3.0, 4.0}};
     double in2[2][2]{{5.0, 6.0}, {7.0, 8.0}};
-    test_matmulF64((double*)in1, (double*)in2, 2, 2, 2);
+    test_matmul((double*)in1, (double*)in2, 2, 2, 2);
   }
 
   {
@@ -53,7 +53,7 @@ int main() {
     double* in2;
     makeMatrix(&in1, 512, 128);
     makeMatrix(&in2, 128, 512);
-    test_matmulF64((double*)in1, (double*)in2, 2, 2, 2);
+    test_matmul((double*)in1, (double*)in2, 2, 2, 2);
     delete[] in1;
     delete[] in2;
   }
