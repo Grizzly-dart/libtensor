@@ -48,7 +48,7 @@ __global__ void variance2DKernel(T* out, T* in, uint32_t numCols) {
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    out[row] = record.m2 / numCols;
+    out[row] = record.m2 / (numCols - 1);
   }
 }
 

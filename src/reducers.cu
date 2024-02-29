@@ -46,21 +46,19 @@ __device__ void Variance<T>::consume(T sample) {
 
 template <typename T>
 __device__ void Variance<T>::merge(const Variance<T>& other) {
-  if (other.n == 0) {
-    return;
-  }
+  if (other.n == 0) return;
   if (n == 0) {
     mean = other.mean;
-    n = other.n;
     m2 = other.m2;
+    n = other.n;
     return;
   }
 
-  n = n + other.n;
+  auto newN = n + other.n;
   auto delta = other.mean - mean;
-  mean += delta * other.n / n;
-  m2 += other.m2 + delta * delta * n * other.n / (n + other.n);
-  printf("n: %d, mean: %f, m2: %f\n", n, mean, m2);
+  mean += delta * other.n / newN;
+  m2 += other.m2 + delta * delta * n * other.n / newN;
+  n = newN;
 }
 
 template <typename T>

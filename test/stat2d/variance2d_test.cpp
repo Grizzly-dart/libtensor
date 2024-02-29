@@ -10,9 +10,8 @@ double var(double* in, uint64_t n) {
     double delta = in[i] - mean;
     mean += delta / (i + 1);
     m2 += delta * (in[i] - mean);
-    // printf("i: %d, m2: %f\n", i, m2);
   }
-  return m2 / n;
+  return m2 / (n - 1);
 }
 
 void test_mean2D(double* in, uint64_t m, uint64_t n) {
@@ -45,8 +44,10 @@ void testForMN(uint64_t m, uint64_t n) {
 }
 
 int main() {
-  // testForMN(10, 512 * 512 * 10);
-  testForMN(1, 31);
+  testForMN(10, 512 * 512 * 10);
+  testForMN(1000, 1025);
+  testForMN(10, 31);
+  testForMN(1, 3);
 
   std::cout << "All tests passed!" << std::endl;
   return 0;
