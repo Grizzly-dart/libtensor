@@ -16,33 +16,33 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t inChannels
                              Dim2 inS, Dim2 kernS,
                              Dim2 padding, PaddingMode paddingMode, T pad, Dim2 stride, Dim2 dilation) {
   uint32_t kernNel = kernS.x * kernS.y;
-  uint32_t output_row = blockIdx.y * blockDim.y + threadIdx.y;
-  uint32_t output_col = blockIdx.x * blockDim.x + threadIdx.x;
+  uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
+  uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outId = blockIdx.z;
   uint32_t outChannels = gridDim.z;
   uint32_t groupLen = inChannels / groups;
+  uint32_t firstInpChannelId = (outChannels / groups) / groupLen;
 
-  if (output_row < outS.y && output_col < outS.x) {
+  if (outR < outS.y && outC < outS.x) {
     T value = 0;
     for (uint32_t kRow = 0; kRow < kernS.y; kRow++) {
+      uint32_t inR = outR * stride.y + kRow * dilation.y;
       for (uint32_t kCol = 0; kCol < kernS.x; kCol++) {
-        uint32_t input_row = output_row * stride.y + kRow * dilation.y;
-        uint32_t input_col = output_col * stride.x + kCol * dilation.x;
-        if (input_row < inS.y && input_col < inS.x) {
-          uint32_t firstInpChannelId = (outChannels / groups) / groupLen;
+        uint32_t inC = outC * stride.x + kCol * dilation.x;
+        if (inR < inS.y + 2 * padding.y && inC < inS.x + 2 * padding.x) {
           for (uint32_t g = 0; g < groupLen; g++) {
             T* inputStart = input + (firstInpChannelId + g) * inS.x * inS.y;
             uint32_t kIdx = outId * groupLen + g;
-            T inputValue = padder<T>(inputStart, inS, padding, paddingMode, pad, input_col, input_row);
+            T inputValue = padder<T>(inputStart, inS, padding, paddingMode, pad, inC, inR);
             value += inputValue * kernel[kIdx * kernNel + kRow * kernS.y + kCol];
           }
         } else {
-          printf("error\n");  // TODO replace with assert
+          assert(inR < inS.y + 2 * padding.y && inC < inS.x + 2 * padding.x);
         }
       }
     }
-    output[outId * outS.x * outS.y + output_row * outS.x + output_col] = value;
+    output[outId * outS.x * outS.y + outR * outS.x + outC] = value;
   }
 }
 
