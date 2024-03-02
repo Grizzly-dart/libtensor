@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <cassert>
 
 #include "libgpuc_cuda.hpp"
 #include "padding.hpp"

@@ -1,10 +1,13 @@
 #include <cuda_runtime.h>
 #include <limits.h>
+#include <stdint.h>
+#include <string>
 
 #include "libgpuc_cuda.hpp"
+#include "padding.hpp"
 
 template <typename T>
-__global__ void maxPool2DKern(T* output, const T* input, Dim2 inS, Dim2 kernS,
+__global__ void maxPool2DKern(T* output, T* input, Dim2 inS, Dim2 kernS,
                                 Dim2 padding, PaddingMode PaddingMode, T pad, Dim2 stride, Dim2 dilation) {
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
@@ -13,7 +16,7 @@ __global__ void maxPool2DKern(T* output, const T* input, Dim2 inS, Dim2 kernS,
   T* inStart = input + outId * inS.x * inS.y;
 
   if (outR < outS.y && outC < outS.x) {
-    T maxVal = -DBL_MIN;
+    T maxVal = -__DBL_MIN__;
     for (int kRow = 0; kRow < kernS.y; ++kRow) {
       uint32_t inR = outR * stride.y + kRow * dilation.y;
       for (int kCol = 0; kCol < kernS.x; ++kCol) {
@@ -30,7 +33,7 @@ __global__ void maxPool2DKern(T* output, const T* input, Dim2 inS, Dim2 kernS,
 }
 
 template <typename T>
-__global__ void maxPool2DKernWarp(T* output, const T* input, Dim2 inS, Dim2 kernS,
+__global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
                                     Dim2 padding, PaddingMode PaddingMode, T pad) {
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
@@ -39,7 +42,7 @@ __global__ void maxPool2DKernWarp(T* output, const T* input, Dim2 inS, Dim2 kern
   T* inStart = input + outId * inS.x * inS.y;
 
   if (outR < outS.y && outC < outS.x) {
-    T maxVal = -DBL_MIN;
+    T maxVal = -__DBL_MIN__;
     for (int kRow = 0; kRow < kernS.y; ++kRow) {
       uint32_t inR = outR + kRow;
       T inpVal;
@@ -64,6 +67,7 @@ __global__ void maxPool2DKernWarp(T* output, const T* input, Dim2 inS, Dim2 kern
   }
 }
 
+#if 0
 void maxPool2DCKernDouble(double* output, double* input, Dim2 inS, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
   err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, output, input, inS, kernS, padding, PaddingMode, pad, stride, dilation);
   if (err != cudaSuccess) {
@@ -78,8 +82,10 @@ void maxPool2DCKernWarpDouble(T* output, const T* input, Dim2 inS, Dim2 kernS,
     throw std::string("failed to launch kernel");
   }
 }
+#endif
 
-void maxPool2D(Tensor output, Tensor input, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
+void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
+  uint32_t wrapSize = 32; // TODO find this
   if (out.ndim != in.ndim) {
     throw std::string("out and in should have the same number of dimensions");
   } else if (getTensorC(out) != getTensorC(in)) {
@@ -89,8 +95,8 @@ void maxPool2D(Tensor output, Tensor input, Dim2 kernS, Dim2 padding, PaddingMod
   }
   uint32_t channels = getTensorC(in);
   // Compute output size based on padding, stride, dilation
-  uint32_t outM = (getTensorM(in) + 2 * padding.y - dilation.y * (kernel.dim[2] - 1) - 1) / stride.y + 1;
-  uint32_t outN = (getTensorN(in) + 2 * padding.x - dilation.x * (kernel.dim[3] - 1) - 1) / stride.x + 1;
+  uint32_t outM = (getTensorM(in) + 2 * padding.y - dilation.y * (kernS.y - 1) - 1) / stride.y + 1;
+  uint32_t outN = (getTensorN(in) + 2 * padding.x - dilation.x * (kernS.x - 1) - 1) / stride.x + 1;
   if (outM != getTensorM(out) || outN != getTensorN(out)) {
     throw std::string("output size is not correct");
   }
@@ -98,30 +104,30 @@ void maxPool2D(Tensor output, Tensor input, Dim2 kernS, Dim2 padding, PaddingMod
   // TODO for smaller tensors, try to launch multiple batches at once
   uint32_t processLen;
   for (uint32_t b = 0; b < getTensorB(in); ++b) {
-    double* outPtr = out.mem + batch * getTensorM(out) * getTensorN(out) * channels;
-    double* inPtr = in.mem + batch * getTensorM(in) * getTensorN(in) * channels;
+    double* outPtr = out.mem + b * getTensorM(out) * getTensorN(out) * channels;
+    double* inPtr = in.mem + b * getTensorM(in) * getTensorN(in) * channels;
     cudaLaunchConfig_t config = {};
-    if (outN < BLOCK_SIZE) {
+    if (outN < wrapSize) {
       config.blockDim.x = outN;
       config.gridDim.x = 1;
     } else {
-      config.blockDim.x = BLOCK_SIZE;
-      config.gridDim.x = (outN + BLOCK_SIZE - 1) / BLOCK_SIZE;
+      config.blockDim.x = wrapSize;
+      config.gridDim.x = (outN + wrapSize - 1) / wrapSize;
     }
-    if (outM < BLOCK_SIZE) {
+    if (outM < wrapSize) {
       config.blockDim.y = outM;
       config.gridDim.y = 1;
     } else {
-      config.blockDim.y = BLOCK_SIZE;
-      config.gridDim.y = (outM + BLOCK_SIZE - 1) / BLOCK_SIZE;
+      config.blockDim.y = wrapSize;
+      config.gridDim.y = (outM + wrapSize - 1) / wrapSize;
     }
     config.blockDim.z = channels;
-    auto err;
+    cudaError_t err;
     if (stride.x == 1 && stride.y == 1 && dilation.x == 1 && dilation.y == 1) {
-      err = cudaLaunchKernelEx(&config, maxPool2DKernWarp, outPtr, inPtr, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
+      err = cudaLaunchKernelEx(&config, maxPool2DKernWarp<double>, outPtr, inPtr, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
                                kernS, padding, PaddingMode, pad);
     } else {
-      err = cudaLaunchKernelEx(&config, maxPool2DKern, outPtr, inPtr, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
+      err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, outPtr, inPtr, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
                                kernS, padding, PaddingMode, pad, stride, dilation);
     }
     if (err != cudaSuccess) {
