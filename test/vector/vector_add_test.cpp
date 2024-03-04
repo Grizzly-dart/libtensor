@@ -12,7 +12,7 @@ int main() {
     writeTensor(t2, t2Arr, size);
 
     auto t3 = makeTensor1D(size);
-    ewiseF64Add2(t3, t1, t2);
+    add2D(t3, t1, t2);
 
     double result[size] = {};
     readTensor(t3, result, size);

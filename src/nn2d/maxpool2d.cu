@@ -75,7 +75,7 @@ void maxPool2DCKernDouble(double* output, double* input, Dim2 inS, Dim2 kernS, D
   }
 }
 
-void maxPool2DCKernWarpDouble(T* output, const T* input, Dim2 inS, Dim2 kernS,
+void maxPool2DCKernWarpDouble(double* output, const double* input, Dim2 inS, Dim2 kernS,
                         Dim2 padding, PaddingMode PaddingMode, T pad) {
   err = cudaLaunchKernelEx(&config, maxPool2DKernWarp<double>, output, input, inS, kernS, padding, PaddingMode, pad);
   if (err != cudaSuccess) {

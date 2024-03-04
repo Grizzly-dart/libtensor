@@ -12,15 +12,15 @@ build/libgpuc_cuda.so: $(SOURCES) $(HEADERS)
 
 build: build/libgpuc_cuda.so
 
+build_all: $(BUILD_TESTS)
+
+test_all: $(RUN_TESTS) 
+
 build_%: build $(TESTS) $(HEADERS)
 	$(NVCC) -I ./include -L ./build -lgpuc_cuda -o build/$* ${shell find test/ -type f -regextype egrep -regex ".*$*\.cpp$$"}
 
 run_%: build_% $(TESTS)
 	LD_LIBRARY_PATH=./build ./build/$*
-
-build_all: $(BUILD_TESTS)
-
-test_all: $(RUN_TESTS) 
 
 clean:
 	rm -rf build/*

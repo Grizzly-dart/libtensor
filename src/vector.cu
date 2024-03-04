@@ -14,7 +14,7 @@ __global__ void add2DKernel(T* out, const T* in1, const T* in2, uint32_t n) {
   out[i] = in1[i] + in2[i];
 }
 
-void ewiseF64Add2(Tensor out, Tensor in1, Tensor in2) {
+void add2D(Tensor out, Tensor in1, Tensor in2) {
   uint32_t n = getTensorNel(in1);
   if (n != getTensorNel(in2) || n != getTensorNel(out))
     throw std::string("Size mismatch");

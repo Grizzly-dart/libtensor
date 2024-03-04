@@ -16,8 +16,8 @@ typedef struct {
 
 typedef struct Tensor_t {
   double* mem = nullptr;
-  uint64_t dim[10] = {0,0,0,0,0,0,0,0,0,0};
   uint8_t ndim = 0;
+  uint64_t dim[10] = {0,0,0,0,0,0,0,0,0,0};
 } Tensor;
 
 typedef enum {
