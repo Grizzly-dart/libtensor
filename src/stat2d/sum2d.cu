@@ -54,9 +54,17 @@ __global__ void sum2DKern(T* out, T* in, uint32_t numCols) {
   }
 }
 
-void sum2DCudaCkernDouble(double* out, double* in, CSize2D inSize) {
+void libtcCudaSum2DCkern(double* out, double* in, CSize2D inSize) {
   cudaLaunchConfig_t config = {};
-  auto err = cudaLaunchKernelEx(&config, sum2DKern<double>, out, in, in.dim[1]);
+  if (inSize.c < MAX_THREADS_PER_BLOCK) {
+    config.blockDim.x = inSize.c;
+    config.gridDim.x = 1;
+  } else {
+    config.blockDim.x = MAX_THREADS_PER_BLOCK;
+    config.gridDim.x = (inSize.c + MAX_THREADS_PER_BLOCK - 1) / MAX_THREADS_PER_BLOCK;
+  }
+  config.gridDim.y = inSize.r;
+  auto err = cudaLaunchKernelEx(&config, sum2DKern<double>, out, in, inSize.c);
   if (err != cudaSuccess) {
     throw std::string(cudaGetErrorString(err));
   }
