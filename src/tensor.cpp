@@ -3,6 +3,44 @@
 #include <cstdint>
 #include <libgpuc_cuda.hpp>
 #include <string>
+#include <memory.h>
+
+void* libtcCudaAlloc(uint64_t size, int32_t device) {
+  auto err = cudaSetDevice(device);
+  if (err != cudaSuccess) {
+    throw std::string(cudaGetErrorString(err));
+  }
+  void* ret;
+  cudaMalloc(&ret, size);
+  return ret;
+}
+
+void libtcCudaFree(void* ptr, int32_t device) {
+  auto err = cudaSetDevice(device);
+  if (err != cudaSuccess) {
+    throw std::string(cudaGetErrorString(err));
+  }
+  cudaFree(ptr);
+}
+
+void libtcCudaMemcpy(void* dst, void* src, uint64_t size, int32_t device) {
+  auto err = cudaSetDevice(device);
+  if (err != cudaSuccess) {
+    throw std::string(cudaGetErrorString(err));
+  }
+  err = cudaMemcpy(dst, src, size, cudaMemcpyDefault);
+  if (err != cudaSuccess) {
+    throw std::string(cudaGetErrorString(err));
+  }
+}
+
+void* libtcRealloc(void* ptr, uint64_t size) {
+  return realloc(ptr, size);
+}
+
+void libtcMemcpy(void* dst, void* src, uint64_t size) {
+  memcpy(dst, src, size);
+}
 
 Tensor makeTensor1D(uint64_t n) {
   Tensor tensor = Tensor{ndim : 1};

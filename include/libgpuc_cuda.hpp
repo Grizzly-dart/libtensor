@@ -9,6 +9,10 @@ extern "C" {
 
 #define MAX_THREADS_PER_BLOCK 1024U
 
+extern void* libtcCudaAlloc(uint64_t size, int32_t device);
+extern void libtcCudaFree(void* ptr, int32_t device);
+extern void libtcCudaMemcpy(void* dst, void* src, uint64_t size, int32_t device);
+
 typedef struct {
   uint32_t x;
   uint32_t y;
