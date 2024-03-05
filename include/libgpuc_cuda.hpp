@@ -13,10 +13,18 @@ extern void* libtcCudaAlloc(uint64_t size, int32_t device);
 extern void libtcCudaFree(void* ptr, int32_t device);
 extern void libtcCudaMemcpy(void* dst, void* src, uint64_t size, int32_t device);
 
+void* libtcRealloc(void* ptr, uint64_t size);
+void libtcMemcpy(void* dst, void* src, uint64_t size);
+
 typedef struct {
   uint32_t x;
   uint32_t y;
 } Dim2;
+
+typedef struct {
+  uint32_t r;
+  uint32_t c;
+} CSize2D;
 
 typedef struct Tensor_t {
   double* mem = nullptr;

@@ -67,6 +67,7 @@ __global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
   }
 }
 
+#if 0
 void maxPool2DCKernDouble(double* output, double* input, Dim2 inS, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
   err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, output, input, inS, kernS, padding, PaddingMode, pad, stride, dilation);
   if (err != cudaSuccess) {
@@ -81,6 +82,7 @@ void maxPool2DCKernWarpDouble(double* output, const double* input, Dim2 inS, Dim
     throw std::string("failed to launch kernel");
   }
 }
+#endif
 
 void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
   uint32_t wrapSize = 32; // TODO find this

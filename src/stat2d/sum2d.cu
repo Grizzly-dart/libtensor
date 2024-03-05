@@ -6,7 +6,7 @@
 #include <string>
 
 template <typename T>
-__global__ void sum2DKernel(T* out, T* in, uint32_t numCols) {
+__global__ void sum2DKern(T* out, T* in, uint32_t numCols) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   // uint32_t numRows = gridDim.y;
   uint32_t row = blockIdx.y;
@@ -54,7 +54,16 @@ __global__ void sum2DKernel(T* out, T* in, uint32_t numCols) {
   }
 }
 
+void sum2DCudaCkernDouble(double* out, double* in, CSize2D inSize) {
+  cudaLaunchConfig_t config = {};
+  auto err = cudaLaunchKernelEx(&config, sum2DKern<double>, out, in, in.dim[1]);
+  if (err != cudaSuccess) {
+    throw std::string(cudaGetErrorString(err));
+  }
+}
+
 void sum2DTensor(Tensor out, Tensor in) {
+  // TODO use streams
   if (in.ndim != 2) {
     throw std::string("Input tensor must be 2D");
   } else if (out.ndim != 1) {
@@ -74,10 +83,11 @@ void sum2DTensor(Tensor out, Tensor in) {
   config.gridDim.y = in.dim[0];
   // std::cout << "Block dim: " << config.blockDim.x << " Grid dim: " << config.gridDim.x << " " << config.gridDim.y << std::endl;
 
-  auto err = cudaLaunchKernelEx(&config, sum2DKernel<double>, out.mem, in.mem, in.dim[1]);
+  auto err = cudaLaunchKernelEx(&config, sum2DKern<double>, out.mem, in.mem, in.dim[1]);
   if (err != cudaSuccess) {
     throw std::string(cudaGetErrorString(err));
   }
+  // TODO remove
   err = cudaDeviceSynchronize();
   if (err != cudaSuccess) {
     throw std::string(cudaGetErrorString(err));
