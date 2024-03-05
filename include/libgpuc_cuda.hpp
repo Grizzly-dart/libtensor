@@ -9,24 +9,13 @@ extern "C" {
 
 #define MAX_THREADS_PER_BLOCK 1024U
 
-extern void* libtcCudaAlloc(uint64_t size, int32_t device);
-extern void libtcCudaFree(void* ptr, int32_t device);
-extern void libtcCudaMemcpy(void* dst, void* src, uint64_t size, int32_t device);
-extern libtcDeviceProps libtcGetDeviceProps(int32_t device);
-
-void* libtcRealloc(void* ptr, uint64_t size);
-void libtcMemcpy(void* dst, void* src, uint64_t size);
-
-extern void libtcCudaAddCkern(double* out, const double* in1, const double* in2, uint32_t n);
-extern void libtcCudaSum2DCkern(double* out, double* in, CSize2D inSize);
-
 typedef struct {
   uint64_t totalGlobalMem;
   uint64_t totalConstMem;
   uint64_t sharedMemPerBlock;
   uint64_t reservedSharedMemPerBlock;
-  uint64_t sharedMemPerMultiProcessor;
-  uint32_t wrapSize;
+  uint64_t sharedMemPerMultiprocessor;
+  uint32_t warpSize;
   uint32_t multiProcessorCount;
   uint32_t maxThreadsPerMultiProcessor;
   uint32_t maxThreadsPerBlock;
@@ -40,14 +29,25 @@ typedef struct {
 } libtcDeviceProps;
 
 typedef struct {
+  uint32_t r;
+  uint32_t c;
+} Size2;
+
+extern void* libtcCudaAlloc(uint64_t size, int32_t device);
+extern void libtcCudaFree(void* ptr, int32_t device);
+extern void libtcCudaMemcpy(void* dst, void* src, uint64_t size, int32_t device);
+extern libtcDeviceProps libtcGetDeviceProps(int32_t device);
+
+void* libtcRealloc(void* ptr, uint64_t size);
+void libtcMemcpy(void* dst, void* src, uint64_t size);
+
+extern void libtcCudaAddCkern(double* out, const double* in1, const double* in2, uint32_t n);
+extern void libtcCudaSum2DCkern(double* out, double* in, Size2 inSize);
+
+typedef struct {
   uint32_t x;
   uint32_t y;
 } Dim2;
-
-typedef struct {
-  uint32_t r;
-  uint32_t c;
-} CSize2D;
 
 typedef struct Tensor_t {
   double* mem = nullptr;

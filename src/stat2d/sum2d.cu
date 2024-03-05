@@ -54,7 +54,7 @@ __global__ void sum2DKern(T* out, T* in, uint32_t numCols) {
   }
 }
 
-void libtcCudaSum2DCkern(double* out, double* in, CSize2D inSize) {
+void libtcCudaSum2DCkern(double* out, double* in, Size2 inSize) {
   cudaLaunchConfig_t config = {};
   if (inSize.c < MAX_THREADS_PER_BLOCK) {
     config.blockDim.x = inSize.c;
