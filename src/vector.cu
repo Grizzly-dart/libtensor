@@ -28,6 +28,17 @@ void libtcCudaAddCkern(double* out, const double* in1, const double* in2, uint32
   config.gridDim.x = blocks;
   auto err = cudaLaunchKernelEx(&config, add2DKernel<double>, out, in1, in2, n);
   if (err != cudaSuccess) {
+    printf("Error: %s\n", cudaGetErrorString(err));
+    fflush(stdout);
+    throw std::string(cudaGetErrorString(err));
+  }
+  printf("add; launched kernel\n");
+  fflush(stdout);
+  // TODO remove
+  err = cudaDeviceSynchronize();
+  if (err != cudaSuccess) {
+    printf("Error: %s\n", cudaGetErrorString(err));
+    fflush(stdout);
     throw std::string(cudaGetErrorString(err));
   }
 }

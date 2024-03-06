@@ -11,7 +11,11 @@ void* libtcCudaAlloc(uint64_t size, int32_t device) {
     throw std::string(cudaGetErrorString(err));
   }
   void* ret;
-  cudaMalloc(&ret, size);
+  err = cudaMalloc(&ret, size);
+  if (err != cudaSuccess) {
+    printf("Error allocating: %s\n", cudaGetErrorString(err));
+    throw std::string(cudaGetErrorString(err));
+  }
   return ret;
 }
 
@@ -23,30 +27,30 @@ void libtcCudaFree(void* ptr, int32_t device) {
   cudaFree(ptr);
 }
 
-void libtcCudaMemcpy(void* dst, void* src, uint64_t size, int32_t device) {
+void libtcCudaMemcpy(void* dst, void* src, uint64_t size, uint8_t dir, int32_t device) {
   auto err = cudaSetDevice(device);
   if (err != cudaSuccess) {
+    printf("Error:%d: %s\n", device, cudaGetErrorString(err));
+    fflush(stdout);
     throw std::string(cudaGetErrorString(err));
   }
-  err = cudaMemcpy(dst, src, size, cudaMemcpyDefault);
+  printf("Copying %lu bytes from %p to %p %d\n", size, src, dst, dir);
+  err = cudaMemcpy(dst, src, size, cudaMemcpyKind(dir));
   if (err != cudaSuccess) {
+    printf("Error: %s\n", cudaGetErrorString(err));
+    fflush(stdout);
     throw std::string(cudaGetErrorString(err));
   }
+  printf("Copied %lu bytes from %p to %p\n", size, src, dst);
 }
 
-void* libtcRealloc(void* ptr, uint64_t size) {
-  return realloc(ptr, size);
-}
-
-void libtcMemcpy(void* dst, void* src, uint64_t size) {
-  memcpy(dst, src, size);
-}
-
-libtcDeviceProps libtcGetDeviceProps(int32_t device) {
+libtcDeviceProps libtcCudaGetDeviceProps(int32_t device) {
   cudaDeviceProp props;
   auto err = cudaGetDeviceProperties(&props, device);
   if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
+    printf("Error: %s\n", cudaGetErrorString(err));
+    fflush(stdout);
+    throw err;
   }
   return libtcDeviceProps{
     totalGlobalMem : props.totalGlobalMem,
@@ -66,4 +70,12 @@ libtcDeviceProps libtcGetDeviceProps(int32_t device) {
     pciDeviceID : static_cast<uint32_t>(props.pciDeviceID),
     pciDomainID : static_cast<uint32_t>(props.pciDomainID),
   };
+}
+
+void* libtcRealloc(void* ptr, uint64_t size) {
+  return realloc(ptr, size);
+}
+
+void libtcMemcpy(void* dst, void* src, uint64_t size) {
+  memcpy(dst, src, size);
 }

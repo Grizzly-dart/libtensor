@@ -24,4 +24,7 @@ run_%: build_% $(TESTS)
 clean:
 	rm -rf build/*
 
+copy_dart: build/libtensorc.so
+	cp build/libtensorc.so ../gpuc_dart/lib/asset/
+
 .PHONY: build/libtensorc.so build clean test_vector_add test_matmul test_sum2d test_all test_mean2d

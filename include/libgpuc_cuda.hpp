@@ -35,8 +35,8 @@ typedef struct {
 
 extern void* libtcCudaAlloc(uint64_t size, int32_t device);
 extern void libtcCudaFree(void* ptr, int32_t device);
-extern void libtcCudaMemcpy(void* dst, void* src, uint64_t size, int32_t device);
-extern libtcDeviceProps libtcGetDeviceProps(int32_t device);
+extern void libtcCudaMemcpy(void* dst, void* src, uint64_t size, uint8_t dir, int32_t device);
+extern libtcDeviceProps libtcCudaGetDeviceProps(int32_t device);
 
 void* libtcRealloc(void* ptr, uint64_t size);
 void libtcMemcpy(void* dst, void* src, uint64_t size);
