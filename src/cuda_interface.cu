@@ -34,14 +34,12 @@ void libtcCudaMemcpy(void* dst, void* src, uint64_t size, uint8_t dir, int32_t d
     fflush(stdout);
     throw std::string(cudaGetErrorString(err));
   }
-  printf("Copying %lu bytes from %p to %p %d\n", size, src, dst, dir);
   err = cudaMemcpy(dst, src, size, cudaMemcpyKind(dir));
   if (err != cudaSuccess) {
     printf("Error: %s\n", cudaGetErrorString(err));
     fflush(stdout);
     throw std::string(cudaGetErrorString(err));
   }
-  printf("Copied %lu bytes from %p to %p\n", size, src, dst);
 }
 
 libtcDeviceProps libtcCudaGetDeviceProps(int32_t device) {

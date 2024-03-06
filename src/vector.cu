@@ -32,8 +32,6 @@ void libtcCudaAddCkern(double* out, const double* in1, const double* in2, uint32
     fflush(stdout);
     throw std::string(cudaGetErrorString(err));
   }
-  printf("add; launched kernel\n");
-  fflush(stdout);
   // TODO remove
   err = cudaDeviceSynchronize();
   if (err != cudaSuccess) {
