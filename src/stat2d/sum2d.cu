@@ -54,8 +54,10 @@ __global__ void sum2DKern(T* out, T* in, uint32_t numCols) {
   }
 }
 
-void libtcCudaSum2DCkern(double* out, double* in, Size2 inSize) {
-  cudaLaunchConfig_t config = {};
+const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in, Size2 inSize) {
+  cudaLaunchConfig_t config = {
+      .stream = stream.stream,
+  };
   if (inSize.c < MAX_THREADS_PER_BLOCK) {
     config.blockDim.x = inSize.c;
     config.gridDim.x = 1;
@@ -64,10 +66,15 @@ void libtcCudaSum2DCkern(double* out, double* in, Size2 inSize) {
     config.gridDim.x = (inSize.c + MAX_THREADS_PER_BLOCK - 1) / MAX_THREADS_PER_BLOCK;
   }
   config.gridDim.y = inSize.r;
-  auto err = cudaLaunchKernelEx(&config, sum2DKern<double>, out, in, inSize.c);
+  auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
   }
+  err = cudaLaunchKernelEx(&config, sum2DKern<double>, out, in, inSize.c);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
 }
 
 void sum2DTensor(Tensor out, Tensor in) {

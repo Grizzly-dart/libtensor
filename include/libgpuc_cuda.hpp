@@ -7,6 +7,10 @@
 extern "C" {
 #endif
 
+extern void libtcFree(void* ptr);
+extern void* libtcRealloc(void* ptr, uint64_t size);
+extern void libtcMemcpy(void* dst, void* src, uint64_t size);
+
 #define MAX_THREADS_PER_BLOCK 1024U
 
 typedef struct {
@@ -29,20 +33,32 @@ typedef struct {
 } libtcDeviceProps;
 
 typedef struct {
+  uint64_t free;
+  uint64_t total;
+} libtcCudaMemInfo;
+
+typedef struct {
   uint32_t r;
   uint32_t c;
 } Size2;
 
-extern void* libtcCudaAlloc(uint64_t size, int32_t device);
-extern void libtcCudaFree(void* ptr, int32_t device);
-extern void libtcCudaMemcpy(void* dst, void* src, uint64_t size, uint8_t dir, int32_t device);
-extern libtcDeviceProps libtcCudaGetDeviceProps(int32_t device);
+typedef struct {
+  cudaStream_t stream;
+  int32_t device;
+} libtcCudaStream;
 
-void* libtcRealloc(void* ptr, uint64_t size);
-void libtcMemcpy(void* dst, void* src, uint64_t size);
+extern const char* libtcCudaGetDeviceProps(libtcDeviceProps& ret, int32_t device);
+extern const char* libtcCudaGetMemInfo(libtcCudaMemInfo& memInfo, int32_t device);
 
-extern void libtcCudaAddCkern(double* out, const double* in1, const double* in2, uint32_t n);
-extern void libtcCudaSum2DCkern(double* out, double* in, Size2 inSize);
+extern const char* libtcCudaCreateStream(libtcCudaStream& ret, int32_t device);
+extern const char* libtcCudaDestroyStream(libtcCudaStream& stream);
+
+extern const char* libtcCudaAlloc(libtcCudaStream& stream, void** mem, uint64_t size);
+extern const char* libtcCudaFree(libtcCudaStream& stream, void* ptr);
+extern const char* libtcCudaMemcpy(libtcCudaStream& stream, void* dst, void* src, uint64_t size);
+
+extern const char* libtcCudaAddCkern(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint32_t n);
+extern const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in, Size2 inSize);
 
 typedef struct {
   uint32_t x;

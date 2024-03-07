@@ -15,30 +15,32 @@ __global__ void add2DKernel(T* out, const T* in1, const T* in2, uint32_t n) {
   out[i] = in1[i] + in2[i];
 }
 
-void libtcCudaAddCkern(double* out, const double* in1, const double* in2, uint32_t n) {
-  // TODO create stream
+const char* libtcCudaAddCkern(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint32_t n) {
   uint32_t threads = n;
   uint32_t blocks = 1;
   if (n > MAX_THREADS_PER_BLOCK) {
     threads = MAX_THREADS_PER_BLOCK;
     blocks = (n + threads - 1) / threads;
   }
-  cudaLaunchConfig_t config = {};
+  cudaLaunchConfig_t config = {
+    .stream = stream.stream,
+  };
   config.blockDim.x = threads;
   config.gridDim.x = blocks;
-  auto err = cudaLaunchKernelEx(&config, add2DKernel<double>, out, in1, in2, n);
+  auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
-    printf("Error: %s\n", cudaGetErrorString(err));
-    fflush(stdout);
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
+  }
+  err = cudaLaunchKernelEx(&config, add2DKernel<double>, out, in1, in2, n);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
   }
   // TODO remove
   err = cudaDeviceSynchronize();
   if (err != cudaSuccess) {
-    printf("Error: %s\n", cudaGetErrorString(err));
-    fflush(stdout);
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
   }
+  return nullptr;
 }
 
 void add2D(Tensor out, Tensor in1, Tensor in2) {

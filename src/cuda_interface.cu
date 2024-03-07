@@ -5,69 +5,108 @@
 #include <libgpuc_cuda.hpp>
 #include <string>
 
-void* libtcCudaAlloc(uint64_t size, int32_t device) {
+const char* libtcCudaCreateStream(libtcCudaStream& ret, int32_t device) {
   auto err = cudaSetDevice(device);
   if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
   }
-  void* ret;
-  err = cudaMalloc(&ret, size);
+  cudaStream_t stream;
+  err = cudaStreamCreate(&stream);
   if (err != cudaSuccess) {
-    printf("Error allocating: %s\n", cudaGetErrorString(err));
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
   }
-  return ret;
+  ret.stream = stream;
+  ret.device = device;
+  return nullptr;
 }
 
-void libtcCudaFree(void* ptr, int32_t device) {
+const char* libtcCudaDestroyStream(libtcCudaStream& ret) {
+  auto err = cudaSetDevice(ret.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  err = cudaStreamDestroy(static_cast<cudaStream_t>(ret.stream));
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
+}
+
+const char* libtcCudaAlloc(libtcCudaStream& stream, void** mem, uint64_t size) {
+  auto err = cudaSetDevice(stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  err = cudaMallocAsync(mem, size, stream.stream);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
+}
+
+const char* libtcCudaFree(libtcCudaStream& stream, void* ptr) {
+  auto err = cudaSetDevice(stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  err = cudaFreeAsync(ptr, stream.stream);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
+}
+
+const char* libtcCudaMemcpy(libtcCudaStream& stream, void* dst, void* src, uint64_t size) {
+  auto err = cudaSetDevice(stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  err = cudaMemcpyAsync(dst, src, size, cudaMemcpyDefault, stream.stream);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
+}
+
+const char* libtcCudaGetMemInfo(libtcCudaMemInfo& memInfo, int32_t device) {
   auto err = cudaSetDevice(device);
   if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
   }
-  cudaFree(ptr);
+  err = cudaMemGetInfo(&memInfo.free, &memInfo.total);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
 }
 
-void libtcCudaMemcpy(void* dst, void* src, uint64_t size, uint8_t dir, int32_t device) {
-  auto err = cudaSetDevice(device);
-  if (err != cudaSuccess) {
-    printf("Error:%d: %s\n", device, cudaGetErrorString(err));
-    fflush(stdout);
-    throw std::string(cudaGetErrorString(err));
-  }
-  err = cudaMemcpy(dst, src, size, cudaMemcpyKind(dir));
-  if (err != cudaSuccess) {
-    printf("Error: %s\n", cudaGetErrorString(err));
-    fflush(stdout);
-    throw std::string(cudaGetErrorString(err));
-  }
-}
-
-libtcDeviceProps libtcCudaGetDeviceProps(int32_t device) {
+const char* libtcCudaGetDeviceProps(libtcDeviceProps& ret, int32_t device) {
   cudaDeviceProp props;
   auto err = cudaGetDeviceProperties(&props, device);
   if (err != cudaSuccess) {
-    printf("Error: %s\n", cudaGetErrorString(err));
-    fflush(stdout);
-    throw err;
+    return cudaGetErrorString(err);
   }
-  return libtcDeviceProps{
-    totalGlobalMem : props.totalGlobalMem,
-    totalConstMem : props.totalConstMem,
-    sharedMemPerBlock : props.sharedMemPerBlock,
-    reservedSharedMemPerBlock : props.reservedSharedMemPerBlock,
-    sharedMemPerMultiprocessor : props.sharedMemPerMultiprocessor,
-    warpSize : static_cast<uint32_t>(props.warpSize),
-    multiProcessorCount : static_cast<uint32_t>(props.multiProcessorCount),
-    maxThreadsPerMultiProcessor : static_cast<uint32_t>(props.maxThreadsPerMultiProcessor),
-    maxThreadsPerBlock : static_cast<uint32_t>(props.maxThreadsPerBlock),
-    maxBlocksPerMultiProcessor : static_cast<uint32_t>(props.maxBlocksPerMultiProcessor),
-    l2CacheSize : static_cast<uint32_t>(props.l2CacheSize),
-    memPitch : static_cast<uint32_t>(props.memPitch),
-    memoryBusWidth : static_cast<uint32_t>(props.memoryBusWidth),
-    pciBusID : static_cast<uint32_t>(props.pciBusID),
-    pciDeviceID : static_cast<uint32_t>(props.pciDeviceID),
-    pciDomainID : static_cast<uint32_t>(props.pciDomainID),
-  };
+  ret.totalGlobalMem = props.totalGlobalMem;
+  ret.totalConstMem = props.totalConstMem;
+  ret.sharedMemPerBlock = props.sharedMemPerBlock;
+  ret.reservedSharedMemPerBlock = props.reservedSharedMemPerBlock;
+  ret.sharedMemPerMultiprocessor = props.sharedMemPerMultiprocessor;
+  ret.warpSize = static_cast<uint32_t>(props.warpSize);
+  ret.multiProcessorCount = static_cast<uint32_t>(props.multiProcessorCount);
+  ret.maxThreadsPerMultiProcessor = static_cast<uint32_t>(props.maxThreadsPerMultiProcessor);
+  ret.maxThreadsPerBlock = static_cast<uint32_t>(props.maxThreadsPerBlock);
+  ret.maxBlocksPerMultiProcessor = static_cast<uint32_t>(props.maxBlocksPerMultiProcessor);
+  ret.l2CacheSize = static_cast<uint32_t>(props.l2CacheSize);
+  ret.memPitch = static_cast<uint32_t>(props.memPitch);
+  ret.memoryBusWidth = static_cast<uint32_t>(props.memoryBusWidth);
+  ret.pciBusID = static_cast<uint32_t>(props.pciBusID);
+  ret.pciDeviceID = static_cast<uint32_t>(props.pciDeviceID);
+  ret.pciDomainID = static_cast<uint32_t>(props.pciDomainID);
+  return nullptr;
+}
+
+void libtcFree(void* ptr) {
+  free(ptr);
 }
 
 void* libtcRealloc(void* ptr, uint64_t size) {
