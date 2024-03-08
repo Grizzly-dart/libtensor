@@ -8,7 +8,6 @@
 template <typename T>
 __global__ void sum2DKern(T* out, T* in, uint32_t numCols) {
   uint32_t numThreads = blockDim.x * gridDim.x;
-  // uint32_t numRows = gridDim.y;
   uint32_t row = blockIdx.y;
   T sum = 0;
   for (uint32_t col = threadIdx.x + blockIdx.x * blockDim.x; col < numCols; col += numThreads) {
@@ -55,21 +54,31 @@ __global__ void sum2DKern(T* out, T* in, uint32_t numCols) {
 }
 
 const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in, Size2 inSize) {
-  cudaLaunchConfig_t config = {
-      .stream = stream.stream,
-  };
-  if (inSize.c < MAX_THREADS_PER_BLOCK) {
-    config.blockDim.x = inSize.c;
-    config.gridDim.x = 1;
-  } else {
-    config.blockDim.x = MAX_THREADS_PER_BLOCK;
-    config.gridDim.x = (inSize.c + MAX_THREADS_PER_BLOCK - 1) / MAX_THREADS_PER_BLOCK;
-  }
-  config.gridDim.y = inSize.r;
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
+  cudaLaunchConfig_t config = {
+      .stream = stream.stream,
+  };
+  cudaDeviceProp props;
+  err = cudaGetDeviceProperties(&props, stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  uint32_t numThreads = props.multiProcessorCount * 128;
+  if(numThreads > inSize.c) {
+    numThreads = inSize.c;
+  }
+  if (numThreads < MAX_THREADS_PER_BLOCK) {
+    config.blockDim.x = numThreads;
+    config.gridDim.x = 1;
+  } else {
+    config.blockDim.x = MAX_THREADS_PER_BLOCK;
+    config.gridDim.x = (numThreads + MAX_THREADS_PER_BLOCK - 1) / MAX_THREADS_PER_BLOCK;
+  }
+  config.gridDim.y = inSize.r;
+
   err = cudaLaunchKernelEx(&config, sum2DKern<double>, out, in, inSize.c);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

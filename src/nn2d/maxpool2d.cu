@@ -68,6 +68,7 @@ __global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
   }
 }
 
+/*
 const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp, Dim2 kernS, Dim2 outS, Dim2 inS, uint32_t channels,
                                  Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
   auto err = cudaSetDevice(stream.device);
@@ -104,6 +105,7 @@ const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp,
     throw std::string("failed to launch kernel");
   }
 }
+*/
 
 void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
   uint32_t wrapSize = 32;  // TODO find this
