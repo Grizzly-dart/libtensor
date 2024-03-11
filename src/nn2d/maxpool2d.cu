@@ -9,7 +9,7 @@
 
 template <typename T>
 __global__ void maxPool2DKern(T* output, T* input, Dim2 inS, Dim2 kernS,
-    Dim2 padding, PaddingMode PaddingMode, T pad, Dim2 stride, Dim2 dilation) {
+    Dim2 padding, PaddingMode padMode, T pad, Dim2 stride, Dim2 dilation) {
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
@@ -23,7 +23,7 @@ __global__ void maxPool2DKern(T* output, T* input, Dim2 inS, Dim2 kernS,
       for (int kCol = 0; kCol < kernS.x; ++kCol) {
         uint32_t inC = outC * stride.x + kCol * dilation.x;
         if (inR < inS.y && inC < inS.x) {
-          T inVal = padder<T>(inStart, inS, padding, PaddingMode, pad, inC, inR);
+          T inVal = padder<T>(inStart, inS, padding, padMode, pad, inC, inR);
           T val = input[outId * inS.x * inS.y + inR * inS.x + inC];
           maxVal = max(maxVal, val);
         }
@@ -35,7 +35,7 @@ __global__ void maxPool2DKern(T* output, T* input, Dim2 inS, Dim2 kernS,
 
 template <typename T>
 __global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
-    Dim2 padding, PaddingMode PaddingMode, T pad) {
+    Dim2 padding, PaddingMode padMode, T pad) {
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
@@ -50,13 +50,13 @@ __global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
       for (int kCol = 0; kCol < kernS.x; ++kCol) {
         uint32_t inC = outC + kCol;
         if (kCol == 0) {
-          inpVal = padder<T>(inStart, inS, padding, PaddingMode, pad, inC, inR);
+          inpVal = padder<T>(inStart, inS, padding, padMode, pad, inC, inR);
         } else {
           inpVal = __shfl_down_sync(0xFFFFFFFF, inpVal, 1);
         }
         __syncthreads();
         if (threadIdx.x % warpSize == warpSize - 1) {
-          inpVal = padder<T>(inStart, inS, padding, PaddingMode, pad, inC, inR);
+          inpVal = padder<T>(inStart, inS, padding, padMode, pad, inC, inR);
         }
 
         if (inR < inS.y + 2 * padding.y && inC < inS.x + 2 * padding.x) {
@@ -68,9 +68,9 @@ __global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
   }
 }
 
-const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp, Dim2 kernS, 
-    Dim2 outS, Dim2 inS, uint32_t matrices, Dim2 padding, PaddingMode PaddingMode, double pad, 
-    Dim2 stride, Dim2 dilation) {
+const char* libtcCudaMaxPool2DF64(libtcCudaStream& stream, double* out, double* inp,
+    Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
+    PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
   
   auto err = cudaSetDevice(stream.device);
@@ -92,7 +92,7 @@ const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp,
     config.blockDim.x = props.warpSize;
     config.gridDim.x = (outS.x + props.warpSize - 1) / props.warpSize;
   }
-  if (outS.y < warpSize) {
+  if (outS.y < props.warpSize) {
     config.blockDim.y = outS.y;
     config.gridDim.y = 1;
   } else {
@@ -103,10 +103,10 @@ const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp,
   // TODO launch batches based on the size of the tensor and GPU VRAM
   if (stride.x == 1 && stride.y == 1 && dilation.x == 1 && dilation.y == 1) {
     err = cudaLaunchKernelEx(&config, maxPool2DKernWarp<double>, out, inp, 
-      inS, kernS, padding, PaddingMode, pad);
+      inpS, kernS, padding, padMode, pad);
   } else {
     err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, out, inp, 
-      inS, kernS, padding, PaddingMode, pad, stride, dilation);
+      inpS, kernS, padding, padMode, pad, stride, dilation);
   }
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -114,6 +114,7 @@ const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp,
   return nullptr;
 }
 
+/*
 void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
   uint32_t wrapSize = 32;  // TODO find this
   if (out.ndim != in.ndim) {
@@ -164,3 +165,4 @@ void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode Padd
     }
   }
 }
+*/
