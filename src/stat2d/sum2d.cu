@@ -6,11 +6,12 @@
 #include <string>
 
 template <typename T>
-__global__ void sum2DKern(T* out, T* in, uint32_t numCols) {
+__global__ void sum2DKern(T* out, T* in, uint64_t numCols) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t row = blockIdx.y;
+  uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
   T sum = 0;
-  for (uint32_t col = threadIdx.x + blockIdx.x * blockDim.x; col < numCols; col += numThreads) {
+  for (uint32_t col = thId; col < numCols; col += numThreads) {
     if (col < numCols) {
       uint32_t idx = row * numCols + col;
       sum += in[idx];
@@ -58,9 +59,6 @@ const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaLaunchConfig_t config = {
-      .stream = stream.stream,
-  };
   cudaDeviceProp props;
   err = cudaGetDeviceProperties(&props, stream.device);
   if (err != cudaSuccess) {
@@ -70,12 +68,16 @@ const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in
   if(numThreads > inSize.c) {
     numThreads = inSize.c;
   }
-  if (numThreads < MAX_THREADS_PER_BLOCK) {
+
+  cudaLaunchConfig_t config = {
+      .stream = stream.stream,
+  };
+  if (numThreads < props.maxThreadsPerBlock) {
     config.blockDim.x = numThreads;
     config.gridDim.x = 1;
   } else {
-    config.blockDim.x = MAX_THREADS_PER_BLOCK;
-    config.gridDim.x = (numThreads + MAX_THREADS_PER_BLOCK - 1) / MAX_THREADS_PER_BLOCK;
+    config.blockDim.x = props.maxThreadsPerBlock;
+    config.gridDim.x = (numThreads + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
   }
   config.gridDim.y = inSize.r;
 

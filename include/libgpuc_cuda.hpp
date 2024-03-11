@@ -38,8 +38,8 @@ typedef struct {
 } libtcCudaMemInfo;
 
 typedef struct {
-  uint32_t r;
-  uint32_t c;
+  uint64_t r;
+  uint64_t c;
 } Size2;
 
 typedef struct {
@@ -111,6 +111,7 @@ extern uint64_t getTensorB(Tensor t);
 /// @return Returns the number of matrices in the tensor
 extern uint64_t getTensorCountMat(Tensor t);
 
+extern const char* libtcCudaAdd2Ckern(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
 extern void add2D(Tensor out, Tensor in1, Tensor in2);
 
 /// @brief Computes row-wise sum of a 2D tensor
