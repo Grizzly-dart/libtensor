@@ -128,6 +128,10 @@ extern void variance2DTensor(Tensor out, Tensor in);
 
 extern void matmul(Tensor out, Tensor in1, Tensor in2);
 
+extern const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp, Dim2 kernS, 
+    Dim2 outS, Dim2 inS, uint32_t matrices, Dim2 padding, PaddingMode PaddingMode, double pad, 
+    Dim2 stride, Dim2 dilation);
+
 #ifdef __cplusplus
 }
 #endif
