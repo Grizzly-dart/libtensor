@@ -9,7 +9,7 @@
 
 template <typename T>
 __global__ void maxPool2DKern(T* output, T* input, Dim2 inS, Dim2 kernS,
-                              Dim2 padding, PaddingMode PaddingMode, T pad, Dim2 stride, Dim2 dilation) {
+    Dim2 padding, PaddingMode PaddingMode, T pad, Dim2 stride, Dim2 dilation) {
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
@@ -68,9 +68,10 @@ __global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
   }
 }
 
-/*
-const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp, Dim2 kernS, Dim2 outS, Dim2 inS, uint32_t channels,
-                                 Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
+// TODO launch batches based on the size of the tensor and GPU VRAM
+const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp, Dim2 kernS, 
+    Size2 outS, Dim2 inS, uint32_t matrices, Dim2 padding, PaddingMode PaddingMode, double pad, 
+    Dim2 stride, Dim2 dilation) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -78,25 +79,25 @@ const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp,
   cudaLaunchConfig_t config = {
       .stream = stream.stream,
   };
-  if (outS.x < wrapSize) {
-    config.blockDim.x = outN;
+  if (outS.c < wrapSize) {
+    config.blockDim.x = outS.c;
     config.gridDim.x = 1;
   } else {
     config.blockDim.x = wrapSize;
-    config.gridDim.x = (outN + wrapSize - 1) / wrapSize;
+    config.gridDim.x = (outS.r + wrapSize - 1) / wrapSize;
   }
-  if (outM < wrapSize) {
-    config.blockDim.y = outM;
+  if (outS.r < wrapSize) {
+    config.blockDim.y = outS.r;
     config.gridDim.y = 1;
   } else {
     config.blockDim.y = wrapSize;
-    config.gridDim.y = (outM + wrapSize - 1) / wrapSize;
+    config.gridDim.y = (outS.r + wrapSize - 1) / wrapSize;
   }
-  config.blockDim.z = channels;
+  config.blockDim.z = matrices;
   cudaError_t err;
   if (stride.x == 1 && stride.y == 1 && dilation.x == 1 && dilation.y == 1) {
     err = cudaLaunchKernelEx(&config, maxPool2DKernWarp<double>, out, inp, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
-                             kernS, padding, PaddingMode, pad);
+      kernS, padding, PaddingMode, pad);
   } else {
     err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, out, inp, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
                              kernS, padding, PaddingMode, pad, stride, dilation);
@@ -105,7 +106,6 @@ const char* maxPool2DCKernF64(libtcCudaStream& stream, double* out, double* inp,
     throw std::string("failed to launch kernel");
   }
 }
-*/
 
 void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
   uint32_t wrapSize = 32;  // TODO find this
