@@ -13,7 +13,7 @@ __global__ void maxPool2DKern(T* output, T* input, Dim2 inS, Dim2 kernS,
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
-  uint32_t outId = gridDim.z;
+  uint32_t outId = blockIdx.z;
   T* inStart = input + outId * inS.x * inS.y;
 
   if (outR < outS.y && outC < outS.x) {
@@ -39,7 +39,7 @@ __global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
   Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
-  uint32_t outId = gridDim.z;
+  uint32_t outId = blockIdx.z;
   T* inStart = input + outId * inS.x * inS.y;
 
   if (outR < outS.y && outC < outS.x) {
@@ -72,7 +72,7 @@ const char* libtcCudaMaxPool2DF64(libtcCudaStream& stream, double* out, double* 
     Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
     PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
-  
+
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -111,6 +111,12 @@ const char* libtcCudaMaxPool2DF64(libtcCudaStream& stream, double* out, double* 
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
+  // TODO remove
+  err = cudaDeviceSynchronize();
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  fflush(stdout);
   return nullptr;
 }
 
