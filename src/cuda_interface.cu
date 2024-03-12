@@ -104,15 +104,3 @@ const char* libtcCudaGetDeviceProps(libtcDeviceProps& ret, int32_t device) {
   ret.pciDomainID = static_cast<uint32_t>(props.pciDomainID);
   return nullptr;
 }
-
-void libtcFree(void* ptr) {
-  free(ptr);
-}
-
-void* libtcRealloc(void* ptr, uint64_t size) {
-  return realloc(ptr, size);
-}
-
-void libtcMemcpy(void* dst, void* src, uint64_t size) {
-  memcpy(dst, src, size);
-}
