@@ -1,11 +1,11 @@
-OS := $(shell uname)
-ifeq ($(OS),Linux)
+OS := $(shell uname | tr a-z A-Z)
+ifeq ($(OS),linux)
 SOURCES = ${shell find src/ -type f -regextype egrep -regex ".*\.(cpp|cu|c)$$"}
 endif
-ifeq ($(OS),Darwin)
+ifeq ($(OS),darwin)
 SOURCES = ${shell find -E src -type f -regex ".*\.(cpp|cu|c)$$"}
 endif
-ifeq ($(OS),CYGWIN)
+ifeq ($(OS),cygwin)
 
 endif
 
@@ -15,4 +15,7 @@ build/libtensorc.so: $(SOURCES)
 
 build: build/libtensorc.so
 
-.PHONY: build build/libtensorc.so
+copy_dart: build/libtensorc.so
+	cp build/libtensorc.so ../../gpuc_dart/lib/asset/$(OS)/
+
+.PHONY: build build/libtensorc.so copy_dart

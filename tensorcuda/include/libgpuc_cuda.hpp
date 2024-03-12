@@ -7,10 +7,6 @@
 extern "C" {
 #endif
 
-extern void libtcFree(void* ptr);
-extern void* libtcRealloc(void* ptr, uint64_t size);
-extern void libtcMemcpy(void* dst, void* src, uint64_t size);
-
 #define MAX_THREADS_PER_BLOCK 1024U
 
 typedef struct {
