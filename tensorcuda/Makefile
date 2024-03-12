@@ -1,4 +1,4 @@
-OS := $(shell uname | tr a-z A-Z)
+OS := $(shell uname | tr A-Z a-z)
 HOST_COMPILER?=g++
 NVCC:=nvcc -ccbin $(HOST_COMPILER) -arch=sm_60 -rdc=true -lcudart -lcudadevrt --std c++20 
 SOURCES = ${shell find src/ -type f -regextype egrep -regex ".*\.(cpp|cu|c)$$"}

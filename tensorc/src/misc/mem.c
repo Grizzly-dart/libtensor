@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <memory.h>
 
+#include "tensorc.h"
+
 void libtcFree(void* ptr) {
   free(ptr);
 }

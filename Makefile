@@ -1,7 +1,13 @@
-OS := $(shell uname | tr a-z A-Z)
+OS := $(shell uname | tr A-Z a-z)
 
+ifeq ($(OS),linux)
 copy_all_dart:
 	cd tensorc && make copy_dart
-ifeq($(OS),linux)
 	cd tensorcuda && make copy_dart
 endif
+
+ifeq ($(OS),darwin)
+copy_all_dart:
+	cd tensorc && make copy_dart
+endif
+
