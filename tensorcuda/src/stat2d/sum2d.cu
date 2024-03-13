@@ -54,7 +54,7 @@ __global__ void sum2DKern(T* out, T* in, uint64_t numCols) {
   }
 }
 
-const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Size2 inSize) {
+const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Dim2 inSize) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

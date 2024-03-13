@@ -70,9 +70,7 @@ typedef enum {
   REPLICATION
 } PaddingMode;
 
-extern void matmul(Tensor out, Tensor in1, Tensor in2);
-
-extern const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Size2 inSize);
+extern const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Dim2 inSize);
 extern const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
 
 extern const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
