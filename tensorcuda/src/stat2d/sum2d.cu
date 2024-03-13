@@ -54,7 +54,7 @@ __global__ void sum2DKern(T* out, T* in, uint64_t numCols) {
   }
 }
 
-const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in, Size2 inSize) {
+const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Size2 inSize) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -88,6 +88,7 @@ const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in
   return nullptr;
 }
 
+/*
 void sum2DTensor(Tensor out, Tensor in) {
   // TODO use streams
   if (in.ndim != 2) {
@@ -119,3 +120,4 @@ void sum2DTensor(Tensor out, Tensor in) {
     throw std::string(cudaGetErrorString(err));
   }
 }
+*/

@@ -52,6 +52,7 @@ __global__ void variance2DKernel(T* out, T* in, uint32_t numCols) {
   }
 }
 
+/*
 void variance2DTensor(Tensor out, Tensor in) {
   if (in.ndim != 2) {
     throw std::string("Input tensor must be 2D");
@@ -74,3 +75,4 @@ void variance2DTensor(Tensor out, Tensor in) {
     throw std::string(cudaGetErrorString(err));
   }
 }
+*/

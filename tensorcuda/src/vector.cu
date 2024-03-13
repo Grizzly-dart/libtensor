@@ -17,7 +17,7 @@ __global__ void add2Kernel(T* out, const T* in1, const T* in2, uint64_t n) {
   }
 }
 
-const char* libtcCudaAdd2Ckern(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
+const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -53,24 +53,4 @@ const char* libtcCudaAdd2Ckern(libtcCudaStream& stream, double* out, const doubl
     return cudaGetErrorString(err);
   }
   return nullptr;
-}
-
-void add2D(Tensor out, Tensor in1, Tensor in2) {
-  uint32_t n = getTensorNel(in1);
-  if (n != getTensorNel(in2) || n != getTensorNel(out))
-    throw std::string("Size mismatch");
-
-  uint32_t threads = n;
-  uint32_t blocks = 1;
-  if (n > MAX_THREADS_PER_BLOCK) {
-    threads = MAX_THREADS_PER_BLOCK;
-    blocks = (n + threads - 1) / threads;
-  }
-  cudaLaunchConfig_t config = {};
-  config.blockDim.x = threads;
-  config.gridDim.x = blocks;
-  auto err = cudaLaunchKernelEx(&config, add2Kernel<double>, out.mem, in1.mem, in2.mem, n);
-  if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
-  }
 }
