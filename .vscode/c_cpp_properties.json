@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/include",
+                "${workspaceFolder}/tensorc/include",
+                "${workspaceFolder}/tensorcuda/include",
                 "/usr/local/cuda/include"
             ],
             "defines": [],

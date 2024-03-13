@@ -7,105 +7,85 @@
 #include "libgpuc_cuda.hpp"
 #include "padding.hpp"
 
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 32
 
 // TODO if kernel size < 16, use shared memory
  
 /// https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md
 template <typename T>
-__global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t inChannels, uint32_t groups,
-                             Dim2 inS, Dim2 kernS,
-                             Dim2 padding, PaddingMode paddingMode, T pad, Dim2 stride, Dim2 dilation) {
-  uint32_t kernNel = kernS.x * kernS.y;
+__global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Dim3 outS,
+    Dim3 inpS, Dim2 kernS, Dim2 padding, PaddingMode padMode, T pad, Dim2 stride,
+    Dim2 dilation) {
+  uint32_t kernNel = kernS.r * kernS.c;
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
-  Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
   uint32_t outId = blockIdx.z;
-  uint32_t outChannels = gridDim.z;
-  uint32_t groupLen = inChannels / groups;
-  uint32_t firstInpChannelId = (outChannels / groups) / groupLen;
+  uint32_t outChannel = outId % outS.ch;
+  uint32_t groupLen = inpS.ch / groups;
+  uint32_t firstInpChannelId = (outChannel / groups) / groupLen;
 
-  if (outR < outS.y && outC < outS.x) {
+  if (outR < outS.r && outC < outS.c) {
     T value = 0;
-    for (uint32_t kRow = 0; kRow < kernS.y; kRow++) {
-      uint32_t inR = outR * stride.y + kRow * dilation.y;
-      for (uint32_t kCol = 0; kCol < kernS.x; kCol++) {
-        uint32_t inC = outC * stride.x + kCol * dilation.x;
-        if (inR < inS.y + 2 * padding.y && inC < inS.x + 2 * padding.x) {
+    for (uint32_t kRow = 0; kRow < kernS.r; kRow++) {
+      uint32_t inR = outR * stride.r + kRow * dilation.r;
+      for (uint32_t kCol = 0; kCol < kernS.c; kCol++) {
+        uint32_t inC = outC * stride.c + kCol * dilation.c;
+        if (inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c) {
           for (uint32_t g = 0; g < groupLen; g++) {
-            T* inputStart = input + (firstInpChannelId + g) * inS.x * inS.y;
+            T* inputStart = input + (firstInpChannelId + g) * inpS.c * inpS.r;
             uint32_t kIdx = outId * groupLen + g;
-            T inputValue = padder<T>(inputStart, inS, padding, paddingMode, pad, inC, inR);
-            value += inputValue * kernel[kIdx * kernNel + kRow * kernS.y + kCol];
+            T inputValue = padder<T>(inputStart, inpS.toDim2(), padding, padMode, pad, inC, inR);
+            value += inputValue * kernel[kIdx * kernNel + kRow * kernS.c + kCol];
           }
         } else {
-          assert(inR < inS.y + 2 * padding.y && inC < inS.x + 2 * padding.x);
+          assert(inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c);
         }
       }
     }
-    output[outId * outS.x * outS.y + outR * outS.x + outC] = value;
+    output[outId * outS.r * outS.c + outR * outS.c + outC] = value;
   }
 }
 
-void conv2d(Tensor out, Tensor in, Tensor kernel, uint32_t groups,
-            Dim2 padding, PaddingMode paddingMode, double pad, Dim2 stride, Dim2 dilation) {
+const char* libtcCudaConv2d(libtcCudaStream stream, double* out, double* inp, double* kernel, 
+    uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, Dim2 padding, 
+    PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation) {
+  // TODO validate outS
   if (groups == 0) {
     groups = 1;
   }
-  if (out.ndim != in.ndim) {
-    throw std::string("out and in should have the same number of dimensions");
-  } else if (getTensorB(out) != getTensorB(in)) {
-    throw std::string("out and in should have the same batch size");
-  }
-  const uint32_t outChannels = getTensorC(out);
-  const uint32_t inChannels = getTensorC(in);
-  if (groups > 1) {
-    if (outChannels % groups != 0) {
-      throw std::string("out channels should be divisible by groups");
-    }
-    if (inChannels % groups != 0) {
-      throw std::string("in channels should be divisible by groups");
-    }
-  }
-  if (kernel.ndim != 4) {
-    throw std::string("kernel should have 4 dimensions");
-  }
-  if (kernel.dim[0] != outChannels) {
-    throw std::string("kernel should have the same number of channels as out");
-  } else if (kernel.dim[1] != in.dim[1] / groups) {
-    throw std::string("kernel should have the same number of channels as in");
-  }
-  // Compute output size based on padding, stride, dilation
-  uint32_t outM = (getTensorM(in) + 2 * padding.y - dilation.y * (kernel.dim[2] - 1) - 1) / stride.y + 1;
-  uint32_t outN = (getTensorN(in) + 2 * padding.x - dilation.x * (kernel.dim[3] - 1) - 1) / stride.x + 1;
-  if (outM != getTensorM(out) || outN != getTensorN(out)) {
-    throw std::string("output size is not correct");
-  }
 
-  for (uint32_t batch = 0; batch < getTensorB(out); batch++) {
-    double* outPtr = out.mem + batch * getTensorM(out) * getTensorN(out) * getTensorC(out);
-    double* inPtr = in.mem + batch * getTensorM(in) * getTensorN(in) * getTensorC(in);
-    cudaLaunchConfig_t config = {};
-    if (outN < BLOCK_SIZE) {
-      config.blockDim.x = outN;
-      config.gridDim.x = 1;
-    } else {
-      config.blockDim.x = BLOCK_SIZE;
-      config.gridDim.x = (outN + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    }
-    if (outM < BLOCK_SIZE) {
-      config.blockDim.y = outM;
-      config.gridDim.y = 1;
-    } else {
-      config.blockDim.y = BLOCK_SIZE;
-      config.gridDim.y = (outM + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    }
-    config.blockDim.z = outChannels;
-    auto err = cudaLaunchKernelEx(&config, conv2dKernel<double>, outPtr, inPtr, kernel.mem, inChannels, groups,
-                                  Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))}, Dim2{x : uint32_t(kernel.dim[2]), y : uint32_t(kernel.dim[3])},
-                                  padding, paddingMode, pad, stride, dilation);
-    if (err != cudaSuccess) {
-      throw std::string(cudaGetErrorString(err));
-    }
+  auto err = cudaSetDevice(stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
   }
+  cudaLaunchConfig_t config = {
+      .stream = stream.stream,
+  };
+  if (outS.c < BLOCK_SIZE) {
+    config.blockDim.x = outS.c;
+    config.gridDim.x = 1;
+  } else {
+    config.blockDim.x = BLOCK_SIZE;
+    config.gridDim.x = (outS.c + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  }
+  if (outS.r < BLOCK_SIZE) {
+    config.blockDim.y = outS.r;
+    config.gridDim.y = 1;
+  } else {
+    config.blockDim.y = BLOCK_SIZE;
+    config.gridDim.y = (outS.r + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  }
+  config.gridDim.z = batches * outS.ch;
+
+  err = cudaLaunchKernelEx(&config, conv2dKernel<double>, out, inp, kernel, groups,
+    outS, inpS, kernS, padding, padMode, pad, stride, dilation);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  // TODO remove
+  err = cudaDeviceSynchronize();
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
 }

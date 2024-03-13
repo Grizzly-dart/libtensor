@@ -57,9 +57,19 @@ extern const char* libtcCudaAddCkern(libtcCudaStream& stream, double* out, const
 extern const char* libtcCudaSum2DCkern(libtcCudaStream& stream, double* out, double* in, Size2 inSize);
 
 typedef struct {
-  uint32_t x;
-  uint32_t y;
+  uint32_t r;
+  uint32_t c;
 } Dim2;
+
+typedef struct {
+  uint32_t ch;
+  uint32_t r;
+  uint32_t c;
+
+  __device__ __host__ Dim2 toDim2() {
+    return {r, c};
+  };
+} Dim3;
 
 typedef struct Tensor_t {
   double* mem = nullptr;
@@ -125,9 +135,13 @@ extern void variance2DTensor(Tensor out, Tensor in);
 
 extern void matmul(Tensor out, Tensor in1, Tensor in2);
 
-extern const char* libtcCudaMaxPool2DF64(libtcCudaStream& stream, double* out, double* inp, 
-    Dim2 kernS, Dim2 outS, Dim2 inS, uint32_t matrices, Dim2 padding, 
-    PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation);
+extern const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
+    Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
+    PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation);
+
+extern const char* libtcCudaConv2d(libtcCudaStream stream, double* out, double* inp, double* kernel, 
+  uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, Dim2 padding, 
+  PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation);
 
 #ifdef __cplusplus
 }

@@ -8,67 +8,32 @@
 #include "padding.hpp"
 
 template <typename T>
-__global__ void maxPool2DKern(T* output, T* input, Dim2 inS, Dim2 kernS,
+__global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
     Dim2 padding, PaddingMode padMode, T pad, Dim2 stride, Dim2 dilation) {
-  Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
+  Dim2 outS = {r : gridDim.y * blockDim.y, c : gridDim.x * blockDim.x};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
   uint32_t outId = blockIdx.z;
-  T* inStart = input + outId * inS.x * inS.y;
+  T* inStart = inp + outId * inpS.c * inpS.r;
 
-  if (outR < outS.y && outC < outS.x) {
+  if (outR < outS.r && outC < outS.c) {
     T maxVal = -__DBL_MIN__;
-    for (int kRow = 0; kRow < kernS.y; ++kRow) {
-      uint32_t inR = outR * stride.y + kRow * dilation.y;
-      for (int kCol = 0; kCol < kernS.x; ++kCol) {
-        uint32_t inC = outC * stride.x + kCol * dilation.x;
-        if (inR < inS.y && inC < inS.x) {
-          T inVal = padder<T>(inStart, inS, padding, padMode, pad, inC, inR);
-          T val = input[outId * inS.x * inS.y + inR * inS.x + inC];
+    for (int kRow = 0; kRow < kernS.r; ++kRow) {
+      uint32_t inR = outR * stride.r + kRow * dilation.r;
+      for (int kCol = 0; kCol < kernS.c; ++kCol) {
+        uint32_t inC = outC * stride.c + kCol * dilation.c;
+        if (inR < inpS.r && inC < inpS.c) {
+          T inVal = padder<T>(inStart, inpS, padding, padMode, pad, inC, inR);
+          T val = inp[outId * inpS.c * inpS.r + inR * inpS.c + inC];
           maxVal = max(maxVal, val);
         }
       }
     }
-    output[outId * outS.x * outS.y + outR * outS.x + outC] = maxVal;
+    out[outId * outS.c * outS.r + outR * outS.c + outC] = maxVal;
   }
 }
 
-template <typename T>
-__global__ void maxPool2DKernWarp(T* output, T* input, Dim2 inS, Dim2 kernS,
-    Dim2 padding, PaddingMode padMode, T pad) {
-  Dim2 outS = {x : gridDim.x * blockDim.x, y : gridDim.y * blockDim.y};
-  uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
-  uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
-  uint32_t outId = blockIdx.z;
-  T* inStart = input + outId * inS.x * inS.y;
-
-  if (outR < outS.y && outC < outS.x) {
-    T maxVal = -__DBL_MIN__;
-    for (int kRow = 0; kRow < kernS.y; ++kRow) {
-      uint32_t inR = outR + kRow;
-      T inpVal;
-      for (int kCol = 0; kCol < kernS.x; ++kCol) {
-        uint32_t inC = outC + kCol;
-        if (kCol == 0) {
-          inpVal = padder<T>(inStart, inS, padding, padMode, pad, inC, inR);
-        } else {
-          inpVal = __shfl_down_sync(0xFFFFFFFF, inpVal, 1);
-        }
-        __syncthreads();
-        if (threadIdx.x % warpSize == warpSize - 1) {
-          inpVal = padder<T>(inStart, inS, padding, padMode, pad, inC, inR);
-        }
-
-        if (inR < inS.y + 2 * padding.y && inC < inS.x + 2 * padding.x) {
-          maxVal = max(maxVal, inpVal);
-        }
-      }
-    }
-    output[outId * outS.x * outS.y + outR * outS.x + outC] = maxVal;
-  }
-}
-
-const char* libtcCudaMaxPool2DF64(libtcCudaStream& stream, double* out, double* inp,
+const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
     Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
     PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
@@ -85,29 +50,24 @@ const char* libtcCudaMaxPool2DF64(libtcCudaStream& stream, double* out, double* 
   cudaLaunchConfig_t config = {
       .stream = stream.stream,
   };
-  if (outS.x < props.warpSize) {
-    config.blockDim.x = outS.x;
+  if (outS.c < props.warpSize) {
+    config.blockDim.x = outS.c;
     config.gridDim.x = 1;
   } else {
     config.blockDim.x = props.warpSize;
-    config.gridDim.x = (outS.x + props.warpSize - 1) / props.warpSize;
+    config.gridDim.x = (outS.c + props.warpSize - 1) / props.warpSize;
   }
-  if (outS.y < props.warpSize) {
-    config.blockDim.y = outS.y;
+  if (outS.r < props.warpSize) {
+    config.blockDim.y = outS.r;
     config.gridDim.y = 1;
   } else {
     config.blockDim.y = props.warpSize;
-    config.gridDim.y = (outS.y + props.warpSize - 1) / props.warpSize;
+    config.gridDim.y = (outS.r + props.warpSize - 1) / props.warpSize;
   }
-  config.blockDim.z = matrices;
+  config.gridDim.z = matrices;
   // TODO launch batches based on the size of the tensor and GPU VRAM
-  if (stride.x == 1 && stride.y == 1 && dilation.x == 1 && dilation.y == 1) {
-    err = cudaLaunchKernelEx(&config, maxPool2DKernWarp<double>, out, inp, 
-      inpS, kernS, padding, padMode, pad);
-  } else {
-    err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, out, inp, 
-      inpS, kernS, padding, padMode, pad, stride, dilation);
-  }
+  err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, out, inp, 
+    inpS, kernS, padding, padMode, pad, stride, dilation);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }

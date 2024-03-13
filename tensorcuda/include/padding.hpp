@@ -7,87 +7,87 @@
 
 // Function declarations
 template <typename T>
-__device__ T constant2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y);
+__device__ T constant2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r);
 
 template <typename T>
-__device__ T circular2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y);
+__device__ T circular2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r);
 
 template <typename T>
-__device__ T reflect2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y);
+__device__ T reflect2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r);
 
 template <typename T>
-__device__ T replicate2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y);
+__device__ T replicate2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r);
 
 template <typename T>
-__device__ T padder(T* data, Dim2 size, Dim2 padding, PaddingMode mode, T constant, uint64_t x, uint64_t y);
+__device__ T padder(T* data, Dim2 size, Dim2 padding, PaddingMode mode, T constant, uint64_t c, uint64_t r);
 
 
 template <typename T>
-__device__ T constant2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y) {
-  if (x < padding.x || y < padding.y || x >= (size.x + padding.x) || y >= (size.y + padding.y)) {
+__device__ T constant2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r) {
+  if (c < padding.c || r < padding.r || c >= (size.c + padding.c) || r >= (size.r + padding.r)) {
     return constant;
   } else {
-    return data[(y - padding.y) * size.x + (x - padding.x)];
+    return data[(r - padding.r) * size.r + (c - padding.c)];
   }
 }
 
 template <typename T>
-__device__ T circular2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y) {
-  if (x < padding.x) {
-    x += size.x;
-  } else if (x >= (size.x + padding.x)) {
-    x -= size.x;
+__device__ T circular2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r) {
+  if (c < padding.c) {
+    c += size.c;
+  } else if (c >= (size.c + padding.c)) {
+    c -= size.c;
   }
-  if (y < padding.y) {
-    y += size.y;
-  } else if (y >= (size.y + padding.y)) {
-    y -= size.y;
+  if (r < padding.r) {
+    r += size.r;
+  } else if (r >= (size.r + padding.r)) {
+    r -= size.r;
   }
-  return data[(y - padding.y) * size.x + (x - padding.x)];
+  return data[(r - padding.r) * size.c + (c - padding.c)];
 }
 
 template <typename T>
-__device__ T reflect2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y) {
-  if (x < padding.x) {
-    x = padding.x - x;
-  } else if (x >= (size.x + padding.x)) {
-    x = (size.x + padding.x) - (x - size.x - padding.x) - 1;
+__device__ T reflect2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r) {
+  if (c < padding.c) {
+    c = padding.c - c;
+  } else if (c >= (size.c + padding.c)) {
+    c = (size.c + padding.c) - (c - size.c - padding.c) - 1;
   }
-  if (y < padding.y) {
-    y = padding.y - y;
-  } else if (y >= (size.y + padding.y)) {
-    y = (size.y + padding.y) - (y - size.y - padding.y) - 1;
+  if (r < padding.r) {
+    r = padding.r - r;
+  } else if (r >= (size.r + padding.r)) {
+    r = (size.r + padding.r) - (r - size.r - padding.r) - 1;
   }
-  return data[(y - padding.y) * size.x + (x - padding.x)];
+  return data[(r - padding.r) * size.c + (c - padding.c)];
 }
 
 template <typename T>
-__device__ T replicate2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t x, uint64_t y) {
-  if (x < padding.x) {
-    x = padding.x;
-  } else if (x >= (size.x + padding.x)) {
-    x = size.x + padding.x - 1;
+__device__ T replicate2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r) {
+  if (c < padding.c) {
+    c = padding.c;
+  } else if (c >= (size.c + padding.c)) {
+    c = size.c + padding.c - 1;
   }
-  if (y < padding.y) {
-    y = padding.y;
-  } else if (y >= (size.y + padding.y)) {
-    y = size.y + padding.y - 1;
+  if (r < padding.r) {
+    r = padding.r;
+  } else if (r >= (size.r + padding.r)) {
+    r = size.r + padding.r - 1;
   }
-  return data[(y - padding.y) * size.x + (x - padding.x)];
+  return data[(r - padding.r) * size.c + (c - padding.c)];
 }
 
 template <typename T>
-__device__ T padder(T* data, Dim2 size, Dim2 padding, PaddingMode mode, T constant, uint64_t x, uint64_t y) { 
+__device__ T padder(T* data, Dim2 size, Dim2 padding, PaddingMode mode, T constant, uint64_t c, uint64_t r) { 
   if (mode == CONSTANT) {
-    return constant2DPadding<T>(data, size, padding, constant, x, y);
+    return constant2DPadding<T>(data, size, padding, constant, c, r);
   } else if (mode == CIRCULAR) {
-    return circular2DPadding<T>(data, size, padding, constant, x, y);
+    return circular2DPadding<T>(data, size, padding, constant, c, r);
   } else if (mode == REFLECT) {
-    return reflect2DPadding<T>(data, size, padding, constant, x, y);
+    return reflect2DPadding<T>(data, size, padding, constant, c, r);
   } else if (mode == REPLICATION) {
-    return replicate2DPadding<T>(data, size, padding, constant, x, y);
+    return replicate2DPadding<T>(data, size, padding, constant, c, r);
   } else {
-    return constant2DPadding<T>(data, size, padding, constant, x, y);
+    return constant2DPadding<T>(data, size, padding, constant, c, r);
   }
 }
 
