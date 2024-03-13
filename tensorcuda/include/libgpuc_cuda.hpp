@@ -139,9 +139,9 @@ extern const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, doub
     Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
     PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation);
 
-extern const char* libtcCudaConv2d(libtcCudaStream stream, double* out, double* inp, double* kernel, 
-  uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, Dim2 padding, 
-  PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation);
+extern const char* libtcCudaConv2d(libtcCudaStream stream, double* out, double* inp, 
+  double* kernel, uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, 
+  Dim2 padding, PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation);
 
 #ifdef __cplusplus
 }
