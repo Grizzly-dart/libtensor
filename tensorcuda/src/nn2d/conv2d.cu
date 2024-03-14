@@ -22,7 +22,7 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
   uint32_t outId = blockIdx.z;
   uint32_t outChannel = outId % outS.ch;
   uint32_t groupLen = inpS.ch / groups;
-  uint32_t firstInpChannelId = outChannel * groupLen;
+  uint32_t firstInpChannelId = (outChannel * groups)/outS.ch;
 
   if (outR < outS.r && outC < outS.c) {
     T value = 0;
@@ -36,14 +36,12 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
             T inputValue = padder<T>(inputStart, inpS.toDim2(), padding, padMode, pad, inC, inR);
             uint32_t kIdx = outChannel * groupLen + g;
             value += inputValue * kernel[kIdx * kernNel + kRow * kernS.c + kCol];
-            printf("outChannel: %d, firstInpChannelId: %d, g: %d, kIdx: %d\n", outChannel, firstInpChannelId, g, kIdx);
           }
         } else {
           assert(inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c);
         }
       }
     }
-    printf("outR: %d, outC: %d, outId: %d, value: %f\n", outR, outC, outId, value);
     output[outId * outS.r * outS.c + outR * outS.c + outC] = value;
   }
 }
