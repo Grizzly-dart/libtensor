@@ -22,7 +22,7 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
   uint32_t outId = blockIdx.z;
   uint32_t outChannel = outId % outS.ch;
   uint32_t groupLen = inpS.ch / groups;
-  uint32_t firstInpChannelId = (outChannel / groups) / groupLen;
+  uint32_t firstInpChannelId = outChannel * groupLen;
 
   if (outR < outS.r && outC < outS.c) {
     T value = 0;
@@ -33,15 +33,17 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
         if (inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c) {
           for (uint32_t g = 0; g < groupLen; g++) {
             T* inputStart = input + (firstInpChannelId + g) * inpS.c * inpS.r;
-            uint32_t kIdx = outId * groupLen + g;
             T inputValue = padder<T>(inputStart, inpS.toDim2(), padding, padMode, pad, inC, inR);
+            uint32_t kIdx = outChannel * groupLen + g;
             value += inputValue * kernel[kIdx * kernNel + kRow * kernS.c + kCol];
+            printf("outChannel: %d, firstInpChannelId: %d, g: %d, kIdx: %d\n", outChannel, firstInpChannelId, g, kIdx);
           }
         } else {
           assert(inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c);
         }
       }
     }
+    printf("outR: %d, outC: %d, outId: %d, value: %f\n", outR, outC, outId, value);
     output[outId * outS.r * outS.c + outR * outS.c + outC] = value;
   }
 }
@@ -49,9 +51,14 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
 const char* libtcCudaConv2D(libtcCudaStream& stream, double* out, double* inp, double* kernel, 
     uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, Dim2 padding, 
     PadMode padMode, double pad, Dim2 stride, Dim2 dilation) {
-  // TODO validate outS
   if (groups == 0) {
     groups = 1;
+  }
+  if(outS.ch % groups != 0) {
+    return "Number of output channels must be divisible by groups";
+  }
+  if (inpS.ch % groups != 0) {
+    return "Number of input channels must be divisible by groups";
   }
 
   auto err = cudaSetDevice(stream.device);
