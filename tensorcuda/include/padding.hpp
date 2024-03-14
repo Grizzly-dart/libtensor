@@ -19,7 +19,7 @@ template <typename T>
 __device__ T replicate2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uint64_t c, uint64_t r);
 
 template <typename T>
-__device__ T padder(T* data, Dim2 size, Dim2 padding, PaddingMode mode, T constant, uint64_t c, uint64_t r);
+__device__ T padder(T* data, Dim2 size, Dim2 padding, PadMode mode, T constant, uint64_t c, uint64_t r);
 
 
 template <typename T>
@@ -27,7 +27,7 @@ __device__ T constant2DPadding(T* data, Dim2 size, Dim2 padding, T constant, uin
   if (c < padding.c || r < padding.r || c >= (size.c + padding.c) || r >= (size.r + padding.r)) {
     return constant;
   } else {
-    return data[(r - padding.r) * size.r + (c - padding.c)];
+    return data[(r - padding.r) * size.c + (c - padding.c)];
   }
 }
 
@@ -77,7 +77,7 @@ __device__ T replicate2DPadding(T* data, Dim2 size, Dim2 padding, T constant, ui
 }
 
 template <typename T>
-__device__ T padder(T* data, Dim2 size, Dim2 padding, PaddingMode mode, T constant, uint64_t c, uint64_t r) { 
+__device__ T padder(T* data, Dim2 size, Dim2 padding, PadMode mode, T constant, uint64_t c, uint64_t r) { 
   if (mode == CONSTANT) {
     return constant2DPadding<T>(data, size, padding, constant, c, r);
   } else if (mode == CIRCULAR) {

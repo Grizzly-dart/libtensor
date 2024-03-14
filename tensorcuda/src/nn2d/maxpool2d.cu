@@ -9,7 +9,7 @@
 
 template <typename T>
 __global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
-    Dim2 padding, PaddingMode padMode, T pad, Dim2 stride, Dim2 dilation) {
+    Dim2 padding, PadMode padMode, T pad, Dim2 stride, Dim2 dilation) {
   Dim2 outS = {r : gridDim.y * blockDim.y, c : gridDim.x * blockDim.x};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
@@ -35,7 +35,7 @@ __global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
 
 const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
     Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
-    PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation) {
+    PadMode padMode, double pad, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
 
   auto err = cudaSetDevice(stream.device);
@@ -81,7 +81,7 @@ const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp
 }
 
 /*
-void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode PaddingMode, double pad, Dim2 stride, Dim2 dilation) {
+void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PadMode PadMode, double pad, Dim2 stride, Dim2 dilation) {
   uint32_t wrapSize = 32;  // TODO find this
   if (out.ndim != in.ndim) {
     throw std::string("out and in should have the same number of dimensions");
@@ -121,10 +121,10 @@ void maxPool2D(Tensor out, Tensor in, Dim2 kernS, Dim2 padding, PaddingMode Padd
     cudaError_t err;
     if (stride.x == 1 && stride.y == 1 && dilation.x == 1 && dilation.y == 1) {
       err = cudaLaunchKernelEx(&config, maxPool2DKernWarp<double>, outPtr, inPtr, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
-                               kernS, padding, PaddingMode, pad);
+                               kernS, padding, PadMode, pad);
     } else {
       err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, outPtr, inPtr, Dim2{x : uint32_t(getTensorM(in)), y : uint32_t(getTensorN(in))},
-                               kernS, padding, PaddingMode, pad, stride, dilation);
+                               kernS, padding, PadMode, pad, stride, dilation);
     }
     if (err != cudaSuccess) {
       throw std::string(cudaGetErrorString(err));

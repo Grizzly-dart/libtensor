@@ -14,7 +14,7 @@
 /// https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md
 template <typename T>
 __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Dim3 outS,
-    Dim3 inpS, Dim2 kernS, Dim2 padding, PaddingMode padMode, T pad, Dim2 stride,
+    Dim3 inpS, Dim2 kernS, Dim2 padding, PadMode padMode, T pad, Dim2 stride,
     Dim2 dilation) {
   uint32_t kernNel = kernS.r * kernS.c;
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
@@ -46,9 +46,9 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
   }
 }
 
-const char* libtcCudaConv2d(libtcCudaStream stream, double* out, double* inp, double* kernel, 
+const char* libtcCudaConv2D(libtcCudaStream& stream, double* out, double* inp, double* kernel, 
     uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, Dim2 padding, 
-    PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation) {
+    PadMode padMode, double pad, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
   if (groups == 0) {
     groups = 1;

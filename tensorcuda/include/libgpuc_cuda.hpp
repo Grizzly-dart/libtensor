@@ -63,23 +63,23 @@ typedef struct {
   };
 } Dim3;
 
-typedef enum {
+typedef enum PadMode: uint8_t {
   CONSTANT,
   CIRCULAR,
   REFLECT,
   REPLICATION
-} PaddingMode;
+} PadMode;
 
 extern const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Dim2 inSize);
 extern const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
 
 extern const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
     Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
-    PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation);
+    PadMode padMode, double pad, Dim2 stride, Dim2 dilation);
 
-extern const char* libtcCudaConv2d(libtcCudaStream stream, double* out, double* inp, 
+extern const char* libtcCudaConv2D(libtcCudaStream& stream, double* out, double* inp, 
   double* kernel, uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, 
-  Dim2 padding, PaddingMode padMode, double pad, Dim2 stride, Dim2 dilation);
+  Dim2 padding, PadMode padMode, double pad, Dim2 stride, Dim2 dilation);
 
 #ifdef __cplusplus
 }
