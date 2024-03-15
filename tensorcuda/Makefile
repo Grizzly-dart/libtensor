@@ -1,6 +1,6 @@
 OS := $(shell uname | tr A-Z a-z)
 HOST_COMPILER?=g++
-NVCC:=nvcc -ccbin $(HOST_COMPILER) -arch=sm_60 -rdc=true -lcudart -lcudadevrt --std c++20 
+NVCC:=nvcc -ccbin $(HOST_COMPILER) -arch=sm_60 -rdc=true -lcudart -lcudadevrt -lpthread --std c++20 
 SOURCES = ${shell find src/ -type f -regextype egrep -regex ".*\.(cpp|cu|c)$$"}
 HEADERS = ${shell find include/ -type f -regextype egrep -regex ".*\.(hpp|h|cuh)$$"}
 TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$"}

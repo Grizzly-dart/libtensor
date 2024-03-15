@@ -87,37 +87,3 @@ const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Dim
   }
   return nullptr;
 }
-
-/*
-void sum2DTensor(Tensor out, Tensor in) {
-  // TODO use streams
-  if (in.ndim != 2) {
-    throw std::string("Input tensor must be 2D");
-  } else if (out.ndim != 1) {
-    throw std::string("Output tensor must be 1D");
-  } else if (out.dim[0] != in.dim[0]) {
-    throw std::string("Size mismatch between input and output tensors");
-  }
-
-  cudaLaunchConfig_t config = {};
-  if (in.dim[1] < MAX_THREADS_PER_BLOCK) {
-    config.blockDim.x = in.dim[1];
-    config.gridDim.x = 1;
-  } else {
-    config.blockDim.x = MAX_THREADS_PER_BLOCK;
-    config.gridDim.x = (in.dim[1] + MAX_THREADS_PER_BLOCK - 1) / MAX_THREADS_PER_BLOCK;
-  }
-  config.gridDim.y = in.dim[0];
-  // std::cout << "Block dim: " << config.blockDim.x << " Grid dim: " << config.gridDim.x << " " << config.gridDim.y << std::endl;
-
-  auto err = cudaLaunchKernelEx(&config, sum2DKern<double>, out.mem, in.mem, in.dim[1]);
-  if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
-  }
-  // TODO remove
-  err = cudaDeviceSynchronize();
-  if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
-  }
-}
-*/

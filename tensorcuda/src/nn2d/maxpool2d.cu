@@ -71,12 +71,6 @@ const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  // TODO remove
-  err = cudaDeviceSynchronize();
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
-  fflush(stdout);
   return nullptr;
 }
 

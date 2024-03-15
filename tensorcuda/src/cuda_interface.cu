@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 #include <memory.h>
+#include <pthread.h> 
 
 #include <cstdint>
 #include <libgpuc_cuda.hpp>
@@ -29,6 +30,49 @@ const char* libtcCudaDestroyStream(libtcCudaStream& ret) {
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
+  return nullptr;
+}
+
+typedef struct {
+  libtcCudaStream* stream;
+  void (*callback)(const char*);
+} syncStreamArgs;
+
+void syncStream(syncStreamArgs* args) {
+  auto stream = args->stream;
+  auto callback = args->callback;
+  free(args);
+  auto err = cudaSetDevice(stream->device);
+  if (err != cudaSuccess) {
+    callback(cudaGetErrorString(err));
+    return;
+  }
+  err = cudaStreamSynchronize(static_cast<cudaStream_t>(stream->stream));
+  if (err != cudaSuccess) {
+    callback(cudaGetErrorString(err));
+    return;
+  }
+  callback(nullptr);
+  pthread_exit(NULL);
+}
+
+const char* libtcCudaSyncStream(libtcCudaStream* stream, void (*callback)(const char*)) {
+  auto args = (syncStreamArgs*)(malloc(sizeof(syncStreamArgs)));
+  args->stream = stream;
+  args->callback = callback;
+
+  pthread_attr_t attr;
+  int rc = pthread_attr_init(&attr);                                               
+  if (rc == -1) {                                                              
+    return "cudaStreamSync: error in pthread_attr_init";                                                                  
+  }                                                                 
+  rc = pthread_attr_setdetachstate(&attr, 1);                                
+  if (rc == -1) {
+    return "cudaStreamSync: error in pthread_attr_setdetachstate";                                                               
+  } 
+
+  pthread_t thread;
+  pthread_create(&thread, NULL, (void *(*)(void*))syncStream, args);
   return nullptr;
 }
 

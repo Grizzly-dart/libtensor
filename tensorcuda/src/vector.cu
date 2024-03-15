@@ -47,10 +47,5 @@ const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, const double* in
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  // TODO remove
-  err = cudaDeviceSynchronize();
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
   return nullptr;
 }

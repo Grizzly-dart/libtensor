@@ -24,24 +24,26 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
   uint32_t groupLen = inpS.ch / groups;
   uint32_t batchId = outId / outS.ch;
   input += batchId * inpS.ch * inpS.r * inpS.c;
-  uint32_t firstInpChannelId = (outChannel * groups)/outS.ch;
+  // uint32_t firstInpChannelId = (outChannel * inpS.ch)/outS.ch;
+  uint32_t firstInpChannelId = (outChannel * groupLen)/outS.ch;
   input += firstInpChannelId * inpS.c * inpS.r;
+  printf("outChannel: %d, groupLen: %d, firstInpChannelId: %d\n", outChannel, groupLen, firstInpChannelId);
 
   if (outR < outS.r && outC < outS.c) {
     T value = 0;
-    for (uint32_t kRow = 0; kRow < kernS.r; kRow++) {
-      uint32_t inR = outR * stride.r + kRow * dilation.r;
-      for (uint32_t kCol = 0; kCol < kernS.c; kCol++) {
-        uint32_t inC = outC * stride.c + kCol * dilation.c;
-        if (inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c) {
-          for (uint32_t g = 0; g < groupLen; g++) {
-            T* inputStart = input + g * inpS.c * inpS.r;
-            T inputValue = padder<T>(inputStart, inpS.toDim2(), padding, padMode, pad, inC, inR);
-            uint32_t kIdx = outChannel * groupLen + g;
-            value += inputValue * kernel[kIdx * kernNel + kRow * kernS.c + kCol];
+    for(uint32_t g = 0; g < groupLen; g++) {
+      T* inputStart = input + g * inpS.c * inpS.r;
+      for (uint32_t kRow = 0; kRow < kernS.r; kRow++) {
+        uint32_t inR = outR * stride.r + kRow * dilation.r;
+        for (uint32_t kCol = 0; kCol < kernS.c; kCol++) {
+          uint32_t inC = outC * stride.c + kCol * dilation.c;
+          if (inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c) {
+              T inputValue = padder<T>(inputStart, inpS.toDim2(), padding, padMode, pad, inC, inR);
+              uint32_t kIdx = outChannel * groupLen + g;
+              value += inputValue * kernel[kIdx * kernNel + kRow * kernS.c + kCol];
+          } else {
+            assert(inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c);
           }
-        } else {
-          assert(inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c);
         }
       }
     }
@@ -87,11 +89,6 @@ const char* libtcCudaConv2D(libtcCudaStream& stream, double* out, double* inp, d
 
   err = cudaLaunchKernelEx(&config, conv2dKernel<double>, out, inp, kernel, groups,
     outS, inpS, kernS, padding, padMode, pad, stride, dilation);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
-  // TODO remove
-  err = cudaDeviceSynchronize();
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }

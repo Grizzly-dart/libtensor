@@ -43,6 +43,7 @@ extern const char* libtcCudaGetMemInfo(libtcCudaMemInfo& memInfo, int32_t device
 
 extern const char* libtcCudaCreateStream(libtcCudaStream& ret, int32_t device);
 extern const char* libtcCudaDestroyStream(libtcCudaStream& stream);
+extern const char* libtcCudaSyncStream(libtcCudaStream* stream, void (*callback)(const char*));
 
 extern const char* libtcCudaAlloc(libtcCudaStream& stream, void** mem, uint64_t size);
 extern const char* libtcCudaFree(libtcCudaStream& stream, void* ptr);
@@ -70,8 +71,13 @@ typedef enum PadMode: uint8_t {
   REPLICATION
 } PadMode;
 
-extern const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Dim2 inSize);
-extern const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
+extern const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, 
+  double* in, Dim2 inSize);
+extern const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, 
+  const double* in1, const double* in2, uint64_t n);
+
+extern char const* libtcMatMul(libtcCudaStream& stream, double* out, 
+  double* inp1, double* inp2, uint32_t m, uint32_t n, uint32_t k);
 
 extern const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
     Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 

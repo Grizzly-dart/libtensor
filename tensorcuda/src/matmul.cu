@@ -7,6 +7,7 @@
 
 #define BLOCK_SIZE 16
 
+// https://siboehm.com/articles/22/CUDA-MMM
 template <typename T>
 __global__ void matmulTiledKernel(T* matOut, T* matIn1, T* matIn2, uint32_t m, uint32_t n, uint32_t k) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -56,21 +57,10 @@ __global__ void matmulKernel(T* matOut, T* matIn1, T* matIn2, uint32_t m, uint32
   matOut[row * k + col] = sum;
 }
 
-/*
-void matmul(Tensor out, Tensor in1, Tensor in2) {
-  if (in1.ndim != in2.ndim || in1.ndim != out.ndim) {
-    throw std::string("All input tensors must have the same number of dimensions");
-  }
-
-  if (in1.ndim < 2) {
-    throw std::string("All input tensors must have at least 2 dimensions");
-  }
-
-  uint64_t m = getTensorM(in1);
-  uint64_t n = getTensorN(in1);
-  uint64_t k = getTensorN(in2);
-  if (k != getTensorM(in2) || m != getTensorM(out) || k != getTensorN(out)) {
-    throw std::string("Invalid tensor dimensions");
+char const* libtcMatMul(libtcCudaStream& stream, double* out, double* inp1, double* inp2, uint32_t m, uint32_t n, uint32_t k) {
+  auto err = cudaSetDevice(stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
   }
 
   cudaLaunchConfig_t config = {};
@@ -81,12 +71,10 @@ void matmul(Tensor out, Tensor in1, Tensor in2) {
   if (m < BLOCK_SIZE) {
     config.blockDim.y = m;
   }
-  config.gridDim = dim3((m + config.blockDim.x - 1) / config.blockDim.x, (k + config.blockDim.y - 1) / config.blockDim.y);
-  for (int i = 0; i < getTensorCountMat(in1); i++) {
-    auto err = cudaLaunchKernelEx(&config, matmulTiledKernel<double>, out.mem + i * m * k, in1.mem + i * m * n, in2.mem + i * n * k, m, n, k);
-    if (err != cudaSuccess) {
-      throw std::string("Failed to launch kernel: ") + cudaGetErrorString(err);
-    }
+  config.gridDim = dim3((k + config.blockDim.x - 1) / config.blockDim.x, (m + config.blockDim.y - 1) / config.blockDim.y);
+  err = cudaLaunchKernelEx(&config, matmulTiledKernel<double>, out, inp1, inp2, m, n, k);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
   }
+  return nullptr;
 }
-*/
