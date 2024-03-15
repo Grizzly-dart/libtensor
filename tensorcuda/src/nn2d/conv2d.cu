@@ -24,7 +24,8 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
   uint32_t groupLen = inpS.ch / groups;
   uint32_t batchId = outId / outS.ch;
   input += batchId * inpS.ch * inpS.r * inpS.c;
-  uint32_t firstInpChannelId = (outChannel/groupLen) * groupLen;
+  uint32_t groupId = outChannel * groups / outS.ch;
+  uint32_t firstInpChannelId = groupId * groupLen;
   input += firstInpChannelId * inpS.c * inpS.r;
 
   if (outR < outS.r && outC < outS.c) {
