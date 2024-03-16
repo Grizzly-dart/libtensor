@@ -57,7 +57,7 @@ __global__ void matmulKernel(T* matOut, T* matIn1, T* matIn2, uint32_t m, uint32
   matOut[row * k + col] = sum;
 }
 
-char const* libtcMatMul(libtcCudaStream& stream, double* out, double* inp1, double* inp2, uint32_t m, uint32_t n, uint32_t k) {
+char const* libtcCudaMatMul(libtcCudaStream& stream, double* out, double* inp1, double* inp2, uint32_t m, uint32_t n, uint32_t k) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

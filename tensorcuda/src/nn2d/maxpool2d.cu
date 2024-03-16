@@ -9,7 +9,7 @@
 
 template <typename T>
 __global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
-    Dim2 padding, PadMode padMode, T pad, Dim2 stride, Dim2 dilation) {
+                              Dim2 padding, Dim2 stride, Dim2 dilation) {
   Dim2 outS = {r : gridDim.y * blockDim.y, c : gridDim.x * blockDim.x};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
   uint32_t outC = blockIdx.x * blockDim.x + threadIdx.x;
@@ -19,14 +19,11 @@ __global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
   if (outR < outS.r && outC < outS.c) {
     T maxVal = -__DBL_MIN__;
     for (int kRow = 0; kRow < kernS.r; ++kRow) {
-      uint32_t inR = outR * stride.r + kRow * dilation.r;
+      uint32_t inpR = outR * stride.r + kRow * dilation.r;
       for (int kCol = 0; kCol < kernS.c; ++kCol) {
-        uint32_t inC = outC * stride.c + kCol * dilation.c;
-        if (inR < inpS.r && inC < inpS.c) {
-          T inVal = padder<T>(inStart, inpS, padding, padMode, pad, inC, inR);
-          T val = inp[outId * inpS.c * inpS.r + inR * inpS.c + inC];
-          maxVal = max(maxVal, val);
-        }
+        uint32_t inpC = outC * stride.c + kCol * dilation.c;
+        T inVal = constant2DPadding<T>(inStart, inpS, padding, -__DBL_MIN__, inpC, inpR);
+        maxVal = max(maxVal, inVal);
       }
     }
     out[outId * outS.c * outS.r + outR * outS.c + outC] = maxVal;
@@ -34,8 +31,7 @@ __global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
 }
 
 const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
-    Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
-    PadMode padMode, double pad, Dim2 stride, Dim2 dilation) {
+                               Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
 
   auto err = cudaSetDevice(stream.device);
@@ -66,8 +62,8 @@ const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp
   }
   config.gridDim.z = matrices;
   // TODO launch batches based on the size of the tensor and GPU VRAM
-  err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, out, inp, 
-    inpS, kernS, padding, padMode, pad, stride, dilation);
+  err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, out, inp,
+                           inpS, kernS, padding, stride, dilation);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
