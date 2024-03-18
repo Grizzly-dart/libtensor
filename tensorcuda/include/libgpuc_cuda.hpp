@@ -38,16 +38,20 @@ typedef struct {
   int32_t device;
 } libtcCudaStream;
 
-extern const char* libtcCudaGetDeviceProps(libtcDeviceProps& ret, int32_t device);
-extern const char* libtcCudaGetMemInfo(libtcCudaMemInfo& memInfo, int32_t device);
+const char *libtcCudaGetDeviceProps(libtcDeviceProps &ret, int32_t device);
+const char *libtcCudaGetMemInfo(libtcCudaMemInfo &memInfo, int32_t device);
 
-extern const char* libtcCudaCreateStream(libtcCudaStream& ret, int32_t device);
-extern const char* libtcCudaDestroyStream(libtcCudaStream& stream);
-extern const char* libtcCudaSyncStream(libtcCudaStream* stream, void (*callback)(const char*));
+const char *libtcCudaCreateStream(libtcCudaStream &ret, int32_t device);
+const char *libtcCudaDestroyStream(libtcCudaStream &stream);
+const char *libtcCudaSyncStream(
+    libtcCudaStream *stream, void (*callback)(const char *)
+);
 
-extern const char* libtcCudaAlloc(libtcCudaStream& stream, void** mem, uint64_t size);
-extern const char* libtcCudaFree(libtcCudaStream& stream, void* ptr);
-extern const char* libtcCudaMemcpy(libtcCudaStream& stream, void* dst, void* src, uint64_t size);
+const char *libtcCudaAlloc(libtcCudaStream &stream, void **mem, uint64_t size);
+const char *libtcCudaFree(libtcCudaStream &stream, void *ptr);
+const char *libtcCudaMemcpy(
+    libtcCudaStream &stream, void *dst, void *src, uint64_t size
+);
 
 typedef struct {
   uint32_t r;
@@ -59,36 +63,51 @@ typedef struct {
   uint32_t r;
   uint32_t c;
 
-  __device__ __host__ Dim2 toDim2() {
-    return {r, c};
-  };
+  __device__ __host__ Dim2 toDim2() { return {r, c}; };
 } Dim3;
 
-typedef enum PadMode: uint8_t {
+typedef enum PadMode : uint8_t {
   CONSTANT,
   CIRCULAR,
   REFLECT,
   REPLICATION
 } PadMode;
 
-extern const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, 
-  double* in, Dim2 inSize);
-extern const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, 
-  const double* in1, const double* in2, uint64_t n);
+const char *libtcCudaSum2D(
+    libtcCudaStream &stream, double *out, double *in, Dim2 inSize
+);
 
-extern char const* libtcCudaMatMul(libtcCudaStream& stream, double* out, 
-  double* inp1, double* inp2, uint32_t m, uint32_t n, uint32_t k);
+const char *libtcCudaAdd2(
+    libtcCudaStream &stream, double *out, const double *in1, const double *in2,
+    uint64_t n
+);
 
-extern const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
-    Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, 
-    Dim2 stride, Dim2 dilation);
+const char *libtcCudaTranspose2d(
+    libtcCudaStream &stream, double *out, double *inp, Dim3 size
+);
 
-extern const char* libtcCudaConv2D(libtcCudaStream& stream, double* out, double* inp, 
-  double* kernel, uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, 
-  Dim2 padding, PadMode padMode, double pad, Dim2 stride, Dim2 dilation);
+char const *libtcCudaMatMul(
+    libtcCudaStream &stream, double *out, double *inp1, double *inp2,
+    uint32_t m, uint32_t n, uint32_t k, uint32_t batches
+);
+char const *libtcCudaMatMulT(
+    libtcCudaStream &stream, double *out, double *inp1, double *inp2T,
+    uint32_t m, uint32_t n, uint32_t k, uint32_t batches
+);
+
+const char *libtcCudaMaxPool2D(
+    libtcCudaStream &stream, double *out, double *inp, Dim2 kernS, Dim2 outS,
+    Dim2 inpS, uint32_t matrices, Dim2 padding, Dim2 stride, Dim2 dilation
+);
+
+const char *libtcCudaConv2D(
+    libtcCudaStream &stream, double *out, double *inp, double *kernel,
+    uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups,
+    Dim2 padding, PadMode padMode, double pad, Dim2 stride, Dim2 dilation
+);
 
 #ifdef __cplusplus
-}
+} // extern "C"
 #endif
 
 #endif // LIBGPUC_CUDA_HPP
