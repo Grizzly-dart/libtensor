@@ -8,8 +8,13 @@
 template <typename T>
 __global__ void mean2DKernel(T* out, T* in, uint32_t numCols) {
   uint32_t numThreads = blockDim.x;
-  // uint32_t numRows = gridDim.y;
+  uint32_t numRows = gridDim.y;
   uint32_t row = blockIdx.x;
+  
+  uint32_t batch = blockIdx.y;
+  out += batch * numRows;
+  in += batch * numRows * numCols;
+  
   Mean<T> record{};
   for (uint32_t col = threadIdx.x; col < numCols; col += numThreads) {
     if (col < numCols) {
