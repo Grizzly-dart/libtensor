@@ -95,6 +95,11 @@ char const *libtcCudaMatMulT(
     uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 );
 
+char const *libtcCudaAddbmm(
+    libtcCudaStream &stream, double *out, double *inp1, double *inp2,
+    double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
+);
+
 const char *libtcCudaMaxPool2D(
     libtcCudaStream &stream, double *out, double *inp, Dim2 kernS, Dim2 outS,
     Dim2 inpS, uint32_t matrices, Dim2 padding, Dim2 stride, Dim2 dilation

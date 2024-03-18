@@ -9,7 +9,7 @@
 
 // https://siboehm.com/articles/22/CUDA-MMM
 template <typename T>
-__global__ void matmulTiledKernel(
+__global__ void matmul(
     T *out, T *inp1, T *inp2, uint32_t m, uint32_t n, uint32_t k
 ) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -21,8 +21,8 @@ __global__ void matmulTiledKernel(
   out += batch * m * k;
 
   // TILE_SIZE+1 to avoid shared memory bank conflicts
-  __shared__ T tile1[TILE_SIZE][TILE_SIZE];
-  __shared__ T tile2[TILE_SIZE][TILE_SIZE + 1];
+  __shared__ T tile1[TILE_SIZE][TILE_SIZE+1];
+  __shared__ T tile2[TILE_SIZE][TILE_SIZE];
 
   T sum = 0.0;
   for (int i = 0; i < n; i += TILE_SIZE) {
@@ -88,7 +88,7 @@ char const *libtcCudaMatMul(
   config.gridDim.y = (m + config.blockDim.y - 1) / config.blockDim.y;
   config.gridDim.z = batches;
   err = cudaLaunchKernelEx(
-      &config, matmulTiledKernel<double>, out, inp1, inp2, m, n, k
+      &config, matmul<double>, out, inp1, inp2, m, n, k
   );
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
