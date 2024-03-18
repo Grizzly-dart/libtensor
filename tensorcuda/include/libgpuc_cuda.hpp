@@ -81,9 +81,9 @@ const char *libtcCudaAdd2(
     libtcCudaStream &stream, double *out, const double *in1, const double *in2,
     uint64_t n
 );
-const char* libtcCudaSub2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
-const char* libtcCudaMul2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
-const char* libtcCudaDiv2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
+const char* libtcCudaSubtract2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
+const char* libtcCudaMultiply2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
+const char* libtcCudaDivide2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
 
 const char *libtcCudaTranspose2d(
     libtcCudaStream &stream, double *out, double *inp, Dim3 size

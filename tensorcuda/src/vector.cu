@@ -51,7 +51,7 @@ const char* libtcCudaAdd2(libtcCudaStream& stream, double* out, const double* in
 }
 
 template<typename T>
-__global__ void sub2(T* out, const T* in1, const T* in2, uint64_t n) {
+__global__ void subtract2(T* out, const T* in1, const T* in2, uint64_t n) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -60,7 +60,7 @@ __global__ void sub2(T* out, const T* in1, const T* in2, uint64_t n) {
   }
 }
 
-const char* libtcCudaSub2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
+const char* libtcCudaSubtract2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -86,7 +86,7 @@ const char* libtcCudaSub2(libtcCudaStream& stream, double* out, const double* in
     config.gridDim.x = (n + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
   }
 
-  err = cudaLaunchKernelEx(&config, sub2<double>, out, in1, in2, n);
+  err = cudaLaunchKernelEx(&config, subtract2<double>, out, in1, in2, n);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
@@ -94,50 +94,7 @@ const char* libtcCudaSub2(libtcCudaStream& stream, double* out, const double* in
 }
 
 template<typename T>
-__global__ void sub2(T* out, const T* in1, const T* in2, uint64_t n) {
-  uint32_t numThreads = blockDim.x * gridDim.x;
-  uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
-
-  for(uint64_t i = thId; i < n; i += numThreads) {
-    out[i] = in1[i] - in2[i];
-  }
-}
-
-const char* libtcCudaSub2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
-  auto err = cudaSetDevice(stream.device);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
-  cudaDeviceProp props;
-  err = cudaGetDeviceProperties(&props, stream.device);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
-  uint32_t numThreads = props.multiProcessorCount * 128;
-  if(numThreads > n) {
-    numThreads = n;
-  }
-  
-  cudaLaunchConfig_t config = {
-    .stream = stream.stream,
-  };
-  if(numThreads < props.maxThreadsPerBlock) {
-    config.blockDim.x = numThreads;
-    config.gridDim.x = 1;
-  } else {
-    config.blockDim.x = props.maxThreadsPerBlock;
-    config.gridDim.x = (n + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
-  }
-
-  err = cudaLaunchKernelEx(&config, sub2<double>, out, in1, in2, n);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
-  return nullptr;
-}
-
-template<typename T>
-__global__ void mul2(T* out, const T* in1, const T* in2, uint64_t n) {
+__global__ void multiply2(T* out, const T* in1, const T* in2, uint64_t n) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -146,7 +103,7 @@ __global__ void mul2(T* out, const T* in1, const T* in2, uint64_t n) {
   }
 }
 
-const char* libtcCudaMul2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
+const char* libtcCudaMultiply2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -172,7 +129,7 @@ const char* libtcCudaMul2(libtcCudaStream& stream, double* out, const double* in
     config.gridDim.x = (n + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
   }
 
-  err = cudaLaunchKernelEx(&config, mul2<double>, out, in1, in2, n);
+  err = cudaLaunchKernelEx(&config, multiply2<double>, out, in1, in2, n);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
@@ -180,7 +137,7 @@ const char* libtcCudaMul2(libtcCudaStream& stream, double* out, const double* in
 }
 
 template<typename T>
-__global__ void div2(T* out, const T* in1, const T* in2, uint64_t n) {
+__global__ void divide2(T* out, const T* in1, const T* in2, uint64_t n) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -189,7 +146,7 @@ __global__ void div2(T* out, const T* in1, const T* in2, uint64_t n) {
   }
 }
 
-const char* libtcCudaDiv2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
+const char* libtcCudaDivide2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -215,7 +172,7 @@ const char* libtcCudaDiv2(libtcCudaStream& stream, double* out, const double* in
     config.gridDim.x = (n + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
   }
 
-  err = cudaLaunchKernelEx(&config, div2<double>, out, in1, in2, n);
+  err = cudaLaunchKernelEx(&config, divide2<double>, out, in1, in2, n);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
