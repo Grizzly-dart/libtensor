@@ -95,3 +95,30 @@ char const *libtcCudaMatMul(
   }
   return nullptr;
 }
+
+char const *libtcCudaMatMulSplit(uint32_t device, double *out, double *inp1, double *inp2,
+    uint32_t m, uint32_t n, uint32_t k, uint32_t batches) {
+  auto serr = cudaSetDevice(device);
+  if (serr != cudaSuccess) {
+    return cudaGetErrorString(serr);
+  }
+
+  cudaDeviceProp prop;
+  auto err = cudaGetDeviceProperties(&prop, device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+
+  int batchSize = prop.totalGlobalMem / ((m * n + n * k + m * k) * sizeof(double));
+  if(batchSize < 1) {
+    return "Not enough memory";
+  } else if(batchSize < batches) {
+    batchSize = batches;
+  }
+
+  uint64_t batchStart = 0;
+  while(batchStart < batches) {
+    uint32_t split = batchSize <= batches - batchStart ? batchSize : batches - batchStart;
+  }
+  // TODO
+}
