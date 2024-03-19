@@ -98,7 +98,7 @@ char const *libtcCudaMatMulT(
     uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 );
 
-char const *libtcCudaAddmm(
+char const *libtcCudaCaddmm(
     libtcCudaStream &stream, double *out, double *inp1, double *inp2,
     double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 );
