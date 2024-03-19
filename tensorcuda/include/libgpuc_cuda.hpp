@@ -38,6 +38,12 @@ typedef struct {
   int32_t device;
 } libtcCudaStream;
 
+typedef struct {
+  cudaStream_t* stream;
+  int32_t device;
+  uint32_t nStreams;
+} libtcCudaStreams;
+
 const char *libtcCudaGetDeviceProps(libtcDeviceProps &ret, int32_t device);
 const char *libtcCudaGetMemInfo(libtcCudaMemInfo &memInfo, int32_t device);
 

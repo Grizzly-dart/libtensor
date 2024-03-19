@@ -116,9 +116,25 @@ char const *libtcCudaMatMulSplit(uint32_t device, double *out, double *inp1, dou
     batchSize = batches;
   }
 
+  libtcCudaStreams streams = libtcCudaStreamsCreate{
+    .device = device,
+    .streams = new cudaStream_t[(batches+batchSize-1)/batchSize],
+    .count = batches/batchSize + 1,
+  };
   uint64_t batchStart = 0;
-  while(batchStart < batches) {
-    uint32_t split = batchSize <= batches - batchStart ? batchSize : batches - batchStart;
+  uint32_t splitId = 0;
+  try {
+    while(batchStart < batches) {
+      uint32_t split = batchSize <= batches - batchStart ? batchSize : batches - batchStart;
+      libtcCudaStream stream = libtcCudaStreamCreate(device);
+      streams.streams[splitId] = stream.stream;
+      // TODO
+      batchStart += batchSize;
+      splitId++;
+    }
+  } catch(...) {
+    libtcCudaStreamsDestroy(streams);
+    return "Error";
   }
   // TODO
 }
