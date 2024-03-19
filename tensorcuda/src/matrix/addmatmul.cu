@@ -9,7 +9,7 @@
 
 // https://siboehm.com/articles/22/CUDA-MMM
 template <typename T>
-__global__ void addbmm(
+__global__ void addmm(
     T *out, T *inp1, T *inp2, T *add, uint32_t m, uint32_t n, uint32_t k
 ) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -49,7 +49,7 @@ __global__ void addbmm(
   }
 }
 
-char const *libtcCudaAddbmm(
+char const *libtcCudaAddmm(
     libtcCudaStream &stream, double *out, double *inp1, double *inp2,
     double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 ) {
@@ -72,7 +72,7 @@ char const *libtcCudaAddbmm(
   config.gridDim.y = (m + config.blockDim.y - 1) / config.blockDim.y;
   config.gridDim.z = batches;
   err = cudaLaunchKernelEx(
-      &config, addbmm<double>, out, inp1, inp2, add, m, n, k
+      &config, addmm<double>, out, inp1, inp2, add, m, n, k
   );
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

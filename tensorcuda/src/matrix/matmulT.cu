@@ -21,8 +21,12 @@ __global__ void matmulT(
   out += batches * m * k;
 
   // TILE_SIZE+1 to avoid shared memory bank conflicts
-  __shared__ T tile1[TILE_SIZE][TILE_SIZE];
+  __shared__ T tile1[TILE_SIZE][TILE_SIZE + 1];
   __shared__ T tile2[TILE_SIZE][TILE_SIZE + 1];
+
+  Dim2 inp2TileStart{
+      blockIdx.x * blockDim.x + threadIdx.y, blockIdx.y * blockDim.y + threadIdx.x
+  };
 
   T sum = 0.0;
   for (int i = 0; i < n; i += TILE_SIZE) {
@@ -30,15 +34,19 @@ __global__ void matmulT(
       T val = inp1[outRow * n + i + threadIdx.x];
       tile1[threadIdx.y][threadIdx.x] = val;
     }
-    if (outCol < k && i + threadIdx.y < n) {
-      T val = inp2T[outCol * k + i + threadIdx.y];
-      tile2[threadIdx.y][threadIdx.x] = val;
+    {
+      uint32_t row = inp2TileStart.r;
+      uint32_t col = inp2TileStart.c + i;
+      if (row < k && col < n) {
+        T val = inp2T[row * n + col];
+        tile2[threadIdx.y][threadIdx.x] = val;
+      }
     }
     __syncthreads();
 
     for (int j = 0; j < TILE_SIZE; ++j) {
       if (outRow < m && outCol < k && i + j < n) {
-        sum += tile1[threadIdx.y][j] * tile2[j][threadIdx.x];
+        sum += tile1[threadIdx.y][j] * tile2[threadIdx.x][j];
       }
     }
     __syncthreads();
@@ -62,8 +70,8 @@ char const *libtcCudaMatMulT(
       .stream = stream.stream,
   };
   uint32_t max = m > k ? m : k;
-  max = max > n? max : n;
-  if(max < TILE_SIZE) {
+  max = max > n ? max : n;
+  if (max < TILE_SIZE) {
     config.blockDim = dim3(max, max);
   } else {
     config.blockDim = dim3(TILE_SIZE, TILE_SIZE);

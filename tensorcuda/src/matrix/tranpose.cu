@@ -17,16 +17,16 @@ __global__ void transpose2d(T *out, const T *inp, Dim2 inSize) {
   inp += batch * inSize.r * inSize.c;
   out += batch * inSize.r * inSize.c;
 
-  Dim2 inpIdx{blockIdx.x * TILE_SIZE + threadIdx.y, blockIdx.y * TILE_SIZE + threadIdx.x};
+  Dim2 inpTileStart{blockIdx.x * TILE_SIZE + threadIdx.y, blockIdx.y * TILE_SIZE + threadIdx.x};
 
   // TILE_SIZE+1 to avoid shared memory bank conflicts
   __shared__ T tile[TILE_SIZE][TILE_SIZE + 1];
 
   // coalesced read from global mem to shared mem row-by-row
   for (int rowOffset = 0; rowOffset < TILE_SIZE; rowOffset += BLOCK_ROWS) {
-    uint32_t row = inpIdx.r + rowOffset;
-    if (row < inSize.r && inpIdx.c < inSize.c) {
-      T val = inp[row * inSize.c + inpIdx.c];
+    uint32_t row = inpTileStart.r + rowOffset;
+    if (row < inSize.r && inpTileStart.c < inSize.c) {
+      T val = inp[row * inSize.c + inpTileStart.c];
       tile[threadIdx.y + rowOffset][threadIdx.x] = val;
     }
   }
