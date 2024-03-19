@@ -96,6 +96,7 @@ char const *libtcCudaMatMul(
   return nullptr;
 }
 
+/*
 char const *libtcCudaMatMulSplit(uint32_t device, double *out, double *inp1, double *inp2,
     uint32_t m, uint32_t n, uint32_t k, uint32_t batches) {
   auto serr = cudaSetDevice(device);
@@ -138,3 +139,4 @@ char const *libtcCudaMatMulSplit(uint32_t device, double *out, double *inp1, dou
   }
   // TODO
 }
+*/
