@@ -9,6 +9,23 @@ extern "C" {
 
 #define MAX_THREADS_PER_BLOCK 1024U
 
+typedef enum : uint8_t {
+  i8 = 0,
+  i16 = 1,
+  i32 = 2,
+  i64 = 3,
+
+  u8 = 10,
+  u16 = 11,
+  u32 = 12,
+  u64 = 13,
+
+  f16 = 20,
+  bf16 = 21,
+  f32 = 22,
+  f64 = 23
+} dtype;
+
 typedef struct {
   uint64_t totalGlobalMem;
   uint64_t totalConstMem;
@@ -122,6 +139,11 @@ const char *libtcCudaConv2D(
     libtcCudaStream &stream, double *out, double *inp, double *kernel,
     uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups,
     Dim2 padding, PadMode padMode, double pad, Dim2 stride, Dim2 dilation
+);
+
+const char *libtcPickRows(
+    libtcCudaStream &stream, void *out, const void *inp, const void *indices,
+    size_t rowSize, size_t rowCount, dtype type, dtype itype
 );
 
 #ifdef __cplusplus
