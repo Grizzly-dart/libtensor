@@ -1,7 +1,6 @@
 #include <cuda_runtime.h>
 
 #include <cstdint>
-#include <iostream>
 #include <libgpuc_cuda.hpp>
 #include <string>
 
