@@ -78,6 +78,7 @@
         "cfenv": "cpp",
         "locale": "c",
         "complex": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "*.inc": "cpp"
     }
 }

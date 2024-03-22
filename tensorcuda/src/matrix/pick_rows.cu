@@ -16,7 +16,7 @@ __global__ void pickRows(
   }
 }
 
-const char *libtcPickRows(
+const char *libtcCudaPickRows(
     libtcCudaStream &stream, void *out, const void *inp, const void *indices,
     Dim2 size, dtype type, dtype itype
 ) {

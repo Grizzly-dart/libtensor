@@ -141,7 +141,7 @@ const char *libtcCudaConv2D(
     Dim2 padding, PadMode padMode, double pad, Dim2 stride, Dim2 dilation
 );
 
-const char *libtcPickRows(
+const char *libtcCudaPickRows(
     libtcCudaStream &stream, void *out, const void *inp, const void *indices,
     size_t rowSize, size_t rowCount, dtype type, dtype itype
 );
