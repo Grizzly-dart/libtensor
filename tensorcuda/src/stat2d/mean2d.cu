@@ -5,21 +5,18 @@
 #include <reducers.hpp>
 #include <string>
 
-template <typename T>
-__global__ void mean2DKernel(T* out, T* in, uint32_t numCols) {
+template <typename O, typename I>
+__global__ void mean2d(O* out, I* inp, uint64_t numCols) {
   uint32_t numThreads = blockDim.x;
-  uint32_t numRows = gridDim.y;
+  uint32_t numRows = gridDim.x;
   uint32_t row = blockIdx.x;
   
-  uint32_t batch = blockIdx.y;
-  out += batch * numRows;
-  in += batch * numRows * numCols;
+  inp += row * numCols;
   
-  Mean<T> record{};
-  for (uint32_t col = threadIdx.x; col < numCols; col += numThreads) {
+  Mean<double> record{};
+  for (uint64_t col = threadIdx.x; col < numCols; col += numThreads) {
     if (col < numCols) {
-      uint32_t idx = row * numCols + col;
-      record.consume(in[idx]);
+      record.consume(inp[col]);
     }
   }
   __syncthreads();
@@ -57,27 +54,32 @@ __global__ void mean2DKernel(T* out, T* in, uint32_t numCols) {
   }
 }
 
-/*
-void mean2DTensor(Tensor out, Tensor in) {
-  if (in.ndim != 2) {
-    throw std::string("Input tensor must be 2D");
-  } else if (out.ndim != 1) {
-    throw std::string("Output tensor must be 1D");
-  } else if (out.dim[0] != in.dim[0]) {
-    throw std::string("Size mismatch between input and output tensors");
-  }
-
-  cudaLaunchConfig_t config = {};
-  if (in.dim[1] < MAX_THREADS_PER_BLOCK) {
-    config.blockDim.x = in.dim[1];
-  } else {
-    config.blockDim.x = MAX_THREADS_PER_BLOCK;
-  }
-  config.gridDim.x = in.dim[0];
-
-  auto err = cudaLaunchKernelEx(&config, mean2DKernel<double>, out.mem, in.mem, in.dim[1]);
+const char *libtcMean2d_f64_f64(
+    libtcCudaStream &stream, void *out, void *inp, uint32_t rows, uint64_t cols
+) {
+  auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
   }
+  cudaDeviceProp props;
+  err = cudaGetDeviceProperties(&props, stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+
+  cudaLaunchConfig_t config = {
+      .stream = stream.stream,
+  };
+  if (cols < 1024) {
+    config.blockDim.x = cols;
+  } else {
+    config.blockDim.x = 1024;
+  }
+  config.gridDim.x = rows;
+
+  err = cudaLaunchKernelEx(&config, mean2d<double, double>, (double*)out, (double*)inp, cols);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
 }
-*/

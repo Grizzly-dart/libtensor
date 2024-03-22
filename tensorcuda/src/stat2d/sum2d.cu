@@ -5,12 +5,12 @@
 #include <string>
 
 template <typename T>
-__global__ void sum2DKern(T* out, T* in, uint64_t numCols) {
+__global__ void sum2d(T* out, T* in, uint64_t numCols) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t row = blockIdx.y;
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
   T sum = 0;
-  for (uint32_t col = thId; col < numCols; col += numThreads) {
+  for (uint64_t col = thId; col < numCols; col += numThreads) {
     if (col < numCols) {
       uint32_t idx = row * numCols + col;
       sum += in[idx];
@@ -53,7 +53,7 @@ __global__ void sum2DKern(T* out, T* in, uint64_t numCols) {
   }
 }
 
-const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Dim2 inSize) {
+const char* libtcCudaSum2d(libtcCudaStream& stream, double* out, double* in, Dim2 inSize) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -80,7 +80,7 @@ const char* libtcCudaSum2D(libtcCudaStream& stream, double* out, double* in, Dim
   }
   config.gridDim.y = inSize.r;
 
-  err = cudaLaunchKernelEx(&config, sum2DKern<double>, out, in, inSize.c);
+  err = cudaLaunchKernelEx(&config, sum2d<double>, out, in, inSize.c);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }

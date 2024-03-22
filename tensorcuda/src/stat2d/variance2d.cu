@@ -5,21 +5,18 @@
 #include <reducers.hpp>
 #include <string>
 
-template <typename T>
-__global__ void variance2D(T* out, T* in, uint32_t numCols) {
+template <typename O, typename I>
+__global__ void variance2d(O* out, I* inp, uint64_t numCols, uint64_t correction, bool calcStd) {
   uint32_t numThreads = blockDim.x;
   uint32_t numRows = gridDim.x;
   uint32_t row = blockIdx.x;
+  
+  inp += row * numCols;
 
-  uint32_t batch = blockIdx.y;
-  out += batch * numRows;
-  in += batch * numRows * numCols;
-
-  Variance<T> record{};
-  for (uint32_t col = threadIdx.x; col < numCols; col += numThreads) {
+  Variance<double> record{};
+  for (uint64_t col = threadIdx.x; col < numCols; col += numThreads) {
     if (col < numCols) {
-      uint32_t idx = row * numCols + col;
-      record.consume(in[idx]);
+      record.consume(inp[col]);
     }
   }
   __syncthreads();
@@ -53,31 +50,90 @@ __global__ void variance2D(T* out, T* in, uint32_t numCols) {
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    out[row] = record.m2 / (numCols - 1);
+    O val = record.m2 / (numCols - correction);
+    if(calcStd) {
+      val = sqrt(val);
+    }
+    out[row] = val;
   }
 }
 
-/*
-void variance2DTensor(Tensor out, Tensor in) {
-  if (in.ndim != 2) {
-    throw std::string("Input tensor must be 2D");
-  } else if (out.ndim != 1) {
-    throw std::string("Output tensor must be 1D");
-  } else if (out.dim[0] != in.dim[0]) {
-    throw std::string("Size mismatch between input and output tensors");
-  }
-
-  cudaLaunchConfig_t config = {};
-  if (in.dim[1] < MAX_THREADS_PER_BLOCK) {
-    config.blockDim.x = in.dim[1];
-  } else {
-    config.blockDim.x = MAX_THREADS_PER_BLOCK;
-  }
-  config.gridDim.x = in.dim[0];
-
-  auto err = cudaLaunchKernelEx(&config, variance2DKernel<double>, out.mem, in.mem, in.dim[1]);
+const char *libtcVariance2d(
+    libtcCudaStream &stream, void *out, void *inp, uint32_t rows, uint64_t cols, uint64_t correction, bool calcStd, dtype outType, dtype inpType
+) {
+  auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
-    throw std::string(cudaGetErrorString(err));
+    return cudaGetErrorString(err);
   }
+  cudaDeviceProp props;
+  err = cudaGetDeviceProperties(&props, stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+
+  cudaLaunchConfig_t config = {
+      .stream = stream.stream,
+  };
+  if (cols < 1024) {
+    config.blockDim.x = cols;
+  } else {
+    config.blockDim.x = 1024;
+  }
+  config.gridDim.x = rows;
+
+  if(outType == dtype::f64) {
+    if(inpType == dtype::f64) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, double>, (double*)out, (double*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::f32) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, float>, (double*)out, (float*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i64) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, int64_t>, (double*)out, (int64_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i32) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, int32_t>, (double*)out, (int32_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i16) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, int16_t>, (double*)out, (int16_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i8) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, int8_t>, (double*)out, (int8_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u64) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, uint64_t>, (double*)out, (uint64_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u32) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, uint32_t>, (double*)out, (uint32_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u16) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, uint16_t>, (double*)out, (uint16_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u8) {
+      err = cudaLaunchKernelEx(&config, variance2d<double, uint8_t>, (double*)out, (uint8_t*)inp, cols, correction, calcStd);
+    } else {
+      return "Unsupported input type";
+    }
+  } else if(outType == dtype::f32) {
+    if(inpType == dtype::f64) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, double>, (float*)out, (double*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::f32) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, float>, (float*)out, (float*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i64) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, int64_t>, (float*)out, (int64_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i32) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, int32_t>, (float*)out, (int32_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i16) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, int16_t>, (float*)out, (int16_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::i8) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, int8_t>, (float*)out, (int8_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u64) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, uint64_t>, (float*)out, (uint64_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u32) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, uint32_t>, (float*)out, (uint32_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u16) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, uint16_t>, (float*)out, (uint16_t*)inp, cols, correction, calcStd);
+    } else if(inpType == dtype::u8) {
+      err = cudaLaunchKernelEx(&config, variance2d<float, uint8_t>, (float*)out, (uint8_t*)inp, cols, correction, calcStd);
+    } else {
+      return "Unsupported input type";
+    }
+  } else {
+    return "Unsupported output type";
+  }
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  return nullptr;
 }
-*/
