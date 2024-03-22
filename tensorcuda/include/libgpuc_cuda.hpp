@@ -143,7 +143,7 @@ const char *libtcCudaConv2D(
 
 const char *libtcCudaPickRows(
     libtcCudaStream &stream, void *out, const void *inp, const void *indices,
-    size_t rowSize, size_t rowCount, dtype type, dtype itype
+    Dim2 size, dtype type, dtype itype
 );
 
 #ifdef __cplusplus
