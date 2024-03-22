@@ -8,7 +8,6 @@
 template <typename O, typename I>
 __global__ void variance2d(O* out, I* inp, uint64_t numCols, uint64_t correction, bool calcStd) {
   uint32_t numThreads = blockDim.x;
-  uint32_t numRows = gridDim.x;
   uint32_t row = blockIdx.x;
   
   inp += row * numCols;
@@ -30,7 +29,7 @@ __global__ void variance2d(O* out, I* inp, uint64_t numCols, uint64_t correction
   uint8_t lane = threadIdx.x % warpSize;
   uint8_t warp = threadIdx.x / warpSize;
 
-  __shared__ Variance<T> sdata[32];
+  __shared__ Variance<double> sdata[32];
   if (warp == 0) {
     sdata[threadIdx.x] = {0};
   }
@@ -129,6 +128,8 @@ const char *libtcVariance2d(
     } else {
       return "Unsupported input type";
     }
+  } else if(outType == dtype::f16) {
+    return "Unsupported output type";
   } else {
     return "Unsupported output type";
   }

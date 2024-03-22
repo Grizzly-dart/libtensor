@@ -53,7 +53,7 @@ __global__ void sum2d(T* out, T* in, uint64_t numCols) {
   }
 }
 
-const char* libtcCudaSum2d(libtcCudaStream& stream, double* out, double* in, Dim2 inSize) {
+const char* libtcCudaSum2d(libtcCudaStream& stream, double* out, double* in, Dim2 inSize, dtype outType, dtype inpType) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -80,7 +80,21 @@ const char* libtcCudaSum2d(libtcCudaStream& stream, double* out, double* in, Dim
   }
   config.gridDim.y = inSize.r;
 
-  err = cudaLaunchKernelEx(&config, sum2d<double>, out, in, inSize.c);
+  if(outType == dtype::f64) {
+    // TODO
+  } else if(outType == dtype::f32) {
+    // TODO
+  } else if(outType == dtype::u64) {
+    // TODO
+  } else if(outType == dtype::i64) {
+    // TODO
+  } else if(outType == dtype::u32) {
+    // TODO
+  } else if(outType == dtype::i32) {
+    // TODO
+  } else {
+    return "Unsupported output type";
+  }
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
