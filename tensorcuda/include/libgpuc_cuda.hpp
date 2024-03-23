@@ -56,7 +56,7 @@ typedef struct {
 } libtcCudaStream;
 
 typedef struct {
-  cudaStream_t* stream;
+  cudaStream_t *stream;
   int32_t device;
   uint32_t nStreams;
 } libtcCudaStreams;
@@ -96,17 +96,42 @@ typedef enum PadMode : uint8_t {
   REPLICATION
 } PadMode;
 
-const char *libtcCudaSum2D(
-    libtcCudaStream &stream, double *out, double *in, Dim2 inSize
-);
-
 const char *libtcCudaAdd2(
-    libtcCudaStream &stream, double *out, const double *in1, const double *in2,
+    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
     uint64_t n
 );
-const char* libtcCudaSubtract2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
-const char* libtcCudaMultiply2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
-const char* libtcCudaDivide2(libtcCudaStream& stream, double* out, const double* in1, const double* in2, uint64_t n);
+const char *libtcCudaSubtract2(
+    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
+    uint64_t n
+);
+const char *libtcCudaMultiply2(
+    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
+    uint64_t n
+);
+const char *libtcCudaDivide2(
+    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
+    uint64_t n
+);
+
+const char *libtcCudaSum2d(
+    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS, dtype outType,
+    dtype inpType
+);
+
+const char *libtcCudaMean2d(
+    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
+    dtype outType, dtype inpType
+);
+
+const char *libtcCudaVariance2d(
+    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
+    uint64_t correction, uint8_t calcStd, dtype outType, dtype inpType
+);
+
+const char *libtcCudaNormalize2d(
+    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
+    double epsilon, dtype outType, dtype inpType
+);
 
 const char *libtcCudaTranspose2d(
     libtcCudaStream &stream, double *out, double *inp, Dim3 size
@@ -126,16 +151,16 @@ char const *libtcCudaMatMulCadd(
     double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 );
 char const *libtcCudaMatMulTCadd(
-    libtcCudaStream &stream, double *out, double *inp1, double *inp2T, double* add,
-    uint32_t m, uint32_t n, uint32_t k, uint32_t batches
+    libtcCudaStream &stream, double *out, double *inp1, double *inp2T,
+    double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 );
 
-const char *libtcCudaMaxPool2D(
+const char *libtcCudaMaxPool2d(
     libtcCudaStream &stream, double *out, double *inp, Dim2 kernS, Dim2 outS,
     Dim2 inpS, uint32_t matrices, Dim2 padding, Dim2 stride, Dim2 dilation
 );
 
-const char *libtcCudaConv2D(
+const char *libtcCudaConv2d(
     libtcCudaStream &stream, double *out, double *inp, double *kernel,
     uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups,
     Dim2 padding, PadMode padMode, double pad, Dim2 stride, Dim2 dilation

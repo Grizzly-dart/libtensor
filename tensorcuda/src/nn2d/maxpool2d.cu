@@ -8,7 +8,7 @@
 #include "padding.hpp"
 
 template <typename T>
-__global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
+__global__ void maxPool2d(T* out, T* inp, Dim2 inpS, Dim2 kernS,
                               Dim2 padding, Dim2 stride, Dim2 dilation) {
   Dim2 outS = {r : gridDim.y * blockDim.y, c : gridDim.x * blockDim.x};
   uint32_t outR = blockIdx.y * blockDim.y + threadIdx.y;
@@ -30,7 +30,7 @@ __global__ void maxPool2DKern(T* out, T* inp, Dim2 inpS, Dim2 kernS,
   }
 }
 
-const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp,
+const char* libtcCudaMaxPool2d(libtcCudaStream& stream, double* out, double* inp,
                                Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
 
@@ -62,7 +62,7 @@ const char* libtcCudaMaxPool2D(libtcCudaStream& stream, double* out, double* inp
   }
   config.gridDim.z = matrices;
   // TODO launch batches based on the size of the tensor and GPU VRAM
-  err = cudaLaunchKernelEx(&config, maxPool2DKern<double>, out, inp,
+  err = cudaLaunchKernelEx(&config, maxPool2d<double>, out, inp,
                            inpS, kernS, padding, stride, dilation);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

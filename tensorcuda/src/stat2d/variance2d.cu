@@ -6,10 +6,12 @@
 #include <string>
 
 template <typename O, typename I>
-__global__ void variance2d(O* out, I* inp, uint64_t numCols, uint64_t correction, bool calcStd) {
+__global__ void variance2d(
+    O *out, I *inp, uint64_t numCols, uint64_t correction, uint8_t calcStd
+) {
   uint32_t numThreads = blockDim.x;
   uint32_t row = blockIdx.x;
-  
+
   inp += row * numCols;
 
   Variance<double> record{};
@@ -50,15 +52,16 @@ __global__ void variance2d(O* out, I* inp, uint64_t numCols, uint64_t correction
 
   if (threadIdx.x == 0) {
     O val = record.m2 / (numCols - correction);
-    if(calcStd) {
+    if (calcStd != 0) {
       val = sqrt(val);
     }
     out[row] = val;
   }
 }
 
-const char *libtcVariance2d(
-    libtcCudaStream &stream, void *out, void *inp, uint32_t rows, uint64_t cols, uint64_t correction, bool calcStd, dtype outType, dtype inpType
+const char *libtcCudaVariance2d(
+    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
+    uint64_t correction, uint8_t calcStd, dtype outType, dtype inpType
 ) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
@@ -73,62 +76,122 @@ const char *libtcVariance2d(
   cudaLaunchConfig_t config = {
       .stream = stream.stream,
   };
-  if (cols < 1024) {
-    config.blockDim.x = cols;
+  if (inpS.c < 1024) {
+    config.blockDim.x = inpS.c;
   } else {
     config.blockDim.x = 1024;
   }
-  config.gridDim.x = rows;
+  config.gridDim.x = inpS.r;
 
-  if(outType == dtype::f64) {
-    if(inpType == dtype::f64) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, double>, (double*)out, (double*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::f32) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, float>, (double*)out, (float*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i64) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, int64_t>, (double*)out, (int64_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i32) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, int32_t>, (double*)out, (int32_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i16) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, int16_t>, (double*)out, (int16_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i8) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, int8_t>, (double*)out, (int8_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u64) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, uint64_t>, (double*)out, (uint64_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u32) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, uint32_t>, (double*)out, (uint32_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u16) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, uint16_t>, (double*)out, (uint16_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u8) {
-      err = cudaLaunchKernelEx(&config, variance2d<double, uint8_t>, (double*)out, (uint8_t*)inp, cols, correction, calcStd);
+  if (outType == dtype::f64) {
+    if (inpType == dtype::f64) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, double>, (double *)out, (double *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::f32) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, float>, (double *)out, (float *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::i64) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, int64_t>, (double *)out, (int64_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::i32) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, int32_t>, (double *)out, (int32_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::i16) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, int16_t>, (double *)out, (int16_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::i8) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, int8_t>, (double *)out, (int8_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u64) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, uint64_t>, (double *)out, (uint64_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u32) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, uint32_t>, (double *)out, (uint32_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u16) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, uint16_t>, (double *)out, (uint16_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u8) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<double, uint8_t>, (double *)out, (uint8_t *)inp,
+          inpS.c, correction, calcStd
+      );
     } else {
       return "Unsupported input type";
     }
-  } else if(outType == dtype::f32) {
-    if(inpType == dtype::f64) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, double>, (float*)out, (double*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::f32) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, float>, (float*)out, (float*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i64) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, int64_t>, (float*)out, (int64_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i32) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, int32_t>, (float*)out, (int32_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i16) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, int16_t>, (float*)out, (int16_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::i8) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, int8_t>, (float*)out, (int8_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u64) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, uint64_t>, (float*)out, (uint64_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u32) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, uint32_t>, (float*)out, (uint32_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u16) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, uint16_t>, (float*)out, (uint16_t*)inp, cols, correction, calcStd);
-    } else if(inpType == dtype::u8) {
-      err = cudaLaunchKernelEx(&config, variance2d<float, uint8_t>, (float*)out, (uint8_t*)inp, cols, correction, calcStd);
+  } else if (outType == dtype::f32) {
+    if (inpType == dtype::f64) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, double>, (float *)out, (double *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::f32) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, float>, (float *)out, (float *)inp, inpS.c,
+          correction, calcStd
+      );
+    } else if (inpType == dtype::i64) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, int64_t>, (float *)out, (int64_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::i32) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, int32_t>, (float *)out, (int32_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::i16) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, int16_t>, (float *)out, (int16_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::i8) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, int8_t>, (float *)out, (int8_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u64) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, uint64_t>, (float *)out, (uint64_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u32) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, uint32_t>, (float *)out, (uint32_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u16) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, uint16_t>, (float *)out, (uint16_t *)inp,
+          inpS.c, correction, calcStd
+      );
+    } else if (inpType == dtype::u8) {
+      err = cudaLaunchKernelEx(
+          &config, variance2d<float, uint8_t>, (float *)out, (uint8_t *)inp,
+          inpS.c, correction, calcStd
+      );
     } else {
       return "Unsupported input type";
     }
-  } else if(outType == dtype::f16) {
+  } else if (outType == dtype::f16) {
     return "Unsupported output type";
   } else {
     return "Unsupported output type";

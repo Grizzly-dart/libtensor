@@ -13,7 +13,7 @@
  
 /// https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md
 template <typename T>
-__global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Dim3 outS,
+__global__ void conv2d(T* output, T* input, T* kernel, uint32_t groups, Dim3 outS,
     Dim3 inpS, Dim2 kernS, Dim2 padding, PadMode padMode, T pad, Dim2 stride,
     Dim2 dilation) {
   uint32_t kernNel = kernS.r * kernS.c;
@@ -50,7 +50,7 @@ __global__ void conv2dKernel(T* output, T* input, T* kernel, uint32_t groups, Di
   }
 }
 
-const char* libtcCudaConv2D(libtcCudaStream& stream, double* out, double* inp, double* kernel, 
+const char* libtcCudaConv2d(libtcCudaStream& stream, double* out, double* inp, double* kernel, 
     uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, Dim2 padding, 
     PadMode padMode, double pad, Dim2 stride, Dim2 dilation) {
   if (groups == 0) {
@@ -86,7 +86,7 @@ const char* libtcCudaConv2D(libtcCudaStream& stream, double* out, double* inp, d
   }
   config.gridDim.z = batches * outS.ch;
 
-  err = cudaLaunchKernelEx(&config, conv2dKernel<double>, out, inp, kernel, groups,
+  err = cudaLaunchKernelEx(&config, conv2d<double>, out, inp, kernel, groups,
     outS, inpS, kernS, padding, padMode, pad, stride, dilation);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
