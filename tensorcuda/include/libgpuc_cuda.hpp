@@ -96,6 +96,36 @@ typedef enum PadMode : uint8_t {
   REPLICATION
 } PadMode;
 
+extern const char *libtcCudaSin(
+    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+    dtype outType, dtype inType
+);
+
+extern const char *libtcCudaCos(
+    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+    dtype outType, dtype inType
+);
+
+extern const char *libtcCudaTan(
+    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+    dtype outType, dtype inType
+);
+
+extern const char *libtcCudaSinh(
+    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+    dtype outType, dtype inType
+);
+
+extern const char *libtcCudaCosh(
+    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+    dtype outType, dtype inType
+);
+
+extern const char *libtcCudaTanh(
+    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+    dtype outType, dtype inType
+);
+
 const char *libtcCudaAdd2(
     libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
     uint64_t n
@@ -171,8 +201,20 @@ const char *libtcCudaPickRows(
     Dim2 size, dtype type, dtype itype
 );
 
+const char *libtcCudaELU(
+    libtcCudaStream &stream, const void *out, const void *inp, uint64_t n,
+    double alpha, dtype dtype
+);
+
+const char *libtcCudaRELU(
+    libtcCudaStream &stream, const void *out, const void *inp, uint64_t n,
+    dtype dtype
+);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+const char* setupElementwiseKernel(libtcCudaStream& stream, uint64_t n, cudaLaunchConfig_t& config);
 
 #endif // LIBGPUC_CUDA_HPP

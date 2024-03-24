@@ -61,11 +61,6 @@ const char *libtcCudaMean2d(
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp props;
-  err = cudaGetDeviceProperties(&props, stream.device);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
 
   cudaLaunchConfig_t config = {
       .stream = stream.stream,

@@ -78,7 +78,7 @@ const char* setupElementwiseKernel(libtcCudaStream& stream, uint64_t n, cudaLaun
     config.gridDim.x = 1;
   } else {
     config.blockDim.x = props.maxThreadsPerBlock;
-    config.gridDim.x = (n + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
+    config.gridDim.x = (numThreads + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
   }
 
   return nullptr;
