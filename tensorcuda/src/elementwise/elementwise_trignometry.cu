@@ -70,7 +70,7 @@ extern const char *libtcCudaSin(
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }
@@ -181,7 +181,7 @@ extern const char *libtcCudaCos(
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }
@@ -292,7 +292,7 @@ extern const char *libtcCudaTan(
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }
@@ -403,7 +403,7 @@ extern const char *libtcCudaSinh(
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }
@@ -514,7 +514,7 @@ extern const char *libtcCudaCosh(
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }
@@ -625,7 +625,7 @@ extern const char *libtcCudaTanh(
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }

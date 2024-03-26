@@ -126,21 +126,26 @@ extern const char *libtcCudaTanh(
     dtype outType, dtype inType
 );
 
+extern const char *libtcCudaMinThreshold(
+    libtcCudaStream &stream, const void *out, const void *inp, void *threshold,
+    void *value, uint64_t n, dtype dtype
+);
+
 const char *libtcCudaAdd2(
-    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
-    uint64_t n
+    libtcCudaStream &stream, double *out, const double *inp1,
+    const double *inp2, uint64_t n
 );
 const char *libtcCudaSubtract2(
-    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
-    uint64_t n
+    libtcCudaStream &stream, double *out, const double *inp1,
+    const double *inp2, uint64_t n
 );
 const char *libtcCudaMultiply2(
-    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
-    uint64_t n
+    libtcCudaStream &stream, double *out, const double *inp1,
+    const double *inp2, uint64_t n
 );
 const char *libtcCudaDivide2(
-    libtcCudaStream &stream, double *out, const double *inp1, const double *inp2,
-    uint64_t n
+    libtcCudaStream &stream, double *out, const double *inp1,
+    const double *inp2, uint64_t n
 );
 
 const char *libtcCudaSum2d(
@@ -149,8 +154,8 @@ const char *libtcCudaSum2d(
 );
 
 const char *libtcCudaMean2d(
-    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
-    dtype outType, dtype inpType
+    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS, dtype outType,
+    dtype inpType
 );
 
 const char *libtcCudaVariance2d(
@@ -159,8 +164,8 @@ const char *libtcCudaVariance2d(
 );
 
 const char *libtcCudaNormalize2d(
-    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
-    double epsilon, dtype outType, dtype inpType
+    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS, double epsilon,
+    dtype outType, dtype inpType
 );
 
 const char *libtcCudaTranspose2d(
@@ -180,41 +185,65 @@ char const *libtcCudaMatMulCadd(
     libtcCudaStream &stream, double *out, double *inp1, double *inp2,
     double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 );
-char const *libtcCudaMatMulTCadd(
+
+extern char const *libtcCudaMatMulTCadd(
     libtcCudaStream &stream, double *out, double *inp1, double *inp2T,
     double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 );
 
-const char *libtcCudaMaxPool2d(
+extern const char *libtcCudaMaxPool2d(
     libtcCudaStream &stream, double *out, double *inp, Dim2 kernS, Dim2 outS,
     Dim2 inpS, uint32_t matrices, Dim2 padding, Dim2 stride, Dim2 dilation
 );
 
-const char *libtcCudaConv2d(
+extern const char *libtcCudaConv2d(
     libtcCudaStream &stream, double *out, double *inp, double *kernel,
     uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups,
     Dim2 padding, PadMode padMode, double pad, Dim2 stride, Dim2 dilation
 );
 
-const char *libtcCudaPickRows(
+extern const char *libtcCudaPickRows(
     libtcCudaStream &stream, void *out, const void *inp, const void *indices,
     Dim2 size, dtype type, dtype itype
 );
 
-const char *libtcCudaELU(
+extern const char *libtcCudaELU(
     libtcCudaStream &stream, const void *out, const void *inp, uint64_t n,
     double alpha, dtype dtype
 );
 
-const char *libtcCudaRELU(
-    libtcCudaStream &stream, const void *out, const void *inp, uint64_t n,
+extern const char *libtcCudaSigmoid(
+    libtcCudaStream &stream, void *out, void *inp, uint64_t n,
     dtype dtype
+);
+
+extern const char *libtcCudaSiLU(
+    libtcCudaStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
+);
+
+extern const char *libtcCudaSoftplus(
+    libtcCudaStream &stream, const void *out, void *inp, uint64_t n,
+    int32_t beta, int32_t threshold, dtype dtype
+);
+
+extern const char *libtcCudaSoftsign(
+    libtcCudaStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
+);
+
+extern const char *libtcCudaMish(
+    libtcCudaStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
 );
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-const char* setupElementwiseKernel(libtcCudaStream& stream, uint64_t n, cudaLaunchConfig_t& config);
+const char *setupElementwiseKernelStrided(
+    libtcCudaStream &stream, uint64_t n, cudaLaunchConfig_t &config
+);
+
+const char *setupElementwiseKernel(
+    libtcCudaStream &stream, uint64_t n, cudaLaunchConfig_t &config
+);
 
 #endif // LIBGPUC_CUDA_HPP

@@ -57,7 +57,7 @@ __global__ void cast(O* out, const I* inp, uint64_t n) {
   }
 }
 
-const char* setupElementwiseKernel(libtcCudaStream& stream, uint64_t n, cudaLaunchConfig_t& config) {
+const char* setupElementwiseKernelStrided(libtcCudaStream& stream, uint64_t n, cudaLaunchConfig_t& config) {
     auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -84,11 +84,34 @@ const char* setupElementwiseKernel(libtcCudaStream& stream, uint64_t n, cudaLaun
   return nullptr;
 }
 
+const char* setupElementwiseKernel(libtcCudaStream& stream, uint64_t n, cudaLaunchConfig_t& config) {
+    auto err = cudaSetDevice(stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  cudaDeviceProp props;
+  err = cudaGetDeviceProperties(&props, stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
+  
+  config.stream = stream.stream;
+  config.blockDim = {(uint)props.maxThreadsPerBlock, 1, 1};
+  if (n > props.maxThreadsPerBlock) {
+    config.gridDim.x =
+        (n + props.maxThreadsPerBlock - 1) / props.maxThreadsPerBlock;
+  } else {
+    config.blockDim.x = n;
+  }
+
+  return nullptr;
+}
+
 #include "elementwise_gen.inc"
 
 extern const char* libtcCudaAdd2_f64_f64_f64(libtcCudaStream& stream, void* out, const void* in1, const void* in2, uint64_t n) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }
@@ -102,7 +125,7 @@ extern const char* libtcCudaAdd2_f64_f64_f64(libtcCudaStream& stream, void* out,
 
 extern const char* libtcCudaCast_f64_f32(libtcCudaStream& stream, void* out, const void* inp, uint64_t n) {
   cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernel(stream, n, config);
+  auto serr = setupElementwiseKernelStrided(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }

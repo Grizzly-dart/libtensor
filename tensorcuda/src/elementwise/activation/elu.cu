@@ -20,21 +20,13 @@ const char *libtcCudaELU(
     libtcCudaStream &stream, const void *out, const void *inp, uint64_t n,
     double alpha, dtype dtype
 ) {
-  auto err = cudaSetDevice(stream.device);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
+  cudaLaunchConfig_t config{};
+  auto serr = setupElementwiseKernel(stream, n, config);
+  if (serr != nullptr) {
+    return serr; 
   }
 
-  cudaLaunchConfig_t config = {
-      .stream = stream.stream,
-  };
-  config.blockDim = {BLOCK_SIZE, 1, 1};
-  if (n > BLOCK_SIZE) {
-    config.gridDim.x = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-  } else {
-    config.blockDim.x = n;
-  }
-
+  cudaError_t err;
   if (dtype == dtype::f64) {
     err = cudaLaunchKernelEx(
         &config, elu<double>, (double *)out, (const double *)inp, n, alpha
@@ -50,40 +42,35 @@ const char *libtcCudaELU(
   return nullptr;
 }
 
-template <typename T> __global__ void relu(T *out, const T *inp, uint64_t n) {
+template <typename T>
+__global__ void minThreshold(T *out, const T *inp, T threshold, T value, uint64_t n) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
     T inpVal = inp[idx];
-    out[idx] = inpVal > 0 ? inpVal : inpVal;
+    out[idx] = inpVal > threshold ? inpVal : value;
   }
 }
 
-const char *libtcCudaRELU(
-    libtcCudaStream &stream, const void *out, const void *inp, uint64_t n,
-    dtype dtype
+const char *libtcCudaMinThreshold(
+    libtcCudaStream &stream, const void *out, const void *inp, void *threshold,
+    void *value, uint64_t n, dtype dtype
 ) {
-  auto err = cudaSetDevice(stream.device);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
+  cudaLaunchConfig_t config{};
+  auto serr = setupElementwiseKernel(stream, n, config);
+  if (serr != nullptr) {
+    return serr; 
   }
 
-  cudaLaunchConfig_t config = {
-      .stream = stream.stream,
-  };
-  config.blockDim = {BLOCK_SIZE, 1, 1};
-  if (n > BLOCK_SIZE) {
-    config.gridDim.x = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-  } else {
-    config.blockDim.x = n;
-  }
-
+  cudaError_t err;
   if (dtype == dtype::f64) {
     err = cudaLaunchKernelEx(
-        &config, relu<double>, (double *)out, (const double *)inp, n
+        &config, minThreshold<double>, (double *)out, (const double *)inp,
+        *(double *)threshold, *(double *)value, n
     );
   } else if (dtype == dtype::f32) {
     err = cudaLaunchKernelEx(
-        &config, relu<float>, (float *)out, (const float *)inp, n
+        &config, minThreshold<float>, (float *)out, (const float *)inp,
+        *(float *)threshold, *(float *)value, n
     );
   }
   if (err != cudaSuccess) {
