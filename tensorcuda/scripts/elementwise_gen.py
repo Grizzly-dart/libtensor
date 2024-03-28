@@ -1,4 +1,4 @@
-f = open("src/elementwise/elementwise_gen.inc", "w")
+f = open("src/ewise/elementwise_gen.inc", "w")
 
 class Type:
   def __init__(self, name, short):

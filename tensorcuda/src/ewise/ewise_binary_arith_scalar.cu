@@ -88,6 +88,7 @@ extern const char *libtcCudaBinaryArith_f64_f64_f64(
   }
 
   cudaError_t err;
+  // TODO convert to switch statement
   if (op == BinaryArithOp_Add) {
     err = cudaLaunchKernelEx(
         &config, addScalar<double, double, double>, (double *)out,
