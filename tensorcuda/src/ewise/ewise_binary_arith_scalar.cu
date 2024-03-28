@@ -65,65 +65,24 @@ __global__ void divLhsScalar(O *out, const I1 *in1, const I2 in2, uint64_t n) {
   for (uint64_t i = thId; i < n; i += numThreads) {
     out[i] = in2 / in1[i];
   }
-  ADD;
 }
 
-typedef enum : uint8_t {
-  BinaryArithOp_Add,
-  BinaryArithOp_Sub,
-  BinaryArithOp_Mul,
-  BinaryArithOp_Div,
-  BinaryArithOp_SubLhs,
-  BinaryArithOp_DivLhs
-} BinaryArithOp;
+template <typename O, typename I1, typename I2>
+__global__ void powScalar(O *out, const I1 *in1, const I2 in2, uint64_t n) {
+  uint32_t numThreads = blockDim.x * gridDim.x;
+  uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
 
-extern const char *libtcCudaBinaryArith_f64_f64_f64(
-    libtcCudaStream &stream, void *out, void *in1, void *in2, uint64_t n,
-    BinaryArithOp op
-) {
-  cudaLaunchConfig_t config{};
-  auto serr = setupElementwiseKernelStrided(stream, n, config);
-  if (serr != nullptr) {
-    return serr;
+  for (uint64_t i = thId; i < n; i += numThreads) {
+    out[i] = std::pow(in1[i], in2);
   }
+}
 
-  cudaError_t err;
-  // TODO convert to switch statement
-  if (op == BinaryArithOp_Add) {
-    err = cudaLaunchKernelEx(
-        &config, addScalar<double, double, double>, (double *)out,
-        (double *)in1, *(double *)in2, n
-    );
-  } else if (op == BinaryArithOp_Sub) {
-    err = cudaLaunchKernelEx(
-        &config, subScalar<double, double, double>, (double *)out,
-        (double *)in1, *(double *)in2, n
-    );
-  } else if (op == BinaryArithOp_Mul) {
-    err = cudaLaunchKernelEx(
-        &config, mulScalar<double, double, double>, (double *)out,
-        (double *)in1, *(double *)in2, n
-    );
-  } else if (op == BinaryArithOp_Div) {
-    err = cudaLaunchKernelEx(
-        &config, divScalar<double, double, double>, (double *)out,
-        (double *)in1, *(double *)in2, n
-    );
-  } else if (op == BinaryArithOp_SubLhs) {
-    err = cudaLaunchKernelEx(
-        &config, subLhsScalar<double, double, double>, (double *)out,
-        (double *)in1, *(double *)in2, n
-    );
-  } else if (op == BinaryArithOp_DivLhs) {
-    err = cudaLaunchKernelEx(
-        &config, divLhsScalar<double, double, double>, (double *)out,
-        (double *)in1, *(double *)in2, n
-    );
-  } else {
-    return "Invalid operation";
+template <typename O, typename I1, typename I2>
+__global__ void powLhsScalar(O *out, const I1 *in1, const I2 in2, uint64_t n) {
+  uint32_t numThreads = blockDim.x * gridDim.x;
+  uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
+
+  for (uint64_t i = thId; i < n; i += numThreads) {
+    out[i] = std::pow(in2, in1[i]);
   }
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
-  }
-  return nullptr;
 }

@@ -131,21 +131,54 @@ extern const char *libtcCudaMinThreshold(
     void *value, uint64_t n, dtype dtype
 );
 
-const char *libtcCudaAdd2(
-    libtcCudaStream &stream, double *out, const double *inp1,
-    const double *inp2, uint64_t n
+extern const char *libtcCudaAdd(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
 );
-const char *libtcCudaSubtract2(
-    libtcCudaStream &stream, double *out, const double *inp1,
-    const double *inp2, uint64_t n
+
+extern const char *libtcCudaSub(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
 );
-const char *libtcCudaMultiply2(
-    libtcCudaStream &stream, double *out, const double *inp1,
-    const double *inp2, uint64_t n
+
+extern const char *libtcCudaMul(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
 );
-const char *libtcCudaDivide2(
-    libtcCudaStream &stream, double *out, const double *inp1,
-    const double *inp2, uint64_t n
+
+extern const char *libtcCudaDiv(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
+);
+
+extern const char *libtcCudaAddScalar(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
+);
+
+extern const char *libtcCudaSubScalar(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
+);
+
+extern const char *libtcCudaSubLhsScalar(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
+);
+
+extern const char *libtcCudaMulScalar(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
+);
+
+extern const char *libtcCudaDivScalar(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
+);
+
+extern const char *libtcCudaDivLhsScalar(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
+    dtype outType, dtype inp1Type, dtype inp2Type
 );
 
 const char *libtcCudaSum2d(
@@ -213,8 +246,7 @@ extern const char *libtcCudaELU(
 );
 
 extern const char *libtcCudaSigmoid(
-    libtcCudaStream &stream, void *out, void *inp, uint64_t n,
-    dtype dtype
+    libtcCudaStream &stream, void *out, void *inp, uint64_t n, dtype dtype
 );
 
 extern const char *libtcCudaSiLU(
