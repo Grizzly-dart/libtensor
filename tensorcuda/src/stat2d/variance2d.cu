@@ -16,9 +16,7 @@ __global__ void variance2d(
 
   Variance<double> record{};
   for (uint64_t col = threadIdx.x; col < numCols; col += numThreads) {
-    if (col < numCols) {
-      record.consume(inp[col]);
-    }
+    record.consume(inp[col]);
   }
   __syncthreads();
 

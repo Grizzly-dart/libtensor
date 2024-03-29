@@ -16,9 +16,7 @@ __global__ void normalize2d(O *out, I *inp, uint64_t numCols, double epsilon) {
 
   Variance<double> record{};
   for (uint64_t col = threadIdx.x; col < numCols; col += numThreads) {
-    if (col < numCols) {
-      record.consume(inp[col]);
-    }
+    record.consume(inp[col]);
   }
   __syncthreads();
 

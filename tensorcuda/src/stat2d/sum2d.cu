@@ -11,10 +11,8 @@ __global__ void sum2d(T *out, I *inp, uint64_t numCols) {
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
   T sum = 0;
   for (uint64_t col = thId; col < numCols; col += numThreads) {
-    if (col < numCols) {
-      uint32_t idx = row * numCols + col;
-      sum += inp[idx];
-    }
+    uint32_t idx = row * numCols + col;
+    sum += inp[idx];
   }
   __syncthreads();
 
