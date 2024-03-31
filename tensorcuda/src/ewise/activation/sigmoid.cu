@@ -12,8 +12,8 @@ template <typename T> __global__ void sigmoid(T *out, T *inp, uint64_t size) {
   }
 }
 
-extern const char *libtcCudaSigmoid(
-    libtcCudaStream &stream, void *out, void *inp, uint64_t n,
+extern const char *tcuSigmoid(
+    tcuStream &stream, void *out, void *inp, uint64_t n,
     dtype dtype
 ) {
   cudaLaunchConfig_t config{};
@@ -46,8 +46,8 @@ template <typename T> __global__ void silu(T *out, T *inp, uint64_t size) {
   }
 }
 
-const char *libtcCudaSiLU(
-    libtcCudaStream &stream, const void *out, void *inp, uint64_t n,
+const char *tcuSiLU(
+    tcuStream &stream, const void *out, void *inp, uint64_t n,
     dtype dtype
 ) {
   cudaLaunchConfig_t config{};

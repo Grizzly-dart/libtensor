@@ -45,8 +45,8 @@ __global__ void transpose2d(T *out, const T *inp, Dim2 inSize) {
   }
 }
 
-const char *libtcCudaTranspose2d(
-    libtcCudaStream &stream, double *out, double *inp, Dim3 inSize
+const char *tcuTranspose2d(
+    tcuStream &stream, double *out, double *inp, Dim3 inSize
 ) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {

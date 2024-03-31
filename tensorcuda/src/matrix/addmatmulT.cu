@@ -57,8 +57,8 @@ __global__ void matmulTCadd(
   }
 }
 
-char const *libtcCudaMatMulTCadd(
-    libtcCudaStream &stream, double *out, double *inp1, double *inp2T, double* add,
+char const *tcuMatMulTCadd(
+    tcuStream &stream, double *out, double *inp1, double *inp2T, double* add,
     uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 ) {
   auto err = cudaSetDevice(stream.device);

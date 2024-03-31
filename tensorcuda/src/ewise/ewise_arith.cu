@@ -98,18 +98,8 @@ __global__ void pow(
   }
 }
 
-template <typename O, typename I>
-__global__ void cast(O *out, const I *inp, uint64_t n) {
-  uint32_t numThreads = blockDim.x * gridDim.x;
-  uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
-
-  for (uint64_t i = thId; i < n; i += numThreads) {
-    out[i] = inp[i];
-  }
-}
-
 const char *setupElementwiseKernelStrided(
-    libtcCudaStream &stream, uint64_t n, cudaLaunchConfig_t &config
+    tcuStream &stream, uint64_t n, cudaLaunchConfig_t &config
 ) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
@@ -216,7 +206,7 @@ __global__ void powLhsScalar(
 */
 
 const char *setupElementwiseKernel(
-    libtcCudaStream &stream, uint64_t n, cudaLaunchConfig_t &config
+    tcuStream &stream, uint64_t n, cudaLaunchConfig_t &config
 ) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {

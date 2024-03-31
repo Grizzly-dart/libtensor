@@ -9,7 +9,8 @@ RUN_TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$" 
 
 build/libtensorcuda.so: $(SOURCES) $(HEADERS)
 	python3 scripts/ewise_arith_gen.py
-	$(NVCC) -I ./include --compiler-options '-fPIC' --shared --expt-relaxed-constexpr -o $@ $(SOURCES)
+	python3 scripts/ewise_unary_gen.py
+	$(NVCC) -I ../tensorc/include -I ./include --compiler-options '-fPIC' --shared --expt-relaxed-constexpr -o $@ $(SOURCES)
 
 build: build/libtensorcuda.so
 
@@ -18,7 +19,7 @@ build_all: $(BUILD_TESTS)
 test_all: $(RUN_TESTS) 
 
 build_%: build $(TESTS) $(HEADERS)
-	$(NVCC) -I ./include -L ./build -ltensorc -o build/$* ${shell find test/ -type f -regextype egrep -regex ".*$*\.cpp$$"}
+	$(NVCC) -I ../tensorc/include -I ./include -L ./build -ltensorc -o build/$* ${shell find test/ -type f -regextype egrep -regex ".*$*\.cpp$$"}
 
 run_%: build_% $(TESTS)
 	LD_LIBRARY_PATH=./build ./build/$*

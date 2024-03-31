@@ -6,7 +6,7 @@
 #include <libgpuc_cuda.hpp>
 #include <string>
 
-const char* libtcCudaCreateStream(libtcCudaStream& ret, int32_t device) {
+const char* tcuCreateStream(tcuStream& ret, int32_t device) {
   auto err = cudaSetDevice(device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -21,7 +21,7 @@ const char* libtcCudaCreateStream(libtcCudaStream& ret, int32_t device) {
   return nullptr;
 }
 
-const char* libtcCudaDestroyStream(libtcCudaStream& ret) {
+const char* tcuDestroyStream(tcuStream& ret) {
   auto err = cudaSetDevice(ret.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -34,7 +34,7 @@ const char* libtcCudaDestroyStream(libtcCudaStream& ret) {
 }
 
 typedef struct {
-  libtcCudaStream* stream;
+  tcuStream* stream;
   void (*callback)(const char*);
 } syncStreamArgs;
 
@@ -56,7 +56,7 @@ void syncStream(syncStreamArgs* args) {
   pthread_exit(NULL);
 }
 
-const char* libtcCudaSyncStream(libtcCudaStream* stream, void (*callback)(const char*)) {
+const char* tcuSyncStream(tcuStream* stream, void (*callback)(const char*)) {
   auto args = (syncStreamArgs*)(malloc(sizeof(syncStreamArgs)));
   args->stream = stream;
   args->callback = callback;
@@ -76,7 +76,7 @@ const char* libtcCudaSyncStream(libtcCudaStream* stream, void (*callback)(const 
   return nullptr;
 }
 
-const char* libtcCudaAlloc(libtcCudaStream& stream, void** mem, uint64_t size) {
+const char* tcuAlloc(tcuStream& stream, void** mem, uint64_t size) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -88,7 +88,7 @@ const char* libtcCudaAlloc(libtcCudaStream& stream, void** mem, uint64_t size) {
   return nullptr;
 }
 
-const char* libtcCudaFree(libtcCudaStream& stream, void* ptr) {
+const char* tcuFree(tcuStream& stream, void* ptr) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -100,7 +100,7 @@ const char* libtcCudaFree(libtcCudaStream& stream, void* ptr) {
   return nullptr;
 }
 
-const char* libtcCudaMemcpy(libtcCudaStream& stream, void* dst, void* src, uint64_t size) {
+const char* tcuMemcpy(tcuStream& stream, void* dst, void* src, uint64_t size) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -112,7 +112,7 @@ const char* libtcCudaMemcpy(libtcCudaStream& stream, void* dst, void* src, uint6
   return nullptr;
 }
 
-const char* libtcCudaGetMemInfo(libtcCudaMemInfo& memInfo, int32_t device) {
+const char* tcuGetMemInfo(tcuMemInfo& memInfo, int32_t device) {
   auto err = cudaSetDevice(device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -124,7 +124,7 @@ const char* libtcCudaGetMemInfo(libtcCudaMemInfo& memInfo, int32_t device) {
   return nullptr;
 }
 
-const char* libtcCudaGetDeviceProps(libtcDeviceProps& ret, int32_t device) {
+const char* tcuGetDeviceProps(tcuDeviceProps& ret, int32_t device) {
   cudaDeviceProp props;
   auto err = cudaGetDeviceProperties(&props, device);
   if (err != cudaSuccess) {

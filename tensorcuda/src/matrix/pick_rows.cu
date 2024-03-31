@@ -16,8 +16,8 @@ __global__ void pickRows(
   }
 }
 
-const char *libtcCudaPickRows(
-    libtcCudaStream &stream, void *out, const void *inp, const void *indices,
+const char *tcuPickRows(
+    tcuStream &stream, void *out, const void *inp, const void *indices,
     Dim2 size, dtype type, dtype itype
 ) {
   auto err = cudaSetDevice(stream.device);

@@ -21,8 +21,8 @@ __global__ void softplus(
   }
 }
 
-const char *libtcCudaSoftplus(
-    libtcCudaStream &stream, const void *out, void *inp, uint64_t n,
+const char *tcuSoftplus(
+    tcuStream &stream, const void *out, void *inp, uint64_t n,
     int32_t beta, int32_t threshold, dtype dtype
 ) {
   cudaLaunchConfig_t config{};
@@ -58,8 +58,8 @@ __global__ void softsign(T *out, T *inp, uint64_t size) {
   }
 }
 
-const char *libtcCudaSoftsign(
-    libtcCudaStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
+const char *tcuSoftsign(
+    tcuStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
 ) {
   cudaLaunchConfig_t config{};
   auto serr = setupElementwiseKernel(stream, n, config);
@@ -93,8 +93,8 @@ __global__ void mish(T *out, T *inp, uint64_t size) {
   }
 }
 
-const char *libtcCudaMish(
-    libtcCudaStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
+const char *tcuMish(
+    tcuStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
 ) {
   cudaLaunchConfig_t config{};
   auto serr = setupElementwiseKernel(stream, n, config);

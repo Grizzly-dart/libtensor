@@ -49,8 +49,8 @@ __global__ void caddmm(
   }
 }
 
-char const *libtcCudaMatMulCadd(
-    libtcCudaStream &stream, double *out, double *inp1, double *inp2,
+char const *tcuMatMulCadd(
+    tcuStream &stream, double *out, double *inp1, double *inp2,
     double *add, uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 ) {
   auto err = cudaSetDevice(stream.device);

@@ -57,8 +57,8 @@ __global__ void variance2d(
   }
 }
 
-const char *libtcCudaVariance2d(
-    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
+const char *tcuVariance2d(
+    tcuStream &stream, void *out, void *inp, Dim2 inpS,
     uint64_t correction, uint8_t calcStd, dtype outType, dtype inpType
 ) {
   auto err = cudaSetDevice(stream.device);

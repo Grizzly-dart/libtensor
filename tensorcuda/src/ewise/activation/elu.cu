@@ -16,8 +16,8 @@ __global__ void elu(T *out, const T *inp, uint64_t n, const double alpha) {
 
 #define BLOCK_SIZE 1024
 
-const char *libtcCudaELU(
-    libtcCudaStream &stream, const void *out, const void *inp, uint64_t n,
+const char *tcuELU(
+    tcuStream &stream, const void *out, const void *inp, uint64_t n,
     double alpha, dtype dtype
 ) {
   cudaLaunchConfig_t config{};
@@ -51,8 +51,8 @@ __global__ void minThreshold(T *out, const T *inp, T threshold, T value, uint64_
   }
 }
 
-const char *libtcCudaMinThreshold(
-    libtcCudaStream &stream, const void *out, const void *inp, void *threshold,
+const char *tcuMinThreshold(
+    tcuStream &stream, const void *out, const void *inp, void *threshold,
     void *value, uint64_t n, dtype dtype
 ) {
   cudaLaunchConfig_t config{};

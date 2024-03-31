@@ -51,8 +51,8 @@ __global__ void sum2d(T *out, I *inp, uint64_t numCols) {
   }
 }
 
-const char *libtcCudaSum2d(
-    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
+const char *tcuSum2d(
+    tcuStream &stream, void *out, void *inp, Dim2 inpS,
     dtype outType, dtype inpType
 ) {
   auto err = cudaSetDevice(stream.device);

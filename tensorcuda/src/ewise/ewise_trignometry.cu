@@ -65,8 +65,8 @@ __global__ void tanhKernel(O *out, I *inp, uint64_t n) {
   }
 }
 
-extern const char *libtcCudaSin(
-    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+extern const char *tcuSin(
+    tcuStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
@@ -176,8 +176,8 @@ extern const char *libtcCudaSin(
   return nullptr;
 }
 
-extern const char *libtcCudaCos(
-    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+extern const char *tcuCos(
+    tcuStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
@@ -287,8 +287,8 @@ extern const char *libtcCudaCos(
   return nullptr;
 }
 
-extern const char *libtcCudaTan(
-    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+extern const char *tcuTan(
+    tcuStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
@@ -398,8 +398,8 @@ extern const char *libtcCudaTan(
   return nullptr;
 }
 
-extern const char *libtcCudaSinh(
-    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+extern const char *tcuSinh(
+    tcuStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
@@ -509,8 +509,8 @@ extern const char *libtcCudaSinh(
   return nullptr;
 }
 
-extern const char *libtcCudaCosh(
-    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+extern const char *tcuCosh(
+    tcuStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};
@@ -620,8 +620,8 @@ extern const char *libtcCudaCosh(
   return nullptr;
 }
 
-extern const char *libtcCudaTanh(
-    libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
+extern const char *tcuTanh(
+    tcuStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
 ) {
   cudaLaunchConfig_t config{};

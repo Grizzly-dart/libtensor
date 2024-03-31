@@ -58,8 +58,8 @@ __global__ void normalize2d(O *out, I *inp, uint64_t numCols, double epsilon) {
   }
 }
 
-const char *libtcCudaNormalize2d(
-    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS,
+const char *tcuNormalize2d(
+    tcuStream &stream, void *out, void *inp, Dim2 inpS,
     double epsilon, dtype outType, dtype inpType
 ) {
   auto err = cudaSetDevice(stream.device);

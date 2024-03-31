@@ -37,7 +37,7 @@ __global__ void conv2d(T* output, T* input, T* kernel, uint32_t groups, Dim3 out
         for (uint32_t kCol = 0; kCol < kernS.c; kCol++) {
           uint32_t inC = outC * stride.c + kCol * dilation.c;
           if (inR < inpS.r + 2 * padding.r && inC < inpS.c + 2 * padding.c) {
-              T inputValue = padder<T>(inputStart, inpS.toDim2(), padding, padMode, pad, inC, inR);
+              T inputValue = padder<T>(inputStart, toDim2(inpS), padding, padMode, pad, inC, inR);
               uint32_t kIdx = outChannel * groupLen + g;
               value += inputValue * kernel[kIdx * kernNel + kRow * kernS.c + kCol];
           } else {
@@ -50,7 +50,7 @@ __global__ void conv2d(T* output, T* input, T* kernel, uint32_t groups, Dim3 out
   }
 }
 
-const char* libtcCudaConv2d(libtcCudaStream& stream, double* out, double* inp, double* kernel, 
+const char* tcuConv2d(tcuStream& stream, double* out, double* inp, double* kernel, 
     uint32_t batches, Dim3 outS, Dim3 inpS, Dim2 kernS, uint32_t groups, Dim2 padding, 
     PadMode padMode, double pad, Dim2 stride, Dim2 dilation) {
   if (groups == 0) {

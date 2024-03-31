@@ -30,7 +30,7 @@ __global__ void maxPool2d(T* out, T* inp, Dim2 inpS, Dim2 kernS,
   }
 }
 
-const char* libtcCudaMaxPool2d(libtcCudaStream& stream, double* out, double* inp,
+const char* tcuMaxPool2d(tcuStream& stream, double* out, double* inp,
                                Dim2 kernS, Dim2 outS, Dim2 inpS, uint32_t matrices, Dim2 padding, Dim2 stride, Dim2 dilation) {
   // TODO validate outS
 

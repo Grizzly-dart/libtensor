@@ -1,36 +1,15 @@
-f = open("src/ewise/ewise_arith_gen.inc", "w")
+import typing
+from common import types
 
-class Type:
-  def __init__(self, name, short):
-    self.name = name
-    self.short = short
-
-types = [
-  Type(name="double", short="f64"),
-  Type(name="float", short="f32"),
-  Type(name="int64_t", short="i64"),
-  Type(name="int32_t", short="i32"),
-  Type(name="int16_t", short="i16"),
-  Type(name="int8_t", short="i8"),
-  Type(name="uint64_t", short="u64"),
-  Type(name="uint32_t", short="u32"),
-  Type(name="uint16_t", short="u16"),
-  Type(name="uint8_t", short="u8"),
-]
+f: typing.TextIO
 
 ops = ["plus", "minus", "mul", "div", "pow"]
-
-def genSigs(op: str):
-  f.write("""
-template<typename O, typename I1, typename I2>
-__global__ void %s(O* out, I1* inp1, I2* inp2, I2 scalar, uint64_t n, uint8_t flipScalar);
-""" % op)
   
 
 def gen(op: str):
   str = """
 
-const char* libtcCuda%s(libtcCudaStream& stream, void* out, void* inp1, void* inp2, void* scalar,
+const char* tcu%s(tcuStream& stream, void* out, void* inp1, void* inp2, void* scalar,
     uint64_t n, uint8_t flipScalar, dtype outType, dtype inp1Type, dtype inp2Type) {
   if((scalar == nullptr) == (inp2 == nullptr)) {
     return "Confusing input";
@@ -90,7 +69,7 @@ const char* libtcCuda%s(libtcCudaStream& stream, void* out, void* inp1, void* in
 
 def genScalar(op: str):
   str = """
-const char* libtcCuda%sScalar(libtcCudaStream& stream, void* out, void* inp1, void* inp2, uint64_t n, dtype outType, dtype inp1Type, dtype inp2Type) {
+const char* tcu%sScalar(tcuStream& stream, void* out, void* inp1, void* inp2, uint64_t n, dtype outType, dtype inp1Type, dtype inp2Type) {
   cudaLaunchConfig_t config{};
   auto serr = setupElementwiseKernel(stream, n, config);
   if (serr != nullptr) {
@@ -142,6 +121,11 @@ const char* libtcCuda%sScalar(libtcCudaStream& stream, void* out, void* inp1, vo
 """
   return str
 
+#for op in ops:
+#  f.write(genScalar(op = op))
+
+f = open("src/ewise/ewise_arith_gen.inc", "w")
+
 f.write(
 """#include <cuda_runtime.h>
 
@@ -151,14 +135,15 @@ f.write(
 #include <string>
 """)
 
-#for op in ops:
-#  f.write(genScalar(op = op))
-
-
 for op in ops:
-  genSigs(op = op)
+    f.write("""
+template<typename O, typename I1, typename I2>
+__global__ void %s(O* out, I1* inp1, I2* inp2, I2 scalar, uint64_t n, uint8_t flipScalar);
+            """ % op)
 
 for op in ops:
   if op.endswith("Lhs"): continue
   f.write(gen(op = op))
+
+f.close()
 

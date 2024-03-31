@@ -5,7 +5,7 @@
 #include <string>
 
 template <typename T, typename I>
-__global__ void sum2d(T *out, I *inp, uint64_t nel) {
+__global__ void sum(T *out, I *inp, uint64_t nel) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
 

@@ -51,22 +51,26 @@ __global__ void mean2d(O *out, I *inp, uint64_t numCols) {
   }
 }
 
-const char *libtcCudaMean2d(
-    libtcCudaStream &stream, void *out, void *inp, Dim2 inpS, dtype outType,
+const char *tcuMean2d(
+    tcuStream &stream, void *out, void *inp, Dim2 inpS, dtype outType,
     dtype inpType
 ) {
   auto err = cudaSetDevice(stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-
+  cudaDeviceProp prop;
+  err = cudaGetDeviceProperties(&prop, stream.device);
+  if (err != cudaSuccess) {
+    return cudaGetErrorString(err);
+  }
   cudaLaunchConfig_t config = {
       .stream = stream.stream,
   };
-  if (inpS.c < 1024) {
+  if (inpS.c < prop.maxThreadsPerBlock) {
     config.blockDim.x = inpS.c;
   } else {
-    config.blockDim.x = 1024;
+    config.blockDim.x = prop.maxThreadsPerBlock;
   }
   config.gridDim.x = inpS.r;
 

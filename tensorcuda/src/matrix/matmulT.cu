@@ -57,8 +57,8 @@ __global__ void matmulT(
   }
 }
 
-char const *libtcCudaMatMulT(
-    libtcCudaStream &stream, double *out, double *inp1, double *inp2T,
+char const *tcuMatMulT(
+    tcuStream &stream, double *out, double *inp1, double *inp2T,
     uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 ) {
   auto err = cudaSetDevice(stream.device);

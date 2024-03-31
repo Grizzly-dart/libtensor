@@ -65,8 +65,8 @@ col = blockIdx.x * blockDim.x + threadIdx.x;
 }
 */
 
-char const *libtcCudaMatMul(
-    libtcCudaStream &stream, double *out, double *inp1, double *inp2,
+char const *tcuMatMul(
+    tcuStream &stream, double *out, double *inp1, double *inp2,
     uint32_t m, uint32_t n, uint32_t k, uint32_t batches
 ) {
   auto err = cudaSetDevice(stream.device);
@@ -97,7 +97,7 @@ char const *libtcCudaMatMul(
 }
 
 /*
-char const *libtcCudaMatMulSplit(uint32_t device, double *out, double *inp1, double *inp2,
+char const *tcuMatMulSplit(uint32_t device, double *out, double *inp1, double *inp2,
     uint32_t m, uint32_t n, uint32_t k, uint32_t batches) {
   auto serr = cudaSetDevice(device);
   if (serr != cudaSuccess) {
@@ -117,7 +117,7 @@ char const *libtcCudaMatMulSplit(uint32_t device, double *out, double *inp1, dou
     batchSize = batches;
   }
 
-  libtcCudaStreams streams = libtcCudaStreamsCreate{
+  tcuStreams streams = tcuStreamsCreate{
     .device = device,
     .streams = new cudaStream_t[(batches+batchSize-1)/batchSize],
     .count = batches/batchSize + 1,
@@ -127,14 +127,14 @@ char const *libtcCudaMatMulSplit(uint32_t device, double *out, double *inp1, dou
   try {
     while(batchStart < batches) {
       uint32_t split = batchSize <= batches - batchStart ? batchSize : batches - batchStart;
-      libtcCudaStream stream = libtcCudaStreamCreate(device);
+      tcuStream stream = tcuStreamCreate(device);
       streams.streams[splitId] = stream.stream;
       // TODO
       batchStart += batchSize;
       splitId++;
     }
   } catch(...) {
-    libtcCudaStreamsDestroy(streams);
+    tcuStreamsDestroy(streams);
     return "Error";
   }
   // TODO
