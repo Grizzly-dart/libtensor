@@ -96,6 +96,11 @@ typedef enum PadMode : uint8_t {
   REPLICATION
 } PadMode;
 
+extern const char *libtcCudaNeg(
+    libtcCudaStream &stream, void *out, void *inp, uint64_t n,
+    dtype outType, dtype inType
+);
+
 extern const char *libtcCudaSin(
     libtcCudaStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
@@ -131,25 +136,29 @@ extern const char *libtcCudaMinThreshold(
     void *value, uint64_t n, dtype dtype
 );
 
-extern const char *libtcCudaAdd(
-    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
-    dtype outType, dtype inp1Type, dtype inp2Type
+extern const char *libtcCudaPlus(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, void *scalar,
+    uint64_t n, uint8_t flipScalar, dtype outType, dtype inp1Type,
+    dtype inp2Type
 );
 
-extern const char *libtcCudaSub(
-    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
-    dtype outType, dtype inp1Type, dtype inp2Type
+extern const char *libtcCudaMinus(
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, void *scalar,
+    uint64_t n, uint8_t flipScalar, dtype outType, dtype inp1Type,
+    dtype inp2Type
 );
 
 extern const char *libtcCudaMul(
-    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
-    dtype outType, dtype inp1Type, dtype inp2Type
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, void *scalar,
+    uint64_t n, uint8_t flipScalar, dtype outType, dtype inp1Type,
+    dtype inp2Type
 );
 
 extern const char *libtcCudaDiv(
-    libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,
-    dtype outType, dtype inp1Type, dtype inp2Type
-);
+    libtcCudaStream &stream, void *out, void *inp1, void *inp2, void *scalar,
+    uint64_t n, uint8_t flipScalar, dtype outType, dtype inp1Type,
+    dtype inp2Type
+); 
 
 extern const char *libtcCudaAddScalar(
     libtcCudaStream &stream, void *out, void *inp1, void *inp2, uint64_t n,

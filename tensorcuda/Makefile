@@ -8,7 +8,7 @@ BUILD_TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$
 RUN_TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$" | xargs basename -a -s .cpp  | awk '{print "run_"$$0}'}
 
 build/libtensorcuda.so: $(SOURCES) $(HEADERS)
-	python3 scripts/elementwise_gen.py
+	python3 scripts/ewise_arith_gen.py
 	$(NVCC) -I ./include --compiler-options '-fPIC' --shared --expt-relaxed-constexpr -o $@ $(SOURCES)
 
 build: build/libtensorcuda.so

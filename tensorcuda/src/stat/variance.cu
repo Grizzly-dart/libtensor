@@ -5,16 +5,12 @@
 #include <reducers.hpp>
 #include <string>
 
-template <typename O, typename I>
-__global__ void variance(
-    O *out, I *inp, uint64_t nel, uint64_t correction
-) {
+template <typename I>
+__global__ void variance(double *out, I *inp, uint64_t nel, uint64_t correction) {
   uint32_t numThreads = blockDim.x;
 
-  inp += row * numCols;
-
   Variance<double> record{};
-  for (uint64_t col = threadIdx.x; col < numCols; col += numThreads) {
+  for (uint64_t col = threadIdx.x; col < nel; col += numThreads) {
     record.consume(inp[col]);
   }
   __syncthreads();
@@ -48,7 +44,6 @@ __global__ void variance(
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    O val = record.m2 / (numCols - correction);
-    *out = val;
+    *out = record.m2 / (nel - correction);
   }
 }

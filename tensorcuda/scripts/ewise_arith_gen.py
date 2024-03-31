@@ -1,4 +1,4 @@
-f = open("src/ewise/ewise_scalar_binary_arith_gen.inc", "w")
+f = open("src/ewise/ewise_arith_gen.inc", "w")
 
 class Type:
   def __init__(self, name, short):
@@ -18,17 +18,31 @@ types = [
   Type(name="uint8_t", short="u8"),
 ]
 
-ops = ["add", "sub", "subLhs", "mul", "div", "divLhs"]
+ops = ["plus", "minus", "mul", "div", "pow"]
+
+def genSigs(op: str):
+  f.write("""
+template<typename O, typename I1, typename I2>
+__global__ void %s(O* out, I1* inp1, I2* inp2, I2 scalar, uint64_t n, uint8_t flipScalar);
+""" % op)
+  
 
 def gen(op: str):
   str = """
-const char* libtcCuda%s(libtcCudaStream& stream, void* out, void* inp1, void* inp2, uint64_t n, dtype outType, dtype inp1Type, dtype inp2Type) {
+
+const char* libtcCuda%s(libtcCudaStream& stream, void* out, void* inp1, void* inp2, void* scalar,
+    uint64_t n, uint8_t flipScalar, dtype outType, dtype inp1Type, dtype inp2Type) {
+  if((scalar == nullptr) == (inp2 == nullptr)) {
+    return "Confusing input";
+  }
+
   cudaLaunchConfig_t config{};
   auto serr = setupElementwiseKernel(stream, n, config);
   if (serr != nullptr) {
     return serr;
   }
 
+  cudaError_t err;
 """ % (op.capitalize())
   
   for o in types:
@@ -43,13 +57,14 @@ const char* libtcCuda%s(libtcCudaStream& stream, void* out, void* inp1, void* in
         str += "    if (inp1Type == %s) {\n" % i1.short
       for i2 in types:
         if i2.name != "double":
-          str += " else if (inp2Type == %s) {" % i2.short
+          str += " else if (inp2Type == %s) {\n" % i2.short
         else:
-          str += "      if (inp2Type == %s) {" % i2.short
+          str += "      if (inp2Type == %s) {\n" % i2.short
+        str += "        %s s = scalar == nullptr ? 0 : *(%s *)scalar;" % (i2.name, i2.name)
         str += """
         err = cudaLaunchKernelEx(
           &config, %s<%s, %s, %s>, (%s *)out,
-          (%s *)inp1, (%s *)inp2, n
+          (%s *)inp1, (%s *)inp2, s, n, flipScalar
         );
       }""" % (op, o.name, i1.name, i2.name, o.name, i1.name, i2.name)
       str += """ else {
@@ -61,8 +76,7 @@ const char* libtcCuda%s(libtcCudaStream& stream, void* out, void* inp1, void* in
     }
   }"""
     
-  str += """
-  } else {
+  str += """ else {
     return "Unsupported output type";
   }
 
@@ -137,8 +151,12 @@ f.write(
 #include <string>
 """)
 
+#for op in ops:
+#  f.write(genScalar(op = op))
+
+
 for op in ops:
-  f.write(genScalar(op = op))
+  genSigs(op = op)
 
 for op in ops:
   if op.endswith("Lhs"): continue

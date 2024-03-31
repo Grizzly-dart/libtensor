@@ -1,3 +1,5 @@
+exit(0)
+
 f = open("src/ewise/elementwise_gen.inc", "w")
 
 class Type:

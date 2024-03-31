@@ -5,8 +5,8 @@
 #include <reducers.hpp>
 #include <string>
 
-template <typename O, typename I>
-__global__ void mean(O *out, I *inp, uint64_t nel) {
+template <typename I>
+__global__ void mean(double *out, I *inp, uint64_t nel) {
   uint32_t numThreads = blockDim.x;
 
   Mean<double> record{};
