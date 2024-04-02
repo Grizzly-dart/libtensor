@@ -38,9 +38,7 @@ const char *tcuDestroyStream(tcuStream *ret) {
   return nullptr;
 }
 
-void tcuFinalizeStream(tcuStream *ret) {
-  tcuDestroyStream(ret);
-}
+void tcuFinalizeStream(tcuStream *ret) { tcuDestroyStream(ret); }
 
 typedef struct {
   tcuStream *stream;
@@ -90,6 +88,7 @@ const char *tcuAlloc(tcuStream &stream, void **mem, uint64_t size) {
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
+
   err = cudaMallocAsync(mem, size, stream.stream);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -115,7 +114,7 @@ const char *tcuMemcpy(tcuStream &stream, void *dst, void *src, uint64_t size) {
     return cudaGetErrorString(err);
   }
   cudaStream_t s = stream.stream;
-  if(s == nullptr) {
+  if (s == nullptr) {
     err = cudaStreamCreate(&s);
     if (err != cudaSuccess) {
       return cudaGetErrorString(err);
@@ -126,9 +125,16 @@ const char *tcuMemcpy(tcuStream &stream, void *dst, void *src, uint64_t size) {
     cudaStreamDestroy(s);
     return cudaGetErrorString(err);
   }
-  err = cudaStreamDestroy(s);
-  if (err != cudaSuccess) {
-    return cudaGetErrorString(err);
+  if (stream.stream == nullptr) {
+    err = cudaStreamSynchronize(stream.stream);
+    if (err != cudaSuccess) {
+      cudaStreamDestroy(s);
+      return cudaGetErrorString(err);
+    }
+    err = cudaStreamDestroy(s);
+    if (err != cudaSuccess) {
+      return cudaGetErrorString(err);
+    }
   }
   return nullptr;
 }
