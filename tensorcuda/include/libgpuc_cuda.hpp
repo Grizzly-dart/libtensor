@@ -54,7 +54,10 @@ const char *tcuGetDeviceProps(tcuDeviceProps &ret, int32_t device);
 const char *tcuGetMemInfo(tcuMemInfo &memInfo, int32_t device);
 
 const char *tcuCreateStream(tcuStream &ret, int32_t device);
-const char *tcuDestroyStream(tcuStream &stream);
+const char *tcuDestroyStream(tcuStream *stream);
+/// Destroys stream and frees memory. Ignores errors and
+/// conforms to void (*)(void*) signature.
+extern void tcuFinalizeStream(tcuStream *ret);
 const char *tcuSyncStream(tcuStream *stream, void (*callback)(const char *));
 
 const char *tcuAlloc(tcuStream &stream, void **mem, uint64_t size);
