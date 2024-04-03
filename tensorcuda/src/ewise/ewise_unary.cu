@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <limits>
 
 #include <cuda_runtime.h>
 
@@ -31,13 +32,13 @@ __global__ void neg(O *out, I *inp, uint64_t nel, I minVal, I maxVal) {
 }
 
 template <typename T>
-__global__ void abs(T *out, T *inp, uint64_t nel, T minVal, T maxVal) {
+__global__ void abs(T *out, T *inp, uint64_t nel) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
 
   for (uint64_t i = thId; i < nel; i += numThreads) {
-    if (inp[i] == minVal) {
-      out[i] = maxVal;
+    if (inp[i] == std::numeric_limits<T>::min()) {
+      out[i] = std::numeric_limits<T>::max();
     } else {
       out[i] = inp[i] >= 0 ? inp[i] : -inp[i];
     }
@@ -190,26 +191,22 @@ const char *tcuAbs(
     if (outType != dtype::f64)
       return "Expected f64 output";
     err = cudaLaunchKernelEx(
-        &config, neg<double, double>, (double *)out, (double *)inp, n,
-        __DBL_MIN__, __DBL_MAX__
+        &config, neg<double, double>, (double *)out, (double *)inp, n
     );
   } else if (inType == dtype::f32) {
     if (outType != dtype::f32)
       return "Expected f32 output";
     err = cudaLaunchKernelEx(
-        &config, neg<float, float>, (float *)out, (float *)inp, n, __FLT_MIN__,
-        __FLT_MAX__
+        &config, neg<float, float>, (float *)out, (float *)inp, n
     );
   } else if (inType == dtype::i64) {
     if (outType == dtype::i64) {
       err = cudaLaunchKernelEx(
-          &config, neg<int64_t, int64_t>, (int64_t *)out, (int64_t *)inp, n,
-          INT64_MIN, INT64_MAX
+          &config, neg<int64_t, int64_t>, (int64_t *)out, (int64_t *)inp, n
       );
     } else if (outType == dtype::u64) {
       err = cudaLaunchKernelEx(
-          &config, neg<uint64_t, int64_t>, (uint64_t *)out, (int64_t *)inp, n,
-          INT64_MIN, INT64_MAX
+          &config, neg<uint64_t, int64_t>, (uint64_t *)out, (int64_t *)inp, n
       );
     } else {
       return "Unsupported input type";
@@ -225,13 +222,11 @@ const char *tcuAbs(
   } else if (inType == dtype::i32) {
     if (outType == dtype::i32) {
       err = cudaLaunchKernelEx(
-          &config, neg<int32_t, int32_t>, (int32_t *)out, (int32_t *)inp, n,
-          INT32_MIN, INT32_MAX
+          &config, neg<int32_t, int32_t>, (int32_t *)out, (int32_t *)inp, n
       );
     } else if (outType == dtype::u32) {
       err = cudaLaunchKernelEx(
-          &config, neg<uint32_t, int32_t>, (uint32_t *)out, (int32_t *)inp, n,
-          INT32_MIN, INT32_MAX
+          &config, neg<uint32_t, int32_t>, (uint32_t *)out, (int32_t *)inp, n
       );
     } else {
       return "Unsupported input type";
@@ -247,13 +242,11 @@ const char *tcuAbs(
   } else if (inType == dtype::i16) {
     if (outType == dtype::i16) {
       err = cudaLaunchKernelEx(
-          &config, neg<int16_t, int16_t>, (int16_t *)out, (int16_t *)inp, n,
-          INT16_MIN, INT16_MAX
+          &config, neg<int16_t, int16_t>, (int16_t *)out, (int16_t *)inp, n
       );
     } else if (outType == dtype::u16) {
       err = cudaLaunchKernelEx(
-          &config, neg<uint16_t, int16_t>, (uint16_t *)out, (int16_t *)inp, n,
-          INT16_MIN, INT16_MAX
+          &config, neg<uint16_t, int16_t>, (uint16_t *)out, (int16_t *)inp, n
       );
     } else {
       return "Unsupported input type";
@@ -269,13 +262,11 @@ const char *tcuAbs(
   } else if (inType == dtype::i8) {
     if (outType == dtype::i8) {
       err = cudaLaunchKernelEx(
-          &config, neg<int8_t, int8_t>, (int8_t *)out, (int8_t *)inp, n,
-          INT8_MIN, INT8_MAX
+          &config, neg<int8_t, int8_t>, (int8_t *)out, (int8_t *)inp, n
       );
     } else if (outType == dtype::u8) {
       err = cudaLaunchKernelEx(
-          &config, neg<uint8_t, int8_t>, (uint8_t *)out, (int8_t *)inp, n,
-          INT8_MIN, INT8_MAX
+          &config, neg<uint8_t, int8_t>, (uint8_t *)out, (int8_t *)inp, n
       );
     } else {
       return "Unsupported input type";
