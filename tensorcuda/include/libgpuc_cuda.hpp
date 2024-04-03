@@ -3,11 +3,11 @@
 
 #include <cstdint>
 
+#include "tensorc.hpp"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "tensorc.hpp"
 
 #define MAX_THREADS_PER_BLOCK 1024U
 

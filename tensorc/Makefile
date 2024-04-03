@@ -17,6 +17,7 @@ ifeq ($(OS),cygwin)
 endif
 
 build/libtensorc.so: $(SOURCES)
+	python3 scripts/ewise_binary_arith.py
 	${CPP} ${CPPFLAGS} -c -std=c++20 -fPIC -I ./include -L ./build -o build/tensorc.o $(SOURCES)
 	${CPP} -shared -o build/libtensorc.so build/tensorc.o
 
