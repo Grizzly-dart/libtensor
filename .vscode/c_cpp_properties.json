@@ -5,7 +5,9 @@
             "includePath": [
                 "${workspaceFolder}/tensorc/include",
                 "${workspaceFolder}/tensorcuda/include",
-                "/usr/local/cuda/include"
+                "/usr/local/cuda/include",
+                "/opt/homebrew/include/c++/13",
+                "/opt/homebrew/include/c++/13/aarch64-apple-darwin23"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

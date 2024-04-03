@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#include "tensorc.h"
+#include "tensorc.hpp"
 
 #define MAX_THREADS_PER_BLOCK 1024U
 

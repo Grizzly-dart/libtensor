@@ -1,7 +1,10 @@
 #ifndef TENSORC_H
 #define TENSORC_H
 
-#include <cstdint>
+#include <stdint.h>
+
+template<typename O, typename I1, typename I2>
+const char* tcPlus(O* out, const I1* inp1, const I2* inp2, const I2* scalar, uint64_t nel, uint8_t flip);
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,9 +47,11 @@ typedef enum PadMode : uint8_t {
   REPLICATION
 } PadMode;
 
-extern void libtcFree(void* ptr);
-extern void* libtcRealloc(void* ptr, uint64_t size);
-extern void libtcMemcpy(void* dst, void* src, uint64_t size);
+extern void tcFree(void* ptr);
+extern void* tcRealloc(void* ptr, uint64_t size);
+extern void tcMemcpy(void* dst, void* src, uint64_t size);
+
+template const char* tcPlus(double* out, const double* inp1, const double* inp2, const double* scalar, uint64_t nel, uint8_t flip);
 
 #ifdef __cplusplus
 }
