@@ -5,7 +5,6 @@
 #include <reducers.hpp>
 #include <string>
 
-// TODO affine transform
 template <typename O, typename I>
 __global__ void normalize2d(O *out, I *inp, uint64_t numCols, double epsilon) {
   uint32_t numThreads = blockDim.x;

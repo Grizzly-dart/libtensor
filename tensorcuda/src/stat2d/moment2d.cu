@@ -7,7 +7,7 @@
 
 template <typename O, typename I>
 __global__ void moments2d(
-    O *out, I *inp, uint64_t numCols, uint64_t correction, uint8_t calcStd
+    O *means, O* variances, I *inp, uint64_t numCols, uint64_t correction, uint8_t calcStd
 ) {
   uint32_t numThreads = blockDim.x;
   uint32_t row = blockIdx.x;
@@ -49,8 +49,8 @@ __global__ void moments2d(
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    out[row * 2] = record.mean;
-    out[row * 2 + 1] = record.m2 / (numCols - correction);
+    means[row] = record.mean;
+    variances[row] = record.m2 / (numCols - correction);
   }
 }
 
