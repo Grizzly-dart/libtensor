@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "libgpuc_cuda.hpp"
+#include "tensorcuda.hpp"
 
 // Function declarations
 template <typename T>

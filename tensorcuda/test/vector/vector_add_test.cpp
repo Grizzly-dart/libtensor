@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 
 const auto size = 5;
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <cassert>
 
-#include "libgpuc_cuda.hpp"
+#include "tensorcuda.hpp"
 #include "padding.hpp"
 
 #define BLOCK_SIZE 32

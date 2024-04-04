@@ -3,7 +3,7 @@
 
 #include <cuda_runtime.h>
 
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 
 /// Adds two tensors
 template <typename O, typename I1, typename I2>

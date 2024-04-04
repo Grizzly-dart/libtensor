@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #include <cstdint>
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 #include <string>
 
 #define TILE_SIZE 32

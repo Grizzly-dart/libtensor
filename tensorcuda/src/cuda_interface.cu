@@ -3,7 +3,7 @@
 #include <pthread.h>
 
 #include <cstdint>
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 #include <string>
 
 const char *tcuCreateStream(tcuStream &ret, int32_t device) {

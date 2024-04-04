@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cassert>
-#include "libgpuc_cuda.hpp"
+#include "tensorcuda.hpp"
 
 using namespace std;
 

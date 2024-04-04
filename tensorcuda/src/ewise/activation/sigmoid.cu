@@ -1,7 +1,7 @@
 #include <cuda_runtime.h>
 
 #include <cstdint>
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 #include <reducers.hpp>
 #include <string>
 

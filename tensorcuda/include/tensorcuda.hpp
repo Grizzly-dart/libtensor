@@ -1,5 +1,5 @@
-#ifndef LIBGPUC_CUDA_HPP
-#define LIBGPUC_CUDA_HPP
+#ifndef TENSORCUDA_HPP
+#define TENSORCUDA_HPP
 
 #include <cstdint>
 
@@ -264,4 +264,4 @@ const char *setupElementwiseKernel(
     tcuStream &stream, uint64_t n, cudaLaunchConfig_t &config
 );
 
-#endif // LIBGPUC_CUDA_HPP
+#endif // TENSORCUDA_HPP

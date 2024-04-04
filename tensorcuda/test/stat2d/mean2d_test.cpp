@@ -1,6 +1,6 @@
 #include <cassert>
 #include <iostream>
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 
 double mean(double* in, uint64_t n) {
   double mean = 0;

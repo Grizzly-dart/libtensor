@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "libgpuc_cuda.hpp"
+#include "tensorcuda.hpp"
 #include "padding.hpp"
 
 template <typename T>

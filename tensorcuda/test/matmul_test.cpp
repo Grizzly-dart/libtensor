@@ -1,6 +1,6 @@
 #include <cassert>
 #include <iostream>
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 
 double matmulVal(double* in1, double* in2, uint64_t m, uint64_t n, uint64_t k, uint64_t i, uint64_t j) {
   double sum = 0;

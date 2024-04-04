@@ -3,7 +3,7 @@
 
 #include <cuda_runtime.h>
 
-#include <libgpuc_cuda.hpp>
+#include <tensorcuda.hpp>
 
 template <typename O, typename I>
 __global__ void sinKernel(O *out, I *inp, uint64_t n) {
