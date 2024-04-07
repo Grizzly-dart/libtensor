@@ -35,6 +35,8 @@ typedef struct {
   uint32_t c;
 
   /*__device__ __host__*/ Dim2 toDim2() { return {r, c}; };
+
+  [[nodiscard]] uint64_t nel() const { return ch * r * c; }
 } Dim3;
 
 typedef enum PadMode : uint8_t {
