@@ -2,13 +2,48 @@
 #include <execution>
 #include <experimental/simd>
 #include <iostream>
+#include <memory>
 
 #include "typed_array.hpp"
 
 namespace stdx = std::experimental;
 
-template <typename T> void tcPlus(T *out, const T *inp1, const T *inp2) {
+template <typename O, typename I1, typename I2>
+void tcPlus(
+    O *out, I1 *inp1, I2 *inp2, uint64_t nel, uint8_t flip, Dim3 size,
+    ArithMode mode
+) {
+  size_t width = std::min(
+      std::min(stdx::native_simd<O>::size(), stdx::native_simd<I1>::size()),
+      stdx::native_simd<I2>::size()
+  );
+  printf("width: %zu\n", width);
+  std::unique_ptr<SimdIter<I1>> in1It =
+      std::make_unique<SimdIterator<I1>>(inp1, width, nel);
+  std::unique_ptr<SimdIter<I2>> in2It;
+  if (mode == ArithMode::ewise) {
+    in2It = std::make_unique<SimdIterator<I2>>(inp2, width, nel);
+  } else if (mode == ArithMode::rwise) {
+    in2It = std::make_unique<RwiseSimdIterator<I2>>(inp2, width, size);
+  } else if (mode == ArithMode::scalar) {
+    in2It = std::make_unique<ScalarSimdInpIter<I2>>(
+        ScalarSimdInpIter<I2>(5, width, nel)
+    );
+  } else {
+    throw std::invalid_argument("Invalid mode");
+  }
+  auto outIt = SimdIterator<uint8_t>(out, width, nel);
 
+  std::for_each(
+      std::execution::par, (*in1It).countBegin(), (*in1It).countEnd(),
+      [&in1It, &in2It, &outIt, flip](uint64_t a) {
+        if (flip == 0) {
+          outIt[a] = in1It->at(a) + in2It->at(a);
+        } else {
+          outIt[a] = in2It->at(a) - in1It->at(a);
+        }
+      }
+  );
 }
 
 int main() {
@@ -23,13 +58,15 @@ int main() {
     inp2[i] = i % 256;
   }
 
-  uint8_t simdSize = 16;
+  tcPlus<uint8_t, uint8_t, uint8_t>(out, inp1, inp2, size.nel(), 0, size, ArithMode::ewise);
 
-  auto in1It = SimdInpIterator<uint8_t>(inp1, simdSize, size.nel());
-  // auto in2It = SimdInpIterator<uint8_t>(inp2, simdSize, size.nel());
+  /*uint8_t simdSize = 16;
+
+  auto in1It = SimdIterator<uint8_t>(inp1, simdSize, size.nel());
+  // auto in2It = SimdIterator<uint8_t>(inp2, simdSize, size.nel());
   // auto in2It = ScalarSimdInpIter<uint8_t>(5, simdSize, size.nel(), 0);
   auto in2It = RwiseSimdIterator<uint8_t>(inp2, simdSize, size, 0);
-  auto outIt = SimdInpIterator<uint8_t>(out, simdSize, size.nel());
+  auto outIt = SimdIterator<uint8_t>(out, simdSize, size.nel());*/
 
   /*std::for_each(
       std::execution::par, in1It.begin(), in1It.end(),
@@ -38,19 +75,20 @@ int main() {
       }
   );*/
 
-  std::for_each(
+  /*std::for_each(
       std::execution::par, in1It.countBegin(), in1It.countEnd(),
       [&in1It, &in2It, &outIt, simdSize](uint64_t a) {
         auto inp1 = *in1It[a];
         auto inp2 = *in2It[a];
         std::cout << "a: " << a << " ";
         for (uint8_t i = 0; i < simdSize; i++) {
-          std::cout << "(" << (uint64_t)(uint8_t)inp1[i] << " " << (uint64_t)(uint8_t)inp2[i] << ") ";
+          std::cout << "(" << (uint64_t)(uint8_t)inp1[i] << " "
+                    << (uint64_t)(uint8_t)inp2[i] << ") ";
         }
         std::cout << std::endl;
         outIt[a] = *in1It[a] + *in2It[a];
       }
-  );
+  );*/
 
   /*std::for_each(
       std::execution::par, in1It.countBegin(), in1It.countEnd(),
@@ -68,10 +106,15 @@ int main() {
 
   for (uint64_t i = 0; i < size.nel(); i++) {
     printf("%d %d %d\n", inp1[i], inp2[i], out[i]);
+    if ((uint8_t)(inp1[i] + inp2[i]) != out[i]) {
+      printf("Error at %lu; %u + %u != %u\n", i, inp1[i], inp2[i], out[i]);
+      return 1;
+    }
   }
 
   delete[] inp1;
   delete[] inp2;
+  delete[] out;
 
   return 0;
 }

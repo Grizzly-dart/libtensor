@@ -39,6 +39,12 @@ typedef struct {
   [[nodiscard]] uint64_t nel() const { return ch * r * c; }
 } Dim3;
 
+enum ArithMode : uint8_t {
+  ewise,
+  rwise,
+  scalar,
+};
+
 typedef enum PadMode : uint8_t {
   CONSTANT,
   CIRCULAR,

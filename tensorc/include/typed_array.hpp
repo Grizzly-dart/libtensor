@@ -122,7 +122,32 @@ public:
   }
 };
 
-template <typename T> class SimdInpIterator {
+template <typename T> class SimdIter {
+public:
+  using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using size_type = std::size_t;
+  using value_type = stdx::native_simd<T>;
+  using pointer = value_type *;
+
+  uint16_t width;
+
+  explicit SimdIter(uint16_t width) : width(width){};
+
+  [[nodiscard]] virtual Range countBegin() const = 0;
+
+  [[nodiscard]] virtual Range countEnd() const = 0;
+
+  virtual value_type operator*() const = 0;
+
+  virtual value_type at(size_type i) const = 0;
+
+  virtual value_type &loadAt(size_type i, value_type &simd) const = 0;
+
+  virtual ~SimdIter() = default;
+};
+
+template <typename T> class SimdIterator : public SimdIter<T> {
 public:
   using iterator_category = std::random_access_iterator_tag;
   using difference_type = std::ptrdiff_t;
@@ -131,113 +156,134 @@ public:
   using pointer = value_type *;
 
   T *ptr;
-  uint16_t width;
+  int64_t index;
   int64_t length;
 
-  SimdInpIterator(T *ptr, uint16_t width, int64_t length)
-      : ptr(ptr), width(width), length(length){};
+  SimdIterator(T *ptr, uint16_t width, int64_t length, int64_t index = 0)
+      : ptr(ptr), length(length), index(index), SimdIter<T>(width){};
 
-  SimdInpIterator(const SimdInpIterator &other) = default;
+  SimdIterator(const SimdIterator &other) = default;
 
-  Range countBegin() { return Range(0); }
+  [[nodiscard]] Range countBegin() const { return Range(0); }
 
-  Range countEnd() { return Range((length + width - 1) / width); }
+  [[nodiscard]] Range countEnd() const {
+    return Range((length + this->width - 1) / this->width);
+  }
 
   value_type operator*() const {
     value_type simd;
-    for (int i = 0; i < width; i++) {
-      if (i >= length) {
+    return this->loadAt(0, simd);
+  }
+
+  value_type at(size_type i) const {
+    value_type simd;
+    return this->loadAt(i, simd);
+  }
+
+  value_type &loadAt(size_type ind, value_type &simd) const {
+    for (size_type i = 0; i < this->width; i++) {
+      if (index + ind * this->width + i >= length) {
         break;
       }
-      simd[i] = ptr[i];
+      simd[i] = ptr[index + ind * this->width + i];
     }
     return simd;
   }
 
-  SimdInpIterator &operator=(const value_type &simd) {
-    for (int i = 0; i < width; i++) {
-      if (i >= length) {
+  void storeAt(size_type ind, const value_type &simd) {
+    size_type ptrIndex = index + ind * this->width;
+    for (size_type i = 0; i < this->width; i++) {
+      if (ptrIndex + i >= length) {
         break;
       }
-      ptr[i] = simd[i];
+      ptr[ptrIndex + i] = simd[i];
+    }
+  }
+
+  SimdIterator &operator=(const value_type &simd) {
+    for (int i = 0; i < this->width; i++) {
+      if (index + i >= length) {
+        break;
+      }
+      ptr[index + i] = simd[i];
     }
     return *this;
   }
 
-  SimdInpIterator operator[](size_type i) {
-    return SimdInpIterator(ptr + i * width, width, length - i * width);
+  SimdIterator operator[](size_type i) const {
+    return SimdIterator(ptr, this->width, length, index + i * this->width);
   }
 
-  SimdInpIterator &operator++() {
-    ptr += width;
-    length -= width;
+  SimdIterator &operator++() {
+    index += this->width;
     return *this;
   }
 
-  SimdInpIterator operator++(int) {
-    SimdInpIterator tmp = *this;
+  SimdIterator operator++(int) {
+    SimdIterator tmp = *this;
     ++(*this);
     return tmp;
   }
 
-  SimdInpIterator &operator--() {
-    ptr -= width;
-    length += width;
+  SimdIterator &operator--() {
+    index -= this->width;
     return *this;
   }
 
-  SimdInpIterator operator--(int) {
-    SimdInpIterator tmp = *this;
+  SimdIterator operator--(int) {
+    SimdIterator tmp = *this;
     --(*this);
     return tmp;
   }
 
-  SimdInpIterator &operator+=(difference_type n) {
-    ptr += width * n;
-    length -= width * n;
+  SimdIterator &operator+=(difference_type n) {
+    index += this->width * n;
     return *this;
   }
 
-  SimdInpIterator &operator-=(difference_type n) {
-    ptr -= width * n;
-    length += width * n;
+  SimdIterator &operator-=(difference_type n) {
+    index -= this->width * n;
     return *this;
   }
 
-  SimdInpIterator operator+(difference_type n) const { return *this += n; }
-
-  SimdInpIterator operator-(difference_type n) const { return *this -= n; }
-
-  difference_type operator-(const SimdInpIterator &rhs) const {
-    return ptr - rhs.ptr;
+  SimdIterator operator+(difference_type n) const {
+    return SimdIterator(ptr, this->width, length, index + this->width * n);
   }
 
-  friend bool operator==(const SimdInpIterator &a, const SimdInpIterator &b) {
-    return a.ptr == b.ptr;
+  SimdIterator operator-(difference_type n) const {
+    return SimdIterator(ptr, this->width, length, index - this->width * n);
+  }
+
+  difference_type operator-(const SimdIterator &rhs) const {
+    return (index - rhs.index + this->width - 1) / this->width;
+  }
+
+  friend bool operator==(const SimdIterator &a, const SimdIterator &b) {
+    return a.index == b.index;
   };
 
-  friend bool operator!=(const SimdInpIterator &a, const SimdInpIterator &b) {
-    return a.ptr != b.ptr;
+  friend bool operator!=(const SimdIterator &a, const SimdIterator &b) {
+    return a.index != b.index;
   };
 
-  friend bool operator<(const SimdInpIterator &a, const SimdInpIterator &b) {
-    return a.ptr < b.ptr;
+  friend bool operator<(const SimdIterator &a, const SimdIterator &b) {
+    return a.index < b.index;
   };
 
-  friend bool operator>(const SimdInpIterator &a, const SimdInpIterator &b) {
-    return a.ptr > b.ptr;
+  friend bool operator>(const SimdIterator &a, const SimdIterator &b) {
+    return a.index > b.index;
   };
 
-  friend bool operator<=(const SimdInpIterator &a, const SimdInpIterator &b) {
-    return a.ptr <= b.ptr;
+  friend bool operator<=(const SimdIterator &a, const SimdIterator &b) {
+    return a.index <= b.index;
   };
 
-  friend bool operator>=(const SimdInpIterator &a, const SimdInpIterator &b) {
-    return a.ptr >= b.ptr;
+  friend bool operator>=(const SimdIterator &a, const SimdIterator &b) {
+    return a.index >= b.index;
   };
 };
 
-template <typename T> class RwiseSimdIterator {
+template <typename T> class RwiseSimdIterator : public SimdIter<T> {
 public:
   using iterator_category = std::random_access_iterator_tag;
   using difference_type = std::ptrdiff_t;
@@ -246,36 +292,46 @@ public:
   using pointer = value_type *;
 
   T *ptr;
-  uint16_t width;
   Dim3 size;
   int64_t index;
 
-  RwiseSimdIterator(T *ptr, uint16_t width, Dim3 size, int64_t index)
-      : ptr(ptr), width(width), size(size), index(index){};
+  RwiseSimdIterator(T *ptr, uint16_t width, Dim3 size, int64_t index = 0)
+      : ptr(ptr), size(size), index(index), SimdIter<T>(width){};
 
   RwiseSimdIterator(const RwiseSimdIterator &other) = default;
 
-  Range countBegin() { return Range(0); }
+  [[nodiscard]] Range countBegin() const { return Range(0); }
 
-  Range countEnd() { return Range((size.nel() + width - 1) / width); }
+  [[nodiscard]] Range countEnd() const {
+    return Range((size.nel() + this->width - 1) / this->width);
+  }
 
   value_type operator*() const {
-    value_type simd{0};
-    for (int i = 0; i < width; i++) {
-      if (index + i >= size.nel()) {
+    value_type ret;
+    return this->loadAt(0, ret);
+  }
+
+  value_type at(size_type i) const {
+    value_type ret;
+    return (*this + i).loadAt(i, ret);
+  }
+
+  value_type &loadAt(size_type ind, value_type &simd) const {
+    for (size_type i = 0; i < this->width; i++) {
+      if (this->index + ind * this->width + i >= size.nel()) {
         break;
       }
-      simd[i] = ptr[((index + i) / size.c) % size.r];
+      simd[i] = ptr[((this->index + ind * this->width + i) / size.c) % size.r];
     }
     return simd;
   }
 
   RwiseSimdIterator operator[](size_type i) const {
-    return RwiseSimdIterator(ptr, width, size, index + i * width);
+    return RwiseSimdIterator(ptr, this->width, size, index + i * this->width);
   }
 
   RwiseSimdIterator &operator++() {
-    index += width;
+    index += this->width;
     return *this;
   }
 
@@ -286,7 +342,7 @@ public:
   }
 
   RwiseSimdIterator &operator--() {
-    index -= width;
+    index -= this->width;
     return *this;
   }
 
@@ -297,21 +353,21 @@ public:
   }
 
   RwiseSimdIterator &operator+=(difference_type n) {
-    index += width * n;
+    index += this->width * n;
     return *this;
   }
 
   RwiseSimdIterator &operator-=(difference_type n) {
-    index -= width * n;
+    index -= this->width * n;
     return *this;
   }
 
   RwiseSimdIterator operator+(difference_type n) const {
-        return RwiseSimdIterator(ptr, width, size, index + width * n);
+    return RwiseSimdIterator(ptr, this->width, size, index + this->width * n);
   }
 
   RwiseSimdIterator operator-(difference_type n) const {
-    return RwiseSimdIterator(ptr, width, size, index - width * n);
+    return RwiseSimdIterator(ptr, this->width, size, index - this->width * n);
   }
 
   difference_type operator-(const RwiseSimdIterator &rhs) const {
@@ -355,7 +411,7 @@ public:
   };
 };
 
-template <typename T> class ScalarSimdInpIter {
+template <typename T> class ScalarSimdInpIter : public SimdIter<T> {
 public:
   using iterator_category = std::random_access_iterator_tag;
   using difference_type = std::ptrdiff_t;
@@ -365,37 +421,50 @@ public:
   using reference = value_type &;
 
   T value;
-  value_type simd;
-  uint16_t width;
   int64_t index;
   int64_t length;
 
-  ScalarSimdInpIter(T value, uint16_t width, int64_t length, int64_t index)
-      : value(value), simd(value), width(width), length(length), index(index){};
+  ScalarSimdInpIter(T value, uint16_t width, int64_t length, int64_t index = 0)
+      : value(value), length(length), index(index), SimdIter<T>(width){};
 
   ScalarSimdInpIter(const ScalarSimdInpIter &other) = default;
 
   value_type operator*() const {
-    uint16_t diff = length - index;
-    if (diff >= width) {
+    value_type ret;
+    this->loadAt(0, ret);
+    return ret;
+  }
+
+  value_type at(size_type i) const {
+    value_type ret;
+    this->loadAt(i, ret);
+    return ret;
+  }
+
+  value_type &loadAt(size_type ind, value_type &simd) const {
+    uint16_t diff = length - index - ind * this->width;
+    if (diff >= this->width) {
+      simd = value;
       return simd;
     } else {
-      value_type ret{0};
       for (int i = 0; i < diff; i++) {
-        ret[i] = value;
+        simd[i] = value;
       }
-      return ret;
+      return simd;
     }
   }
+
   ScalarSimdInpIter operator[](size_type i) const { return *this + i; }
 
-  Range countBegin() { return Range(0); }
+  [[nodiscard]] Range countBegin() const { return Range(0); }
 
-  Range countEnd() { return Range((length + width - 1) / width); }
+  [[nodiscard]] Range countEnd() const {
+    return Range((length + this->width - 1) / this->width);
+  }
 
   ScalarSimdInpIter &operator++() {
-    index += width;
-    length -= width;
+    index += this->width;
+    length -= this->width;
     return *this;
   }
 
@@ -406,8 +475,8 @@ public:
   }
 
   ScalarSimdInpIter &operator--() {
-    index -= width;
-    length += width;
+    index -= this->width;
+    length += this->width;
     return *this;
   }
 
@@ -418,26 +487,26 @@ public:
   }
 
   ScalarSimdInpIter &operator+=(difference_type n) {
-    index += width * n;
-    length -= width * n;
+    index += this->width * n;
+    length -= this->width * n;
     return *this;
   }
 
   ScalarSimdInpIter &operator-=(difference_type n) {
-    index -= width * n;
-    length += width * n;
+    index -= this->width * n;
+    length += this->width * n;
     return *this;
   }
 
   ScalarSimdInpIter operator+(difference_type n) const {
     return ScalarSimdInpIter(
-        value, width, length - width * n, index + width * n
+        value, this->width, length - this->width * n, index + this->width * n
     );
   }
 
   ScalarSimdInpIter operator-(difference_type n) const {
     return ScalarSimdInpIter(
-        value, width, length + width * n, index - width * n
+        value, this->width, length + this->width * n, index - this->width * n
     );
   }
 

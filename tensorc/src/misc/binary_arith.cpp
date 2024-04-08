@@ -4,12 +4,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-enum ArithMode : uint8_t {
-  ewise,
-  rwise,
-  scalar,
-};
-
 /*
 template <typename O, typename I1, typename I2>
 const char *tcPlus(
