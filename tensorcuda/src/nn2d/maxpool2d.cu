@@ -38,7 +38,7 @@ const char* tcuMaxPool2d(tcuStream& stream, double* out, double* inp,
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp props;
+  cudaDeviceProp props{};
   err = cudaGetDeviceProperties(&props, stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

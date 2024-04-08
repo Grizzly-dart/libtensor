@@ -54,7 +54,7 @@ const char *tcuMean(
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp prop;
+  cudaDeviceProp prop{};
   err = cudaGetDeviceProperties(&prop, stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

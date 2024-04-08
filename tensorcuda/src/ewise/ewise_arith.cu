@@ -98,4 +98,4 @@ __global__ void pow(
   }
 }
 
-#include "ewise_arith_gen.inc"
+// #include "ewise_arith_gen.inc"

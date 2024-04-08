@@ -5,6 +5,7 @@
 #include <reducers.hpp>
 #include <string>
 
+/*
 template <typename O, typename I>
 __global__ void moments2d(
     O *means, O* variances, I *inp, uint64_t numCols, uint64_t correction, uint8_t calcStd
@@ -62,7 +63,7 @@ const char *tcuMoments2d(
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp props;
+  cudaDeviceProp props{};
   err = cudaGetDeviceProperties(&props, stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -196,3 +197,4 @@ const char *tcuMoments2d(
   }
   return nullptr;
 }
+*/

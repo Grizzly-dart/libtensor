@@ -1,10 +1,6 @@
 #include <cuda_runtime.h>
-#include <memory.h>
 #include <pthread.h>
-
-#include <cstdint>
 #include <tensorcuda.hpp>
-#include <string>
 
 const char *tcuCreateStream(tcuStream &ret, int32_t device) {
   auto err = cudaSetDevice(device);
@@ -60,7 +56,7 @@ void syncStream(syncStreamArgs *args) {
     return;
   }
   callback(nullptr);
-  pthread_exit(NULL);
+  pthread_exit(nullptr);
 }
 
 const char *tcuSyncStream(tcuStream *stream, void (*callback)(const char *)) {
@@ -79,7 +75,7 @@ const char *tcuSyncStream(tcuStream *stream, void (*callback)(const char *)) {
   }
 
   pthread_t thread;
-  pthread_create(&thread, NULL, (void *(*)(void *))syncStream, args);
+  pthread_create(&thread, nullptr, (void *(*)(void *))syncStream, args);
   return nullptr;
 }
 
@@ -152,7 +148,7 @@ const char *tcuGetMemInfo(tcuMemInfo &memInfo, int32_t device) {
 }
 
 const char *tcuGetDeviceProps(tcuDeviceProps &ret, int32_t device) {
-  cudaDeviceProp props;
+  cudaDeviceProp props{};
   auto err = cudaGetDeviceProperties(&props, device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -185,7 +181,7 @@ const char *setupElementwiseKernelStrided(
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp props;
+  cudaDeviceProp props{};
   err = cudaGetDeviceProperties(&props, stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -215,7 +211,7 @@ const char *setupElementwiseKernel(
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp props;
+  cudaDeviceProp props{};
   err = cudaGetDeviceProperties(&props, stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

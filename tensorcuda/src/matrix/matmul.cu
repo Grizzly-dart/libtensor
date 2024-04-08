@@ -104,7 +104,7 @@ char const *tcuMatMulSplit(uint32_t device, double *out, double *inp1, double *i
     return cudaGetErrorString(serr);
   }
 
-  cudaDeviceProp prop;
+  cudaDeviceProp prop{};
   auto err = cudaGetDeviceProperties(&prop, device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

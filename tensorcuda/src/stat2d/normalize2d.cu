@@ -5,6 +5,7 @@
 #include <reducers.hpp>
 #include <string>
 
+/*
 template <typename O, typename I>
 __global__ void normalize2d(O *out, I *inp, uint64_t numCols, double epsilon) {
   uint32_t numThreads = blockDim.x;
@@ -65,7 +66,7 @@ const char *tcuNormalize2d(
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp props;
+  cudaDeviceProp props{};
   err = cudaGetDeviceProperties(&props, stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
@@ -203,3 +204,4 @@ const char *tcuNormalize2d(
   }
   return nullptr;
 }
+*/

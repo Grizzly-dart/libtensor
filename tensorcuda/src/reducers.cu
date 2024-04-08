@@ -1,6 +1,4 @@
 #include <cstdint>
-#include <cstdio>
-
 #include <cuda_runtime.h>
 
 #include "reducers.hpp"

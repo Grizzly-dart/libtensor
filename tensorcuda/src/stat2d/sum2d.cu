@@ -59,7 +59,7 @@ const char *tcuSum2d(
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);
   }
-  cudaDeviceProp props;
+  cudaDeviceProp props{};
   err = cudaGetDeviceProperties(&props, stream.device);
   if (err != cudaSuccess) {
     return cudaGetErrorString(err);

@@ -1,0 +1,4 @@
+/home/tejag/.local/share/JetBrains/Toolbox/apps/clion/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/tejag/.local/share/JetBrains/Toolbox/apps/clion/bin/ninja/linux/x64/ninja -G Ninja -S /home/tejag/projects/dart/gpuc/libgpuc_cuda/tensorcuda -B /home/tejag/projects/dart/gpuc/libgpuc_cuda/tensorcuda/cmake
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/tejag/projects/dart/gpuc/libgpuc_cuda/tensorcuda/cmake
