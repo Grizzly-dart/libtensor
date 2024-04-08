@@ -9,6 +9,7 @@
 
 #include <experimental/simd>
 #include <iterator>
+#include <memory>
 
 #include "tensorc.hpp"
 
@@ -550,6 +551,66 @@ public:
     return a.index >= b.index;
   };
 };
+
+class IntInterpreter {
+public:
+  virtual ~IntInterpreter() = default;
+
+  virtual int64_t load(uint64_t index) = 0;
+  virtual void store(uint64_t index, int64_t value) = 0;
+};
+
+template <typename T> class IntInterpreterImpl : public IntInterpreter {
+public:
+  T *ptr;
+
+  explicit IntInterpreterImpl(T *ptr) : ptr(ptr) {}
+
+  ~IntInterpreterImpl() override = default;
+
+  int64_t load(uint64_t index) override { return ptr[index]; }
+
+  void store(uint64_t index, int64_t value) override { ptr[index] = value; }
+};
+
+std::unique_ptr<IntInterpreter> getIntInterpreter(uint8_t dtype, void *ptr) {
+  switch (dtype) {
+  case i8:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<int8_t>((int8_t *)ptr)
+    );
+  case i16:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<int16_t>((int16_t *)ptr)
+    );
+  case i32:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<int32_t>((int32_t *)ptr)
+    );
+  case i64:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<int64_t>((int64_t *)ptr)
+    );
+  case u8:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<uint8_t>((uint8_t *)ptr)
+    );
+  case u16:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<uint16_t>((uint16_t *)ptr)
+    );
+  case u32:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<uint32_t>((uint32_t *)ptr)
+    );
+  case u64:
+    return std::unique_ptr<IntInterpreter>(
+        new IntInterpreterImpl<uint64_t>((uint64_t *)ptr)
+    );
+  default:
+    throw std::invalid_argument("Invalid dtype");
+  }
+}
 
 #endif // TENSORC_TYPED_ARRAY_HPP
 
