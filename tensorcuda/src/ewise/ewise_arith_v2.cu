@@ -5,6 +5,7 @@
 
 #include <tensorcuda.hpp>
 
+/*
 /// Adds two tensors
 template <typename O, typename I1, typename I2>
 __global__ void plus(
@@ -20,4 +21,4 @@ __global__ void plus(
       out[i] = inp1[i] + inp2[i];
     }
   }
-}
+}*/
