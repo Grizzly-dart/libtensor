@@ -19,37 +19,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3f9a4fb1-0f75-4c04-8e7e-507d5e715fec" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/../tensorc/.idea/tensorc.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/cmake.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/tensorcuda.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/tensorcuda.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/include/tensorcuda.hpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cuda_interface.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/cuda_interface.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ewise/ewise_arith.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/ewise/ewise_arith.cu" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/cmake/.ninja_deps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/cmake/.ninja_log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake/Testing/Temporary/LastTest.log" beforeDir="false" afterPath="$PROJECT_DIR$/cmake/Testing/Temporary/LastTest.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ewise/ewise_arith_v2.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/ewise/ewise_arith_v2.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ewise/ewise_unary.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/ewise/ewise_unary.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/matrix/matmul.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/matrix/matmul.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/nn2d/maxpool2d.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/nn2d/maxpool2d.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/reducers.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/reducers.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/rwise/rwise_arith.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/rwise/rwise_arith.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/stat/mean.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/stat/mean.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/stat/variance.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/stat/variance.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/stat2d/mean2d.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/stat2d/mean2d.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/stat2d/moment2d.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/stat2d/moment2d.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/stat2d/normalize2d.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/stat2d/normalize2d.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/stat2d/sum2d.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/stat2d/sum2d.cu" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/stat2d/variance2d.cu" beforeDir="false" afterPath="$PROJECT_DIR$/src/stat2d/variance2d.cu" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="ClangdSettings">
-    <option name="formatViaClangd" value="false" />
   </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
   <component name="Git.Settings">
@@ -79,6 +58,7 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "cf.advertisement.text.has.clang-format": "true",
+    "cf.advertisement.text.overridden": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "master",
@@ -112,7 +92,7 @@
       <option name="presentableId" value="Default" />
       <updated>1712600278350</updated>
       <workItem from="1712600279402" duration="2668000" />
-      <workItem from="1712603641081" duration="4078000" />
+      <workItem from="1712603641081" duration="11788000" />
     </task>
     <servers />
   </component>
