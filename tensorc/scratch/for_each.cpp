@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <execution>
 #include <experimental/simd>
 #include <iostream>
@@ -47,7 +48,7 @@ void tcPlus(
   );
 }
 
-template <typename T> void testTcPlus(Dim3 size) {
+template <typename T> auto testTcPlus(Dim3 size) {
   auto inp1 = std::unique_ptr<T>(new T[size.nel()]);
   auto inp2 = std::unique_ptr<T>(new T[size.nel()]);
   auto out = std::unique_ptr<T>(new T[size.nel()]);
@@ -57,9 +58,12 @@ template <typename T> void testTcPlus(Dim3 size) {
     inp2.get()[i] = i;
   }
 
+  std::chrono::steady_clock::time_point begin =
+      std::chrono::steady_clock::now();
   tcPlus<T, T, T>(
       out.get(), inp1.get(), inp2.get(), size.nel(), 0, size, ArithMode::ewise
   );
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
   for (uint64_t i = 0; i < size.nel(); i++) {
     // printf("%d %d %d\n", inp1.get()[i], inp2.get()[i], out.get()[i]);
@@ -68,9 +72,10 @@ template <typename T> void testTcPlus(Dim3 size) {
           "Error at %lu; %u + %u != %u\n", i, inp1.get()[i], inp2.get()[i],
           out.get()[i]
       );
-      return;
+      break;
     }
   }
+  return std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 }
 
 template <typename O, typename I1, typename I2>
@@ -114,7 +119,8 @@ void tcPlusGeneric(
 int main() {
   auto size = Dim3{10, 5, 3};
 
-  testTcPlus<uint8_t>(size);
+  auto dur = testTcPlus<uint8_t>(size);
+  std::cout << "Duration: " << dur.count() << "ns" << std::endl;
 
   return 0;
 }

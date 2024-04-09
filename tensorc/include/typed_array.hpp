@@ -106,20 +106,85 @@ public:
   };
 };
 
-template <typename T> class Val {
+template <typename T> class Caster {
 public:
-  T *ptr;
-  uint64_t width;
+  virtual ~Caster() = default;
 
-  Val(T *ptr, uint64_t width) : ptr(ptr), width(width){};
+  stdx::native_simd<T> loadSimd(uint64_t index, uint16_t elements) {
+    stdx::native_simd<T> simd;
+    return loadSimd(index, simd, elements);
+  }
+  virtual stdx::native_simd<T> &loadSimd(
+      uint64_t index, stdx::native_simd<T> &simd, uint16_t elements
+  ) = 0;
+  virtual void storeSimd(
+      uint64_t index, stdx::native_simd<T> &simd, uint16_t elements
+  ) = 0;
 
-  Val(const Val &other) : ptr(other.ptr), width(other.width){};
+  virtual T at(uint64_t index) = 0;
+  virtual void store(uint64_t index, T value) = 0;
 
-  template <typename U> Val &operator=(stdx::native_simd<U> simd) {
-    for (int i = 0; i < width; i++) {
-      ptr[i] = static_cast<T>(static_cast<U>(simd[i]));
+  virtual int64_t indexOffset(int64_t index, int64_t offset) = 0;
+};
+
+template <typename T, typename F> class ScalarCaster : public Caster<T> {
+public:
+  F value;
+
+  explicit ScalarCaster(F value) : value(value) {}
+
+  ~ScalarCaster() override = default;
+
+  stdx::native_simd<T> &loadSimd(
+      uint64_t index, stdx::native_simd<T> &simd, uint16_t elements
+  ) override {
+    for (int i = 0; i < elements; i++) {
+      simd[i] = static_cast<T>(value);
     }
-    return *this;
+    return simd;
+  }
+
+  void storeSimd(uint64_t index, stdx::native_simd<T> &simd, uint16_t elements)
+      override {}
+
+  T at(uint64_t index) override { return static_cast<T>(value); }
+
+  void store(uint64_t index, T v) override {}
+
+  int64_t indexOffset(int64_t index, int64_t offset) override {
+    return index + offset * sizeof(F);
+  }
+};
+
+template <typename T, typename F> class CasterImpl : public Caster<T> {
+public:
+  F *ptr;
+
+  explicit CasterImpl(F *ptr) : ptr(ptr) {}
+
+  ~CasterImpl() override = default;
+
+  stdx::native_simd<T> &loadSimd(
+      uint64_t index, stdx::native_simd<T> &simd, uint16_t elements
+  ) {
+    for (int i = 0; i < elements; i++) {
+      simd[i] = static_cast<T>(ptr[index + i]);
+    }
+    return simd;
+  }
+
+  void storeSimd(uint64_t index, stdx::native_simd<T> &simd, uint16_t elements)
+      override {
+    for (int i = 0; i < elements; i++) {
+      ptr[index + i] = static_cast<F>(simd[i]);
+    }
+  }
+
+  T at(uint64_t index) { return static_cast<T>(ptr[index]); }
+  void store(uint64_t index, T value) { ptr[index] = static_cast<F>(value); }
+
+  int64_t indexOffset(int64_t index, int64_t offset) {
+    return index + offset * sizeof(F);
   }
 };
 
@@ -284,6 +349,147 @@ public:
   };
 };
 
+template <typename T> class CastingSimdIterator : public SimdIter<T> {
+public:
+  using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using size_type = std::size_t;
+  using value_type = stdx::native_simd<T>;
+  using pointer = value_type *;
+
+  Caster<T> *caster;
+  int64_t index;
+  int64_t length;
+
+  CastingSimdIterator(
+      Caster<T> *caster, uint16_t width, int64_t length, int64_t index = 0
+  )
+      : caster(caster), length(length), index(index), SimdIter<T>(width){};
+
+  CastingSimdIterator(const CastingSimdIterator &other) = default;
+
+  [[nodiscard]] Range countBegin() const { return Range(0); }
+
+  [[nodiscard]] Range countEnd() const {
+    return Range((length + this->width - 1) / this->width);
+  }
+
+  value_type operator*() const {
+    value_type simd;
+    return this->loadAt(0, simd);
+  }
+
+  value_type at(size_type i) const {
+    value_type simd;
+    return this->loadAt(i, simd);
+  }
+
+  value_type &loadAt(size_type ind, value_type &simd) const {
+    auto elements = std::min(this->width, length - index - ind * this->width);
+    return caster->loadSimd(index + ind * this->width, simd, elements);
+  }
+
+  void storeAt(size_type ind, const value_type &simd) {
+    auto elements = std::min(this->width, length - index - ind * this->width);
+    caster->storeSimd(index + ind * this->width, simd, elements);
+  }
+
+  CastingSimdIterator &operator=(const value_type &simd) {
+    storeAt(0, simd);
+    return *this;
+  }
+
+  CastingSimdIterator operator[](size_type i) const {
+    return CastingSimdIterator(
+        caster, this->width, length, index + i * this->width
+    );
+  }
+
+  CastingSimdIterator &operator++() {
+    index += this->width;
+    return *this;
+  }
+
+  CastingSimdIterator operator++(int) {
+    CastingSimdIterator tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  CastingSimdIterator &operator--() {
+    index -= this->width;
+    return *this;
+  }
+
+  CastingSimdIterator operator--(int) {
+    CastingSimdIterator tmp = *this;
+    --(*this);
+    return tmp;
+  }
+
+  CastingSimdIterator &operator+=(difference_type n) {
+    index += this->width * n;
+    return *this;
+  }
+
+  CastingSimdIterator &operator-=(difference_type n) {
+    index -= this->width * n;
+    return *this;
+  }
+
+  CastingSimdIterator operator+(difference_type n) const {
+    return CastingSimdIterator(
+        caster, this->width, length, index + this->width * n
+    );
+  }
+
+  CastingSimdIterator operator-(difference_type n) const {
+    return CastingSimdIterator(
+        caster, this->width, length, index - this->width * n
+    );
+  }
+
+  difference_type operator-(const CastingSimdIterator &rhs) const {
+    return (index - rhs.index + this->width - 1) / this->width;
+  }
+
+  friend bool operator==(
+      const CastingSimdIterator &a, const CastingSimdIterator &b
+  ) {
+    return a.index == b.index;
+  };
+
+  friend bool operator!=(
+      const CastingSimdIterator &a, const CastingSimdIterator &b
+  ) {
+    return a.index != b.index;
+  };
+
+  friend bool operator<(
+      const CastingSimdIterator &a, const CastingSimdIterator &b
+  ) {
+    return a.index < b.index;
+  };
+
+  friend bool operator>(
+      const CastingSimdIterator &a, const CastingSimdIterator &b
+  ) {
+    return a.index > b.index;
+  };
+
+  friend bool operator<=(
+      const CastingSimdIterator &a, const CastingSimdIterator &b
+  ) {
+    return a.index <= b.index;
+  };
+
+  friend bool operator>=(
+      const CastingSimdIterator &a, const CastingSimdIterator &b
+  ) {
+    return a.index >= b.index;
+  };
+};
+
 template <typename T> class RwiseSimdIterator : public SimdIter<T> {
 public:
   using iterator_category = std::random_access_iterator_tag;
@@ -407,6 +613,143 @@ public:
 
   friend bool operator>=(
       const RwiseSimdIterator &a, const RwiseSimdIterator &b
+  ) {
+    return a.index >= b.index;
+  };
+};
+
+template <typename T> class CastingRwiseSimdIterator : public SimdIter<T> {
+public:
+  using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using size_type = std::size_t;
+  using value_type = stdx::native_simd<T>;
+  using pointer = value_type *;
+
+  Caster<T> *caster;
+  Dim3 size;
+  int64_t index;
+
+  CastingRwiseSimdIterator(
+      Caster<T> *caster, uint16_t width, Dim3 size, int64_t index = 0
+  )
+      : caster(caster), size(size), index(index), SimdIter<T>(width){};
+
+  CastingRwiseSimdIterator(const CastingRwiseSimdIterator &other) = default;
+
+  [[nodiscard]] Range countBegin() const { return Range(0); }
+
+  [[nodiscard]] Range countEnd() const {
+    return Range((size.nel() + this->width - 1) / this->width);
+  }
+
+  value_type operator*() const {
+    value_type ret;
+    return this->loadAt(0, ret);
+  }
+
+  value_type at(size_type i) const {
+    value_type ret;
+    return (*this + i).loadAt(i, ret);
+  }
+
+  value_type &loadAt(size_type ind, value_type &simd) const {
+    for (size_type i = 0; i < this->width; i++) {
+      if (this->index + ind * this->width + i >= size.nel()) {
+        break;
+      }
+      simd[i] =
+          caster->at(((this->index + ind * this->width + i) / size.c) % size.r);
+    }
+    return simd;
+  }
+
+  CastingRwiseSimdIterator operator[](size_type i) const {
+    return CastingRwiseSimdIterator(
+        caster, this->width, size, index + i * this->width
+    );
+  }
+
+  CastingRwiseSimdIterator &operator++() {
+    index += this->width;
+    return *this;
+  }
+
+  CastingRwiseSimdIterator operator++(int) {
+    CastingRwiseSimdIterator tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  CastingRwiseSimdIterator &operator--() {
+    index -= this->width;
+    return *this;
+  }
+
+  CastingRwiseSimdIterator operator--(int) {
+    CastingRwiseSimdIterator tmp = *this;
+    --(*this);
+    return tmp;
+  }
+
+  CastingRwiseSimdIterator &operator+=(difference_type n) {
+    index += this->width * n;
+    return *this;
+  }
+
+  CastingRwiseSimdIterator &operator-=(difference_type n) {
+    index -= this->width * n;
+    return *this;
+  }
+
+  CastingRwiseSimdIterator operator+(difference_type n) const {
+    return CastingRwiseSimdIterator(
+        caster, this->width, size, index + this->width * n
+    );
+  }
+
+  CastingRwiseSimdIterator operator-(difference_type n) const {
+    return CastingRwiseSimdIterator(
+        caster, this->width, size, index - this->width * n
+    );
+  }
+
+  difference_type operator-(const CastingRwiseSimdIterator &rhs) const {
+    return index - rhs.index;
+  }
+
+  friend bool operator==(
+      const CastingRwiseSimdIterator &a, const CastingRwiseSimdIterator &b
+  ) {
+    return a.index == b.index;
+  };
+
+  friend bool operator!=(
+      const CastingRwiseSimdIterator &a, const CastingRwiseSimdIterator &b
+  ) {
+    return a.index != b.index;
+  };
+
+  friend bool operator<(
+      const CastingRwiseSimdIterator &a, const CastingRwiseSimdIterator &b
+  ) {
+    return a.index < b.index;
+  };
+
+  friend bool operator>(
+      const CastingRwiseSimdIterator &a, const CastingRwiseSimdIterator &b
+  ) {
+    return a.index > b.index;
+  };
+
+  friend bool operator<=(
+      const CastingRwiseSimdIterator &a, const CastingRwiseSimdIterator &b
+  ) {
+    return a.index <= b.index;
+  };
+
+  friend bool operator>=(
+      const CastingRwiseSimdIterator &a, const CastingRwiseSimdIterator &b
   ) {
     return a.index >= b.index;
   };
@@ -552,65 +895,147 @@ public:
   };
 };
 
-class IntInterpreter {
+template <typename T> class CastingScalarSimdIterator : public SimdIter<T> {
 public:
-  virtual ~IntInterpreter() = default;
+  using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using size_type = std::size_t;
+  using value_type = stdx::native_simd<T>;
+  using pointer = value_type *;
+  using reference = value_type &;
 
-  virtual int64_t load(uint64_t index) = 0;
-  virtual void store(uint64_t index, int64_t value) = 0;
-};
+  T value;
+  int64_t index;
+  int64_t length;
 
-template <typename T> class IntInterpreterImpl : public IntInterpreter {
-public:
-  T *ptr;
+  CastingScalarSimdIterator(
+      T value, uint16_t width, int64_t length, int64_t index = 0
+  )
+      : value(value), length(length), index(index), SimdIter<T>(width){};
 
-  explicit IntInterpreterImpl(T *ptr) : ptr(ptr) {}
+  CastingScalarSimdIterator(const CastingScalarSimdIterator &other) = default;
 
-  ~IntInterpreterImpl() override = default;
-
-  int64_t load(uint64_t index) override { return ptr[index]; }
-
-  void store(uint64_t index, int64_t value) override { ptr[index] = value; }
-};
-
-std::unique_ptr<IntInterpreter> getIntInterpreter(uint8_t dtype, void *ptr) {
-  switch (dtype) {
-  case i8:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<int8_t>((int8_t *)ptr)
-    );
-  case i16:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<int16_t>((int16_t *)ptr)
-    );
-  case i32:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<int32_t>((int32_t *)ptr)
-    );
-  case i64:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<int64_t>((int64_t *)ptr)
-    );
-  case u8:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<uint8_t>((uint8_t *)ptr)
-    );
-  case u16:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<uint16_t>((uint16_t *)ptr)
-    );
-  case u32:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<uint32_t>((uint32_t *)ptr)
-    );
-  case u64:
-    return std::unique_ptr<IntInterpreter>(
-        new IntInterpreterImpl<uint64_t>((uint64_t *)ptr)
-    );
-  default:
-    throw std::invalid_argument("Invalid dtype");
+  value_type operator*() const {
+    value_type ret;
+    this->loadAt(0, ret);
+    return ret;
   }
-}
+
+  value_type at(size_type i) const {
+    value_type ret;
+    this->loadAt(i, ret);
+    return ret;
+  }
+
+  value_type &loadAt(size_type ind, value_type &simd) const {
+    uint16_t diff = length - index - ind * this->width;
+    if (diff >= this->width) {
+      simd = value;
+      return simd;
+    } else {
+      for (int i = 0; i < diff; i++) {
+        simd[i] = value;
+      }
+      return simd;
+    }
+  }
+
+  CastingScalarSimdIterator operator[](size_type i) const { return *this + i; }
+
+  [[nodiscard]] Range countBegin() const { return Range(0); }
+
+  [[nodiscard]] Range countEnd() const {
+    return Range((length + this->width - 1) / this->width);
+  }
+
+  CastingScalarSimdIterator &operator++() {
+    index += this->width;
+    length -= this->width;
+    return *this;
+  }
+
+  CastingScalarSimdIterator operator++(int) {
+    CastingScalarSimdIterator tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  CastingScalarSimdIterator &operator--() {
+    index -= this->width;
+    length += this->width;
+    return *this;
+  }
+
+  CastingScalarSimdIterator operator--(int) {
+    CastingScalarSimdIterator tmp = *this;
+    --(*this);
+    return tmp;
+  }
+
+  CastingScalarSimdIterator &operator+=(difference_type n) {
+    index += this->width * n;
+    length -= this->width * n;
+    return *this;
+  }
+
+  CastingScalarSimdIterator &operator-=(difference_type n) {
+    index -= this->width * n;
+    length += this->width * n;
+    return *this;
+  }
+
+  CastingScalarSimdIterator operator+(difference_type n) const {
+    return CastingScalarSimdIterator(
+        value, this->width, length - this->width * n, index + this->width * n
+    );
+  }
+
+  CastingScalarSimdIterator operator-(difference_type n) const {
+    return CastingScalarSimdIterator(
+        value, this->width, length + this->width * n, index - this->width * n
+    );
+  }
+
+  difference_type operator-(const CastingScalarSimdIterator &rhs) const {
+    return index - rhs.index;
+  }
+
+  friend bool operator==(
+      const CastingScalarSimdIterator &a, const CastingScalarSimdIterator &b
+  ) {
+    return a.index == b.index;
+  };
+
+  friend bool operator!=(
+      const CastingScalarSimdIterator &a, const CastingScalarSimdIterator &b
+  ) {
+    return a.index != b.index;
+  };
+
+  friend bool operator<(
+      const CastingScalarSimdIterator &a, const CastingScalarSimdIterator &b
+  ) {
+    return a.index < b.index;
+  };
+
+  friend bool operator>(
+      const CastingScalarSimdIterator &a, const CastingScalarSimdIterator &b
+  ) {
+    return a.index > b.index;
+  };
+
+  friend bool operator<=(
+      const CastingScalarSimdIterator &a, const CastingScalarSimdIterator &b
+  ) {
+    return a.index <= b.index;
+  };
+
+  friend bool operator>=(
+      const CastingScalarSimdIterator &a, const CastingScalarSimdIterator &b
+  ) {
+    return a.index >= b.index;
+  };
+};
 
 #endif // TENSORC_TYPED_ARRAY_HPP
 

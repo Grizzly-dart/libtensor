@@ -9,23 +9,23 @@ namespace stdx = std::experimental;
 
 
 /*
-template <typename T> class TypedIterator {
+template <typename F> class TypedIterator {
 public:
   using iterator_category = std::contiguous_iterator_tag;
   using difference_type = std::ptrdiff_t;
   using size_type = std::size_t;
-  using value_type = T;
-  using pointer = T *;
-  using reference = T &;
+  using value_type = F;
+  using pointer = F *;
+  using reference = F &;
 
-  T *ptr;
+  F *ptr;
 
   TypedIterator(void *ptr) : ptr(ptr) {}
 
-  double getF64(uint64_t index) { return ((T *)ptr)[index]; }
-  uint64_t getU64(uint64_t index) { return ((T *)ptr)[index]; }
-  int64_t getI64(uint64_t index) { return ((T *)ptr)[index]; }
-  void *offset(uint64_t index) { return ((T *)ptr) + index; }
+  double getF64(uint64_t index) { return ((F *)ptr)[index]; }
+  uint64_t getU64(uint64_t index) { return ((F *)ptr)[index]; }
+  int64_t getI64(uint64_t index) { return ((F *)ptr)[index]; }
+  void *offset(uint64_t index) { return ((F *)ptr) + index; }
 
   reference operator*() const { return *ptr; }
   pointer operator->() { return ptr; }
