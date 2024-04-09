@@ -6,51 +6,56 @@
 
 #include <tensorcuda.hpp>
 
-class IntInterpreter {
-public:
-  virtual ~IntInterpreter() = default;
+template <typename O, typename I>
+__device__ __host__ O castLoader(void *ptr, uint64_t index) {
+  return ((I *)ptr)[index];
+}
 
-  __device__ __host__ virtual int64_t load(uint64_t index) = 0;
+template <typename O, typename I>
+__device__ __host__ void castStorer(void *ptr, uint64_t index, O value) {
+  ((I *)ptr)[index] = value;
+}
 
-  __device__ __host__ virtual void store(uint64_t index, int64_t value) = 0;
-};
+template <typename O> using loader = O (*)(void *, uint64_t);
+template <typename O> using storer = void (*)(void *, uint64_t, O);
 
-template <typename T> class IntInterpreterImpl : public IntInterpreter {
-public:
-  T *ptr;
-  __device__ __host__ explicit IntInterpreterImpl(T *ptr) : ptr(ptr) {}
-
-  ~IntInterpreterImpl() override = default;
-
-  __device__ __host__ int64_t load(uint64_t index) override {
-    return ptr[index];
-  }
-
-  __device__ __host__ void store(uint64_t index, int64_t value) override {
-    ptr[index] = value;
-  }
-};
-
-__device__ __host__ IntInterpreter *getIntInterpreter(dtype type, void *ptr) {
-  switch (type) {
+template <typename T>
+__device__ __host__ void intCaster(dtype inpType, loader<T> **loader, storer<T> **storer) {
+  switch (inpType) {
   case i8:
-    return new IntInterpreterImpl<int8_t>((int8_t *)ptr);
+    *loader = castLoader<int64_t, int8_t>;
+    *storer = castStorer<int64_t, int8_t>;
+    return;
   case i16:
-    return new IntInterpreterImpl<int16_t>((int16_t *)ptr);
+    *loader = castLoader<int64_t, int16_t>;
+    *storer = castStorer<int64_t, int16_t>;
+    return;
   case i32:
-    return new IntInterpreterImpl<int32_t>((int32_t *)ptr);
+    *loader = castLoader<int64_t, int32_t>;
+    *storer = castStorer<int64_t, int32_t>;
+    return;
   case i64:
-    return new IntInterpreterImpl<int64_t>((int64_t *)ptr);
+    *loader = castLoader<int64_t, int64_t>;
+    *storer = castStorer<int64_t, int64_t>;
+    return;
   case u8:
-    return new IntInterpreterImpl<uint8_t>((uint8_t *)ptr);
+    *loader = castLoader<int64_t, uint8_t>;
+    *storer = castStorer<int64_t, uint8_t>;
+    return;
   case u16:
-    return new IntInterpreterImpl<uint16_t>((uint16_t *)ptr);
+    *loader = castLoader<int64_t, uint16_t>;
+    *storer = castStorer<int64_t, uint16_t>;
+    return;
   case u32:
-    return new IntInterpreterImpl<uint32_t>((uint32_t *)ptr);
+    *loader = castLoader<int64_t, uint32_t>;
+    *storer = castStorer<int64_t, uint32_t>;
+    return;
   case u64:
-    return new IntInterpreterImpl<uint64_t>((uint64_t *)ptr);
+    *loader = castLoader<int64_t, uint64_t>;
+    *storer = castStorer<int64_t, uint64_t>;
+    return;
   default:
-    return nullptr;
+    return;
   }
 }
 
@@ -74,7 +79,7 @@ __global__ void plusV2(
 
 /// Adds two tensors
 __global__ void plusV3(
-    IntInterpreter *out, IntInterpreter *inp1, IntInterpreter *inp2, uint64_t n,
+    void *out, IntInterpreter *inp1, IntInterpreter *inp2, uint64_t n,
     uint8_t flipScalar
 ) {
   uint32_t numThreads = blockDim.x * gridDim.x;
