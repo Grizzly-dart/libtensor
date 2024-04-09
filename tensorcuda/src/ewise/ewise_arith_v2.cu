@@ -16,43 +16,67 @@ __device__ __host__ void castStorer(void *ptr, uint64_t index, O value) {
   ((I *)ptr)[index] = value;
 }
 
-template <typename O> using loader = O (*)(void *, uint64_t);
-template <typename O> using storer = void (*)(void *, uint64_t, O);
+template <typename I>
+__device__ __host__ void castOffsetter(void **dst, void *src, int64_t offset) {
+  *dst = ((I *)src) + index;
+}
+
+template <typename O> using CastLoader = O (*)(void *, uint64_t);
+template <typename O> using CastStorer = void (*)(void *, uint64_t, O);
+using CastOffsetter = void (*)(void **dst, void *src, int64_t offset);
+
+template<typename T>
+struct [[maybe_unused]] Caster {
+  CastLoader<T> loader;
+  CastStorer<T> storer;
+  CastOffsetter offset;
+};
 
 template <typename T>
-__device__ __host__ void intCaster(dtype inpType, loader<T> **loader, storer<T> **storer) {
+__device__ __host__ void intCaster(
+    dtype inpType, CastLoader<T> *loader, CastStorer<T> *storer,
+    CastOffsetter *offsetter
+) {
   switch (inpType) {
   case i8:
     *loader = castLoader<int64_t, int8_t>;
     *storer = castStorer<int64_t, int8_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   case i16:
     *loader = castLoader<int64_t, int16_t>;
     *storer = castStorer<int64_t, int16_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   case i32:
     *loader = castLoader<int64_t, int32_t>;
     *storer = castStorer<int64_t, int32_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   case i64:
     *loader = castLoader<int64_t, int64_t>;
     *storer = castStorer<int64_t, int64_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   case u8:
     *loader = castLoader<int64_t, uint8_t>;
     *storer = castStorer<int64_t, uint8_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   case u16:
     *loader = castLoader<int64_t, uint16_t>;
     *storer = castStorer<int64_t, uint16_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   case u32:
     *loader = castLoader<int64_t, uint32_t>;
     *storer = castStorer<int64_t, uint32_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   case u64:
     *loader = castLoader<int64_t, uint64_t>;
     *storer = castStorer<int64_t, uint64_t>;
+    *offsetter = castOffsetter<int8_t>;
     return;
   default:
     return;
