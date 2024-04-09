@@ -1,3 +1,0 @@
-/home/tejag/projects/dart/tensorc/libtensor/tensorcuda/cmake-build-debug/CMakeFiles/tensorcuda.dir
-/home/tejag/projects/dart/tensorc/libtensor/tensorcuda/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/tejag/projects/dart/tensorc/libtensor/tensorcuda/cmake-build-debug/CMakeFiles/rebuild_cache.dir

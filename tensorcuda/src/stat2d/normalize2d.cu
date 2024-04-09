@@ -21,8 +21,8 @@ __global__ void normalize2d(O *out, I *inp, uint64_t numCols, double epsilon) {
   __syncthreads();
 
   // Do warp reduction
-  for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    record.merge(record.shfl_down(offset));
+  for (int indexer = warpSize / 2; indexer > 0; indexer /= 2) {
+    record.merge(record.shfl_down(indexer));
   }
   __syncthreads();
 
@@ -42,8 +42,8 @@ __global__ void normalize2d(O *out, I *inp, uint64_t numCols, double epsilon) {
 
   if (warp == 0) {
     record = sdata[lane];
-    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      record.merge(record.shfl_down(offset));
+    for (int indexer = warpSize / 2; indexer > 0; indexer /= 2) {
+      record.merge(record.shfl_down(indexer));
     }
   }
   __syncthreads();

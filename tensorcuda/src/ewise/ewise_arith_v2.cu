@@ -6,82 +6,76 @@
 
 #include <tensorcuda.hpp>
 
-template <typename O, typename I>
-__device__ __host__ O castLoader(void *ptr, uint64_t index) {
-  return ((I *)ptr)[index];
-}
+#include "caster.hpp"
 
-template <typename O, typename I>
-__device__ __host__ void castStorer(void *ptr, uint64_t index, O value) {
-  ((I *)ptr)[index] = value;
-}
 
-template <typename I>
-__device__ __host__ void castOffsetter(void **dst, void *src, int64_t offset) {
-  *dst = ((I *)src) + index;
-}
 
-template <typename O> using CastLoader = O (*)(void *, uint64_t);
-template <typename O> using CastStorer = void (*)(void *, uint64_t, O);
-using CastOffsetter = void (*)(void **dst, void *src, int64_t offset);
+template <typename T> struct [[maybe_unused]] Caster1 {
+  void *ptr;
 
-template<typename T>
-struct [[maybe_unused]] Caster {
-  CastLoader<T> loader;
-  CastStorer<T> storer;
-  CastOffsetter offset;
-};
+  CastLoader<T> loader = nullptr;
+  CastStorer<T> storer = nullptr;
+  CastOffsetter indexer = nullptr;
 
-template <typename T>
-__device__ __host__ void intCaster(
-    dtype inpType, CastLoader<T> *loader, CastStorer<T> *storer,
-    CastOffsetter *offsetter
-) {
-  switch (inpType) {
-  case i8:
-    *loader = castLoader<int64_t, int8_t>;
-    *storer = castStorer<int64_t, int8_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  case i16:
-    *loader = castLoader<int64_t, int16_t>;
-    *storer = castStorer<int64_t, int16_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  case i32:
-    *loader = castLoader<int64_t, int32_t>;
-    *storer = castStorer<int64_t, int32_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  case i64:
-    *loader = castLoader<int64_t, int64_t>;
-    *storer = castStorer<int64_t, int64_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  case u8:
-    *loader = castLoader<int64_t, uint8_t>;
-    *storer = castStorer<int64_t, uint8_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  case u16:
-    *loader = castLoader<int64_t, uint16_t>;
-    *storer = castStorer<int64_t, uint16_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  case u32:
-    *loader = castLoader<int64_t, uint32_t>;
-    *storer = castStorer<int64_t, uint32_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  case u64:
-    *loader = castLoader<int64_t, uint64_t>;
-    *storer = castStorer<int64_t, uint64_t>;
-    *offsetter = castOffsetter<int8_t>;
-    return;
-  default:
-    return;
+  __device__ __host__ explicit Caster1(void *ptr, dtype type) : ptr(ptr) {
+    init(type);
   }
-}
+
+  __device__ __host__ T operator[](uint64_t index) {
+    return loader(ptr, index);
+  }
+
+  __device__ __host__ void store(uint64_t index, T value) {
+    storer(ptr, index, value);
+  }
+
+  __device__ __host__ void init(dtype inpType) {
+    switch (inpType) {
+    case i8:
+      loader = castLoader<int64_t, int8_t>;
+      storer = castStorer<int64_t, int8_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    case i16:
+      loader = castLoader<int64_t, int16_t>;
+      storer = castStorer<int64_t, int16_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    case i32:
+      loader = castLoader<int64_t, int32_t>;
+      storer = castStorer<int64_t, int32_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    case i64:
+      loader = castLoader<int64_t, int64_t>;
+      storer = castStorer<int64_t, int64_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    case u8:
+      loader = castLoader<int64_t, uint8_t>;
+      storer = castStorer<int64_t, uint8_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    case u16:
+      loader = castLoader<int64_t, uint16_t>;
+      storer = castStorer<int64_t, uint16_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    case u32:
+      loader = castLoader<int64_t, uint32_t>;
+      storer = castStorer<int64_t, uint32_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    case u64:
+      loader = castLoader<int64_t, uint64_t>;
+      storer = castStorer<int64_t, uint64_t>;
+      indexer = castIndexer<int8_t>;
+      return;
+    default:
+      return;
+    }
+  }
+};
 
 /// Adds two tensors
 template <typename O, typename I1, typename I2>
@@ -102,21 +96,25 @@ __global__ void plusV2(
 }
 
 /// Adds two tensors
+template <typename O, typename I1, typename I2>
 __global__ void plusV3(
-    void *out, IntInterpreter *inp1, IntInterpreter *inp2, uint64_t n,
-    uint8_t flipScalar
+    Caster1<O> &out, Caster1<I1> &inp1, Caster1<I2> &inp2, uint64_t n
 ) {
   uint32_t numThreads = blockDim.x * gridDim.x;
   uint32_t thId = threadIdx.x + blockIdx.x * blockDim.x;
 
   for (uint64_t i = thId; i < n; i += numThreads) {
-    out->store(i, inp1->load(i) + inp2->load(i));
+    out.store(i, inp1[i] + inp2[i]);
   }
 }
 
-void tcplusV3(void *out, void *inp1, void *inp2) {
-  auto o = getIntInterpreter(i64, out);
-  auto i1 = getIntInterpreter(i64, inp1);
-  auto i2 = getIntInterpreter(i64, inp2);
-  plusV3<<<4, 5>>>(o, i1, i2, 10, 0);
+template <typename O, typename I1, typename I2>
+void tcplusV3(
+    void *out, void *inp1, void *inp2, uint64_t nel, dtype outType,
+    dtype inp1Type, dtype inp2Type
+) {
+  Caster1<O> o(out, outType);
+  Caster1<I1> i1(inp1, inp1Type);
+  Caster1<I2> i2(inp2, inp2Type);
+  plusV3<<<4, 5>>>(o, i1, i2, nel);
 }

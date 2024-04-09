@@ -4,8 +4,13 @@ set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_ARCHITECTURES 70)
 set(CMAKE_CXX_COMPILER g++)
-set(COMMAND which nvcc OUTPUT_VARIABLE CMAKE_CUDA_COMPILER)
+execute_process(COMMAND which nvcc OUTPUT_VARIABLE teja)
 # set(CMAKE_CUDA_COMPILER /usr/local/cuda-12.4/bin/nvcc)
+
+message(STATUS "CMAKE_CUDA_COMPILER: ${CMAKE_CUDA_COMPILER}")
+include(CMakePrintHelpers)
+
+cmake_print_variables(teja)
 
 project(tensorcuda CUDA CXX)
 
