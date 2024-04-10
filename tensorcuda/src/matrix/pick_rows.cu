@@ -16,6 +16,7 @@ __global__ void pickRows(
   }
 }
 
+/*
 const char *tcuPickRows(
     tcuStream &stream, void *out, const void *inp, const void *indices,
     Dim2 size, dtype type, dtype itype
@@ -87,3 +88,4 @@ const char *tcuPickRows(
   }
   return nullptr;
 }
+ */

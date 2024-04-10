@@ -1,3 +1,0 @@
-/home/tejag/projects/dart/gpuc/libgpuc_cuda/tensorcuda/cmake/CMakeFiles/tensorcuda.dir
-/home/tejag/projects/dart/gpuc/libgpuc_cuda/tensorcuda/cmake/CMakeFiles/edit_cache.dir
-/home/tejag/projects/dart/gpuc/libgpuc_cuda/tensorcuda/cmake/CMakeFiles/rebuild_cache.dir

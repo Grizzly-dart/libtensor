@@ -8,57 +8,58 @@
 #include <cstdint>
 #include <functional>
 
-template <typename O, typename I>
-__device__ __host__ O castLoader(void *ptr, uint64_t index) {
-  return ((I *)ptr)[index];
+template <typename T> constexpr bool isRealNum() {
+  return std::is_same<T, float>::value || std::is_same<T, double>::value;
+}
+
+template <typename T> constexpr bool isAnyInt() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
+         std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value ||
+         std::is_same<T, uint8_t>::value || std::is_same<T, uint16_t>::value ||
+         std::is_same<T, uint32_t>::value || std::is_same<T, uint64_t>::value;
+}
+
+template <typename T> constexpr bool isInt() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
+         std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value;
+}
+
+template <typename T> constexpr bool isUInt() {
+  return std::is_same<T, uint8_t>::value || std::is_same<T, uint16_t>::value ||
+         std::is_same<T, uint32_t>::value || std::is_same<T, uint64_t>::value;
 }
 
 template <typename O, typename I>
-__device__ __host__ void castStorer(void *ptr, uint64_t index, O value) {
-  ((I *)ptr)[index] = value;
-}
+__device__ __host__ O castLoader(void *ptr, uint64_t index);
+
+template <typename O, typename I>
+__device__ __host__ void castStorer(void *ptr, uint64_t index, O value);
 
 template <typename I>
-__device__ __host__ void castIndexer(void **dst, void *src, int64_t index) {
-  *dst = ((I *)src) + index;
-}
+__device__ __host__ void castIndexer(void **dst, void *src, int64_t index);
 
 template <typename O> using CastLoader = O (*)(void *, uint64_t);
 template <typename O> using CastStorer = void (*)(void *, uint64_t, O);
 using CastOffsetter = void (*)(void **dst, void *src, int64_t offset);
 
-template <typename T> struct [[maybe_unused]] Caster {
+template <typename T> struct Caster {
   CastLoader<T> loader = nullptr;
   CastStorer<T> storer = nullptr;
   CastOffsetter indexer = nullptr;
+
+  __device__ __host__ Caster()
+      : loader(nullptr), storer(nullptr), indexer(nullptr) {}
+
+  __device__ __host__
+  constexpr Caster(CastLoader<T> loader, CastStorer<T> storer, CastOffsetter indexer)
+      : loader(loader), storer(storer), indexer(indexer) {}
+
+  __device__ __host__ Caster(Caster<T> &other)
+      : loader(other.loader), storer(other.storer), indexer(other.indexer) {}
 };
 
-__constant__ std::function loaders[10] = {
-    castLoader<int64_t, int8_t>,
+extern __constant__ Caster<int64_t> i64Casters[8];
 
-};
-
-__constant__ std::function intCasters[10] = {
-    {castLoader<int64_t, int8_t>, castStorer<int64_t, int8_t>,
-     castIndexer<int8_t>},
-    {castLoader<int64_t, int16_t>, castStorer<int64_t, int16_t>,
-     castIndexer<int16_t>},
-    {castLoader<int64_t, int32_t>, castStorer<int64_t, int32_t>,
-     castIndexer<int32_t>},
-    {castLoader<int64_t, int64_t>, castStorer<int64_t, int64_t>,
-     castIndexer<int64_t>},
-    {castLoader<int64_t, uint8_t>, castStorer<int64_t, uint8_t>,
-     castIndexer<uint8_t>},
-    {castLoader<int64_t, uint16_t>, castStorer<int64_t, uint16_t>,
-     castIndexer<uint16_t>},
-    {castLoader<int64_t, uint32_t>, castStorer<int64_t, uint32_t>,
-     castIndexer<uint32_t>},
-    {castLoader<int64_t, uint64_t>, castStorer<int64_t, uint64_t>,
-     castIndexer<uint64_t>},
-    {castLoader<double, double>, castStorer<double, double>,
-     castIndexer<double>},
-    {castLoader<double, float>, castStorer<double, float>,
-     castIndexer<float>},
-};
+extern __constant__ Caster<double> f64Casters[4];
 
 #endif // TENSORCUDA_CASTER_HPP

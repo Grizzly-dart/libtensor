@@ -65,6 +65,7 @@ __global__ void tanhKernel(O *out, I *inp, uint64_t n) {
   }
 }
 
+/*
 extern const char *tcuSin(
     tcuStream &stream, void *out, const void *inp, uint64_t n,
     dtype outType, dtype inType
@@ -730,3 +731,4 @@ extern const char *tcuTanh(
   }
   return nullptr;
 }
+ */

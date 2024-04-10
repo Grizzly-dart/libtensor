@@ -51,6 +51,7 @@ __global__ void mean2d(O *out, I *inp, uint64_t numCols) {
   }
 }
 
+/*
 const char *tcuMean2d(
     tcuStream &stream, void *out, void *inp, Dim2 inpS, dtype outType,
     dtype inpType
@@ -182,3 +183,4 @@ const char *tcuMean2d(
   }
   return nullptr;
 }
+*/

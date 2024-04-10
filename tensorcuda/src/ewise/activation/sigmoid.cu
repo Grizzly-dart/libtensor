@@ -12,6 +12,7 @@ template <typename T> __global__ void sigmoid(T *out, T *inp, uint64_t size) {
   }
 }
 
+/*
 extern const char *tcuSigmoid(
     tcuStream &stream, void *out, void *inp, uint64_t n,
     dtype dtype
@@ -70,4 +71,4 @@ const char *tcuSiLU(
     return cudaGetErrorString(err);
   }
   return nullptr;
-}
+}*/

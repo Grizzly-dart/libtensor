@@ -4,7 +4,7 @@
 #include <reducers.hpp>
 #include <string>
 #include <tensorcuda.hpp>
-
+/*
 template <typename O, typename I1, typename I2>
 void rwise_plus(O *out, I1 *inp1, I2 *inp2, uint32_t numCols) {
   uint32_t row = blockIdx.x;
@@ -49,3 +49,4 @@ const char *tcuRwisePlus(
   }
   return nullptr;
 }
+ */

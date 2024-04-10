@@ -50,6 +50,7 @@ __global__ void variance(
   }
 }
 
+/*
 const char *tcuVariance(
     tcuStream &stream, double *out, void *inp, uint64_t nel,
     uint64_t correction, dtype inpType
@@ -120,3 +121,4 @@ const char *tcuVariance(
   }
   return nullptr;
 }
+ */

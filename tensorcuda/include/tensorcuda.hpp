@@ -9,43 +9,50 @@ extern "C" {
 
 #define MAX_THREADS_PER_BLOCK 1024U
 
-typedef enum : uint8_t {
-    i8 = 1,
-    i16 = 2,
-    i32 = 4,
-    i64 = 8,
+struct DType {
+  uint8_t index;
+  uint8_t bytes;
+  uint8_t subIndex;
+};
 
-    u8 = 17,
-    u16 = 18,
-    u32 = 20,
-    u64 = 24,
+const DType i8 = {0, 1, 0};
+const DType i16 = {1, 2, 1};
+const DType i32 = {2, 4, 2};
+const DType i64 = {3, 8, 3};
+const DType u8 = {4, 1, 4};
+const DType u16 = {5, 2, 5};
+const DType u32 = {6, 4, 6};
+const DType u64 = {7, 8, 7};
+const DType bf16 = {8, 2, 0};
+const DType f16 = {9, 2, 1};
+const DType f32 = {10, 4, 2};
+const DType f64 = {11, 4, 3};
 
-    f16 = 34,
-    f32 = 36,
-    f64 = 40,
-    bf16 = 66,
-} dtype;
+const DType dtypes[] = {i8,  i16, i32,  i64, u8,  u16,
+                        u32, u64, bf16, f16, f32, f64};
 
-typedef struct {
-    uint32_t r;
-    uint32_t c;
-} Dim2;
+struct Dim2 {
+  uint32_t r;
+  uint32_t c;
 
-typedef struct {
-    uint32_t ch;
-    uint32_t r;
-    uint32_t c;
+  [[nodiscard]] uint64_t nel() const { return r * c; }
+};
 
-    /*__device__ __host__*/ Dim2 toDim2() { return {r, c}; };
+struct Dim3 {
+  uint32_t ch;
+  uint32_t r;
+  uint32_t c;
 
-    [[nodiscard]] uint64_t nel() const { return ch * r * c; }
-} Dim3;
+  /*__device__ __host__*/ Dim2 toDim2() { return {r, c}; };
+
+  [[nodiscard]] uint64_t nel() const { return ch * r * c; }
+};
 
 typedef enum PadMode : uint8_t {
-    CONSTANT,
-    CIRCULAR,
-    REFLECT,
-    REPLICATION
+  CONSTANT,
+  CIRCULAR,
+  REFLECT,
+  REPLICATION
 } PadMode;
 
 typedef struct {
@@ -101,6 +108,7 @@ const char *tcuAlloc(tcuStream &stream, void **mem, uint64_t size);
 const char *tcuFree(tcuStream &stream, void *ptr);
 const char *tcuMemcpy(tcuStream &stream, void *dst, void *src, uint64_t size);
 
+/*
 extern const char *tcuCast(
     tcuStream &stream, void *out, void *inp, uint64_t n, dtype outType,
     dtype inpType
@@ -288,6 +296,7 @@ extern const char *tcuSoftsign(
 extern const char *tcuMish(
     tcuStream &stream, const void *out, void *inp, uint64_t n, dtype dtype
 );
+ */
 
 #ifdef __cplusplus
 } // extern "C"

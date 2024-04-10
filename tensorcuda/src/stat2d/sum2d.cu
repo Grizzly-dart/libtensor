@@ -51,6 +51,7 @@ __global__ void sum2d(T *out, I *inp, uint64_t numCols) {
   }
 }
 
+/*
 const char *tcuSum2d(
     tcuStream &stream, void *out, void *inp, Dim2 inpS,
     dtype outType, dtype inpType
@@ -188,3 +189,4 @@ const char *tcuSum2d(
   }
   return nullptr;
 }
+ */

@@ -10,8 +10,8 @@ RUN_TESTS = ${shell find test/ -type f -regextype egrep -regex ".*_test\.cpp$$" 
 CXXFLAGS += -I ../tensorc/include -I ./include -I/usr/include
 
 build/libtensorcuda.so: $(SOURCES) $(HEADERS)
-	python3 scripts/ewise_arith_gen.py
-	python3 scripts/ewise_unary_gen.py
+	#python3 scripts/ewise_arith_gen.py
+	#python3 scripts/ewise_unary_gen.py
 	$(NVCC) ${CXXFLAGS} --compiler-options '-fPIC' --shared --expt-relaxed-constexpr -o $@ $(SOURCES)
 
 all: build/libtensorcuda.so

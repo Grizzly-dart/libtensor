@@ -21,6 +21,7 @@ __global__ void softplus(
   }
 }
 
+/*
 const char *tcuSoftplus(
     tcuStream &stream, const void *out, void *inp, uint64_t n,
     int32_t beta, int32_t threshold, dtype dtype
@@ -117,4 +118,4 @@ const char *tcuMish(
     return cudaGetErrorString(err);
   }
   return nullptr;
-}
+}*/

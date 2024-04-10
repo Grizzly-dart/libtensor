@@ -16,6 +16,7 @@ __global__ void elu(T *out, const T *inp, uint64_t n, const double alpha) {
 
 #define BLOCK_SIZE 1024
 
+/*
 const char *tcuELU(
     tcuStream &stream, const void *out, const void *inp, uint64_t n,
     double alpha, dtype dtype
@@ -77,4 +78,4 @@ const char *tcuMinThreshold(
     return cudaGetErrorString(err);
   }
   return nullptr;
-}
+}*/

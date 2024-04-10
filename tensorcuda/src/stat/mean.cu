@@ -47,6 +47,7 @@ template <typename I> __global__ void mean(double *out, I *inp, uint64_t nel) {
   }
 }
 
+/*
 const char *tcuMean(
     tcuStream &stream, double *out, void *inp, uint64_t nel, dtype inpType
 ) {
@@ -99,3 +100,4 @@ const char *tcuMean(
   }
   return nullptr;
 }
+*/

@@ -85,6 +85,7 @@ __global__ void exp(O *out, I *inp, uint64_t n) {
   }
 }
 
+/*
 const char *tcuNeg(
     tcuStream &stream, void *out, void *inp, uint64_t n, dtype outType,
     dtype inType
@@ -783,5 +784,6 @@ const char *tcuExp(
   }
   return nullptr;
 }
+ */
 
 // #include "ewise_unary_gen.inc"

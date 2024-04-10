@@ -57,6 +57,7 @@ __global__ void variance2d(
   }
 }
 
+/*
 const char *tcuVariance2d(
     tcuStream &stream, void *out, void *inp, Dim2 inpS,
     uint64_t correction, uint8_t calcStd, dtype outType, dtype inpType
@@ -199,3 +200,4 @@ const char *tcuVariance2d(
   }
   return nullptr;
 }
+ */

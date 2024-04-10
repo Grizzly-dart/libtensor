@@ -1,6 +1,8 @@
 import typing
 from common import types
 
+exit(0)
+
 f: typing.TextIO
 
 ops = ["plus", "minus", "mul", "div", "pow"]
