@@ -132,21 +132,18 @@ template <typename T> class Caster {
 public:
   virtual ~Caster() = default;
 
-  stdx::native_simd<T> loadSimd(uint64_t index, uint16_t elements) {
-    stdx::native_simd<T> simd;
-    return loadSimd(index, simd, elements);
-  }
-  virtual stdx::native_simd<T> &loadSimd(
-      uint64_t index, stdx::native_simd<T> &simd, uint16_t elements
-  ) = 0;
-  virtual void storeSimd(
-      uint64_t index, stdx::native_simd<T> &simd, uint16_t elements
-  ) = 0;
-
-  virtual T at(uint64_t index) = 0;
-  virtual void store(uint64_t index, T value) = 0;
+  virtual T at(void *ptr, uint64_t index) = 0;
+  virtual void store(void *ptr, uint64_t index, T value) = 0;
 
   virtual int64_t indexOffset(int64_t index, int64_t offset) = 0;
+
+  static Caster<T> typed(DType type) {
+    if (type.index == f32.index) {
+      return CasterImpl<T, float>();
+    } else if (type.index == f64.index) {
+      return CasterImpl<T, double>();
+    }
+  }
 };
 
 template <typename T, typename F> class ScalarCaster : public Caster<T> {
@@ -180,8 +177,6 @@ public:
 
 template <typename T, typename F> class CasterImpl : public Caster<T> {
 public:
-  F *ptr;
-
   explicit CasterImpl(F *ptr) : ptr(ptr) {}
 
   ~CasterImpl() override = default;

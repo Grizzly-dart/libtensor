@@ -23,7 +23,7 @@ CXXFLAGS += -I ./include -L ./build -std=c++23 -fmodules-ts -g3 -O3 -lpthread
 all: build build/for_each
 
 build/libtensorc.so: $(SOURCES) scripts/ewise_binary_arith.py
-	python3 scripts/ewise_binary_arith.py
+	# python3 scripts/ewise_binary_arith.py
 	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorc.so ${SOURCES}
 
 build/for_each: scratch/for_each.cpp build/libtensorc.so
