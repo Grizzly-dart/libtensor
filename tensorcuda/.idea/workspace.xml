@@ -10,9 +10,7 @@
     <option name="reloaded" value="true" />
   </component>
   <component name="CMakeRunConfigurationManager">
-    <generated>
-      <config projectName="tensorcuda" targetName="tensorcuda" />
-    </generated>
+    <generated />
   </component>
   <component name="CMakeSettings" AUTO_RELOAD="true">
     <configurations>
@@ -21,11 +19,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dba1abb4-efcb-4806-96a9-7fe1dca4fb72" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../tensorc/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../tensorc/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/../tensorc/Makefile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../tensorc/docs/tasks.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../tensorc/include/reducer.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tensorc/include/tensorc.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/../tensorc/include/tensorc.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tensorc/include/typed_array.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/../tensorc/include/typed_array.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tensorc/src/ewise/binary_arith.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../tensorc/src/ewise/binary_arith.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tensorc/src/stat/stat.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../tensorc/src/stat/stat.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile_" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile_" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -76,7 +76,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="tensorcuda" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="tensorcuda" TARGET_NAME="tensorcuda" CONFIG_NAME="Debug">
+    <configuration name="tensorcuda" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="tensorcuda" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
