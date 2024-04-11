@@ -1,117 +1,37 @@
 #include <experimental/simd>
 #include <iterator>
+#include <stdfloat>
 
 #include "tensorc.hpp"
 #include "typed_array.hpp"
 
 namespace stdx = std::experimental;
 
-
-
-/*
-template <typename F> class TypedIterator {
-public:
-  using iterator_category = std::contiguous_iterator_tag;
-  using difference_type = std::ptrdiff_t;
-  using size_type = std::size_t;
-  using value_type = F;
-  using pointer = F *;
-  using reference = F &;
-
-  F *ptr;
-
-  TypedIterator(void *ptr) : ptr(ptr) {}
-
-  double getF64(uint64_t index) { return ((F *)ptr)[index]; }
-  uint64_t getU64(uint64_t index) { return ((F *)ptr)[index]; }
-  int64_t getI64(uint64_t index) { return ((F *)ptr)[index]; }
-  void *offset(uint64_t index) { return ((F *)ptr) + index; }
-
-  reference operator*() const { return *ptr; }
-  pointer operator->() { return ptr; }
-
-  TypedIterator &operator++() {
-    ptr++;
-    return *this;
-  }
-
-  TypedIterator operator++(int) {
-    TypedIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-
-  TypedIterator &operator--() {
-    ptr--;
-    return *this;
-  }
-
-  TypedIterator operator--(int) {
-    TypedIterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-
-  TypedIterator &operator+=(difference_type n) {
-    ptr += n;
-    return *this;
-  }
-
-  TypedIterator operator+(difference_type n) const {
-    TypedIterator tmp = *this;
-    return tmp += n;
-  }
-
-  TypedIterator &operator-=(difference_type n) {
-    ptr -= n;
-    return *this;
-  }
-
-  TypedIterator operator-(difference_type n) const {
-    TypedIterator tmp = *this;
-    return tmp -= n;
-  }
-
-  difference_type operator-(const TypedIterator &rhs) const {
-    return ptr - rhs.ptr;
-  }
-
-  reference operator[](size_type n) const { return *(*this + n); }
-
-  friend bool operator==(const TypedIterator &a, const TypedIterator &b) {
-    return a.ptr == b.ptr;
-  };
-  friend bool operator!=(const TypedIterator &a, const TypedIterator &b) {
-    return a.ptr != b.ptr;
-  };
-};
-*/
-
-/*
-class TypeArray {
-public:
-  virtual double getF64(void *ptr, uint64_t index) = 0;
-  virtual uint64_t getU64(void *ptr, uint64_t index) = 0;
-  virtual int64_t getI64(void *ptr, uint64_t index) = 0;
-  virtual void *offset(void *ptr, uint64_t index);
+const Caster<int64_t> i64Casters[8] = {
+        {castLoader<int64_t, int8_t>,   castStorer<int64_t, int8_t>,
+                castIndexer<int8_t>},
+        {castLoader<int64_t, int16_t>,  castStorer<int64_t, int16_t>,
+                castIndexer<int16_t>},
+        {castLoader<int64_t, int32_t>,  castStorer<int64_t, int32_t>,
+                castIndexer<int32_t>},
+        {castLoader<int64_t, int64_t>,  castStorer<int64_t, int64_t>,
+                castIndexer<int64_t>},
+        {castLoader<int64_t, uint8_t>,  castStorer<int64_t, uint8_t>,
+                castIndexer<uint8_t>},
+        {castLoader<int64_t, uint16_t>, castStorer<int64_t, uint16_t>,
+                castIndexer<uint16_t>},
+        {castLoader<int64_t, uint32_t>, castStorer<int64_t, uint32_t>,
+                castIndexer<uint32_t>},
+        {castLoader<int64_t, uint64_t>, castStorer<int64_t, uint64_t>,
+                castIndexer<uint64_t>},
 };
 
-class U8Array : public TypeArray {
-public:
-
-  double getF64(void *ptr, uint64_t index) { return ((uint8_t *)ptr)[index]; }
-  uint64_t getU64(void *ptr, uint64_t index) { return ((uint8_t *)ptr)[index]; }
-  int64_t getI64(void *ptr, uint64_t index) { return ((uint8_t *)ptr)[index]; }
-  void *offset(void *ptr, uint64_t index) { return ((uint8_t *)ptr) + index; }
+const Caster<double> f64Casters[4] = {
+        {castLoader<double, float>,  castStorer<double, float>,
+                                                                castIndexer<std::bfloat16_t>},
+        {castLoader<double, float>,  castStorer<double, float>,
+                                                                castIndexer<std::float16_t>},
+        {castLoader<double, float>,  castStorer<double, float>, castIndexer<float>},
+        {castLoader<double, double>, castStorer<double, double>,
+                                                                castIndexer<double>},
 };
-
-class U16Array : public TypeArray {
-public:
-  double getF64(void *ptr, uint64_t index) { return ((uint16_t *)ptr)[index]; }
-  uint64_t getU64(void *ptr, uint64_t index) {
-    return ((uint16_t *)ptr)[index];
-  }
-  int64_t getI64(void *ptr, uint64_t index) { return ((uint16_t *)ptr)[index]; }
-  void *offset(void *ptr, uint64_t index) { return ((uint16_t *)ptr) + index; }
-};
-*/

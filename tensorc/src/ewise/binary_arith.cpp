@@ -35,9 +35,9 @@ void tcPlus(
       std::execution::par, (*in1It).countBegin(), (*in1It).countEnd(),
       [&in1It, &in2It, &outIt, flip](uint64_t a) {
         if (flip == 0) {
-          outIt[a] = in1It->at(a) + in2It->at(a);
+          outIt[a] = in1It->load(a) + in2It->load(a);
         } else {
-          outIt[a] = in2It->at(a) - in1It->at(a);
+          outIt[a] = in2It->load(a) - in1It->load(a);
         }
       }
   );
@@ -60,7 +60,7 @@ const char *tcPlus(
     uint8_t flip
 ) {
   if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null at the same time";
+    return "Both inp2 and scalar cannot be null or non-null load the same time";
   }
   if (inp2 != nullptr) {
     std::transform(
@@ -82,7 +82,7 @@ const char *tcMinus(
     uint8_t flip
 ) {
   if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null at the same time";
+    return "Both inp2 and scalar cannot be null or non-null load the same time";
   }
   if (inp2 != nullptr) {
     if (!flip) {
@@ -118,7 +118,7 @@ const char *tcMul(
     uint8_t flip
 ) {
   if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null at the same time";
+    return "Both inp2 and scalar cannot be null or non-null load the same time";
   }
   if (inp2 != nullptr) {
     std::transform(
@@ -140,7 +140,7 @@ const char *tcDiv(
     uint8_t flip
 ) {
   if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null at the same time";
+    return "Both inp2 and scalar cannot be null or non-null load the same time";
   }
   if (inp2 != nullptr) {
     if (!flip) {
@@ -176,7 +176,7 @@ const char *tcPow(
     uint8_t flip
 ) {
   if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null at the same time";
+    return "Both inp2 and scalar cannot be null or non-null load the same time";
   }
   if (inp2 != nullptr) {
     if (!flip) {

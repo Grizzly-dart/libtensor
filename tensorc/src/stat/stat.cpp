@@ -50,7 +50,7 @@ template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
   auto red = std::reduce(
       std::execution::par, (*inpIt).countBegin(), (*inpIt).countEnd(),
       stdx::native_simd<O>(0),
-      [&inpIt](uint64_t a, uint64_t b) { return a + inpIt->at(b); }
+      [&inpIt](uint64_t a, uint64_t b) { return a + inpIt->load(b); }
   );
 
   O redScalar = 0;
