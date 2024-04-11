@@ -15,6 +15,28 @@
 
 namespace stdx = std::experimental;
 
+struct DType {
+  uint8_t index;
+  uint8_t bytes;
+  uint8_t subIndex;
+};
+
+const DType i8 = {0, 1, 0};
+const DType i16 = {1, 2, 1};
+const DType i32 = {2, 4, 2};
+const DType i64 = {3, 8, 3};
+const DType u8 = {4, 1, 4};
+const DType u16 = {5, 2, 5};
+const DType u32 = {6, 4, 6};
+const DType u64 = {7, 8, 7};
+const DType bf16 = {8, 2, 0};
+const DType f16 = {9, 2, 1};
+const DType f32 = {10, 4, 2};
+const DType f64 = {11, 4, 3};
+
+const DType dtypes[] = {i8,  i16, i32,  i64, u8,  u16,
+                        u32, u64, bf16, f16, f32, f64};
+
 class Range {
 public:
   using iterator_category = std::random_access_iterator_tag;
