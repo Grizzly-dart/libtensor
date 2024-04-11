@@ -1,6 +1,10 @@
 OS := $(shell uname | tr A-Z a-z)
 
 ifeq ($(OS),linux)
+only_copy:
+	cd tensorc && make only_copy
+	cd tensorcuda && make only_copy
+
 copy_all_dart:
 	cd tensorc && make copy_dart
 	cd tensorcuda && make copy_dart

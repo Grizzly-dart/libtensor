@@ -31,11 +31,13 @@ build/for_each: scratch/for_each.cpp build/libtensorc.so
 
 build: build/libtensorc.so
 
-copy_dart: build/libtensorc.so
+copy_dart: build/libtensorc.so only_copy
+
+only_copy:
 	cp build/libtensorc.so ../../gpuc_dart/lib/asset/$(OS)/
 
 clean:
 	rm -f build/libtensorc.so
 	rm -f build/for_each
 
-.PHONY: all build clean copy_dart
+.PHONY: all build clean copy_dart only_copy

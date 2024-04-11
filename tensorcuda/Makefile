@@ -23,7 +23,9 @@ build_all: $(BUILD_TESTS)
 clean:
 	rm -rf build/*
 
-copy_dart: build/libtensorcuda.so
+copy_dart: build/libtensorcuda.so only_copy
+
+only_copy:
 	cp build/libtensorcuda.so ../../gpuc_dart/lib/asset/$(OS)/
 
 .PHONY: all build clean test_vector_add test_matmul test_sum2d test_all test_mean2d
