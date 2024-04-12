@@ -44,8 +44,8 @@ public:
 template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
   size_t width =
       std::min(stdx::native_simd<O>::size(), stdx::native_simd<I>::size());
-  std::unique_ptr<SimdIter<I>> inpIt =
-      std::make_unique<SimdIterator<I>>(inp, width, nel);
+  std::unique_ptr<ISimd<I>> inpIt =
+      std::make_unique<Simd<I>>(inp, width, nel);
 
   auto red = std::reduce(
       std::execution::par, (*inpIt).countBegin(), (*inpIt).countEnd(),
@@ -63,8 +63,8 @@ template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
 template <typename O, typename I> void tcMean(O *out, I *inp, uint64_t nel) {
   size_t width =
       std::min(stdx::native_simd<O>::size(), stdx::native_simd<I>::size());
-  std::unique_ptr<SimdIter<I>> inpIt =
-      std::make_unique<SimdIterator<I>>(inp, width, nel);
+  std::unique_ptr<ISimd<I>> inpIt =
+      std::make_unique<Simd<I>>(inp, width, nel);
 
   // TODO
 }

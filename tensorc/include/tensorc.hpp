@@ -45,9 +45,15 @@ extern void tcMemcpy(void *dst, void *src, uint64_t size);
 }
 #endif
 
-template <typename O, typename I1, typename I2>
+template <typename O, typename I>
 extern void tcPlus(
-    O *out, I1 *inp1, I2 *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
+    O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
+);
+
+template <typename O, typename I>
+void tcPlusSlow(
+    O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster,
+    uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 );
 
 #endif // TENSORC_H

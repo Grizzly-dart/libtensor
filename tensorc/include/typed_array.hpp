@@ -10,11 +10,33 @@
 #include <experimental/simd>
 #include <iterator>
 #include <memory>
+#include <stdfloat>
 
 #include "range.hpp"
 #include "tensorc.hpp"
 
 namespace stdx = std::experimental;
+
+template <typename T> constexpr bool isRealNum() {
+  return std::is_same<T, float>::value || std::is_same<T, double>::value;
+}
+
+template <typename T> constexpr bool isAnyInt() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
+         std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value ||
+         std::is_same<T, uint8_t>::value || std::is_same<T, uint16_t>::value ||
+         std::is_same<T, uint32_t>::value || std::is_same<T, uint64_t>::value;
+}
+
+template <typename T> constexpr bool isInt() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
+         std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value;
+}
+
+template <typename T> constexpr bool isUInt() {
+  return std::is_same<T, uint8_t>::value || std::is_same<T, uint16_t>::value ||
+         std::is_same<T, uint32_t>::value || std::is_same<T, uint64_t>::value;
+}
 
 struct DType {
 public:
@@ -38,6 +60,36 @@ const DType f64 = {11, 4, 3};
 
 const DType dtypes[] = {i8,  i16, i32,  i64, u8,  u16,
                         u32, u64, bf16, f16, f32, f64};
+
+template <typename T> constexpr DType dtypeOf()  {
+  if constexpr (std::is_same<T, int8_t>::value) {
+    return i8;
+  } else if constexpr (std::is_same<T, int16_t>::value) {
+    return i16;
+  } else if constexpr (std::is_same<T, int32_t>::value) {
+    return i32;
+  } else if constexpr (std::is_same<T, int64_t>::value) {
+    return i64;
+  } else if constexpr (std::is_same<T, uint8_t>::value) {
+    return u8;
+  } else if constexpr (std::is_same<T, uint16_t>::value) {
+    return u16;
+  } else if constexpr (std::is_same<T, uint32_t>::value) {
+    return u32;
+  } else if constexpr (std::is_same<T, uint64_t>::value) {
+    return u64;
+  } else if constexpr (std::is_same<T, std::bfloat16_t>::value) {
+    return bf16;
+  } else if constexpr (std::is_same<T, std::float16_t>::value) {
+    return f16;
+  } else if constexpr (std::is_same<T, float>::value) {
+    return f32;
+  } else if constexpr (std::is_same<T, double>::value) {
+    return f64;
+  } else {
+    throw std::invalid_argument("Invalid type");
+  }
+}
 
 template <typename O, typename I> O castLoader(void *ptr, uint64_t index);
 
@@ -64,18 +116,22 @@ template <typename T> struct Caster {
 
   Caster(Caster<T> &other)
       : loader(other.loader), storer(other.storer), indexer(other.indexer) {}
+
+  static const Caster<T> &lookup(DType dtype);
 };
 
-extern const Caster<int64_t> i64Casters[8];
+extern const Caster<int64_t> i64Casters[12];
 
-extern const Caster<double> f64Casters[4];
+extern const Caster<double> f64Casters[12];
 
-template <typename T> class SimdIter {
+extern const Caster<float> f32Casters[12];
+
+template <typename T> class ISimd {
 public:
   uint16_t width;
   uint64_t length;
 
-  SimdIter(uint16_t width, uint64_t length) : width(width), length(length){};
+  ISimd(uint16_t width, uint64_t length) : width(width), length(length){};
 
   [[nodiscard]] Range countBegin() const { return Range(0); }
 
@@ -91,153 +147,201 @@ public:
   virtual stdx::native_simd<T> &load(uint64_t i, stdx::native_simd<T> &simd)
       const = 0;
 
-  virtual ~SimdIter() = default;
+  virtual ~ISimd() = default;
+
+  [[nodiscard]] uint16_t calcRemainingElements(uint64_t ind) const {
+    int64_t diff = int64_t(length) - ind * width;
+    if (diff < 0) {
+      return 0;
+    } else if (diff < width) {
+      return diff;
+    } else {
+      return width;
+    }
+  }
 };
 
-template <typename T> class SimdIterator : public SimdIter<T> {
+template <typename T> class Simd : public ISimd<T> {
 public:
   T *ptr;
 
-  using SimdIter<T>::width;
-  using SimdIter<T>::length;
+  using ISimd<T>::width;
+  using ISimd<T>::length;
+  using ISimd<T>::calcRemainingElements;
 
-  SimdIterator(T *ptr, uint16_t width, int64_t length)
-      : ptr(ptr), SimdIter<T>(width, length){};
+  Simd(T *ptr, uint16_t width, int64_t length)
+      : ptr(ptr), ISimd<T>(width, length){};
 
-  SimdIterator(const SimdIterator &other) = default;
+  Simd(const Simd &other) = default;
 
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    for (uint64_t i = 0; i < width; i++) {
-      if (ind * width + i >= length) {
-        break;
-      }
-      simd[i] = ptr[ind * width + i];
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      simd[i] = ptr[start + i];
     }
     return simd;
   }
 
-  template<typename F>
-  void store(uint64_t ind, const stdx::simd<F> &simd) {
-    uint64_t ptrIndex = ind * width;
-    for (uint64_t i = 0; i < width; i++) {
-      if (ptrIndex + i >= length) {
-        break;
-      }
-      ptr[ptrIndex + i] = static_cast<T>(static_cast<F>(simd[i]));
+  template <typename F> void store(uint64_t ind, const stdx::simd<F> &simd) {
+    uint64_t start = ind * width;
+    uint16_t elements = calcRemainingElements(ind);
+    for (uint64_t i = 0; i < elements; i++) {
+      ptr[start + i] = static_cast<T>(static_cast<F>(simd[i]));
     }
   }
 };
 
-template <typename T> class CastingSimdIterator : public SimdIter<T> {
+template <typename T> class CastSimd : public ISimd<T> {
 public:
-  Caster<T> caster;
+  const Caster<T> &caster;
   void *ptr;
 
-  using SimdIter<T>::width;
-  using SimdIter<T>::length;
+  using ISimd<T>::width;
+  using ISimd<T>::length;
+  using ISimd<T>::calcRemainingElements;
 
-  CastingSimdIterator(
-      Caster<T> caster, void *ptr, uint16_t width, int64_t length
-  )
-      : caster(caster), ptr(ptr), SimdIter<T>(width, length){};
+  CastSimd(const Caster<T> &caster, void *ptr, uint16_t width, int64_t length)
+      : caster(caster), ptr(ptr), ISimd<T>(width, length){};
 
-  CastingSimdIterator(const CastingSimdIterator &other) = default;
+  CastSimd(const CastSimd &other) = default;
 
-  stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    auto elements = std::min(width, length - ind * width);
-    for (uint64_t i = 0; i < elements; i++) {
-      simd[i] = caster.loader(ptr, ind * width + i);
+  static CastSimd<T> create(
+      DType dtype, void *ptr, uint16_t width, int64_t length
+  ) {
+    if constexpr (isRealNum<T>()) {
+      return CastSimd<T>(f64Casters[dtype.index], ptr, width, length);
+    } else if constexpr (isAnyInt<T>()) {
+      return CastSimd<T>(i64Casters[dtype.index], ptr, width, length);
+    } else {
+      throw std::invalid_argument("Invalid type");
     }
   }
 
-  void store(uint64_t ind, const stdx::native_simd<T> &simd) {
-    auto elements = std::min(width, length - ind * width);
+  stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
-      caster.storer(ptr, ind * width + i, simd[i]);
+      simd[i] = caster.loader(ptr, start + i);
+    }
+    return simd;
+  }
+
+  template <typename F> void store(uint64_t ind, const stdx::native_simd<F> &simd) {
+    auto elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      caster.storer(ptr, start + i, static_cast<T>(static_cast<F>(simd[i])));
     }
   }
 };
 
-template <typename T> class RwiseSimdIterator : public SimdIter<T> {
+template <typename T> class RwiseSimd : public ISimd<T> {
 public:
   T *ptr;
   Dim2 size;
 
-  using SimdIter<T>::width;
-  using SimdIter<T>::length;
+  using ISimd<T>::width;
+  using ISimd<T>::length;
+  using ISimd<T>::calcRemainingElements;
 
-  RwiseSimdIterator(T *ptr, uint16_t width, uint64_t length, Dim2 size)
-      : ptr(ptr), size(size), SimdIter<T>(width, length){};
+  RwiseSimd(T *ptr, uint16_t width, uint64_t length, Dim2 size)
+      : ptr(ptr), size(size), ISimd<T>(width, length){};
 
-  RwiseSimdIterator(const RwiseSimdIterator &other) = default;
+  RwiseSimd(const RwiseSimd &other) = default;
 
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    for (uint64_t i = 0; i < width; i++) {
-      if (ind * width + i >= size.nel()) {
-        break;
-      }
-      simd[i] = ptr[((ind * width + i) / size.c) % size.r];
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      simd[i] = ptr[((start + i) / size.c) % size.r];
     }
     return simd;
   }
 };
 
-template <typename T> class CastingRwiseSimdIterator : public SimdIter<T> {
+template <typename T> class CastRwiseSimd : public ISimd<T> {
 public:
-  Caster<T> caster;
+  const Caster<T> &caster;
   Dim2 size;
   void *ptr;
 
-  using SimdIter<T>::width;
-  using SimdIter<T>::length;
+  using ISimd<T>::width;
+  using ISimd<T>::length;
+  using ISimd<T>::calcRemainingElements;
 
-  CastingRwiseSimdIterator(
-      Caster<T> caster, void *ptr, uint16_t width, uint64_t length, Dim2 size
+  CastRwiseSimd(
+      const Caster<T> &caster, void *ptr, uint16_t width, uint64_t length,
+      Dim2 size
   )
-      : caster(caster), ptr(ptr), size(size), SimdIter<T>(width, length){};
+      : caster(caster), ptr(ptr), size(size), ISimd<T>(width, length){};
 
-  CastingRwiseSimdIterator(const CastingRwiseSimdIterator &other) = default;
+  CastRwiseSimd(const CastRwiseSimd &other) = default;
 
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    for (uint64_t i = 0; i < width; i++) {
-      if (ind * width + i >= size.nel()) {
-        break;
-      }
-      simd[i] = caster.loader(
-          ptr, ((ind * width + i) / size.c) % size.r
-      );
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      simd[i] = caster.loader(ptr, ((start + i) / size.c) % size.r);
     }
     return simd;
   }
 };
 
-template <typename T> class ScalarSimdInpIter : public SimdIter<T> {
+template <typename T> class SameSimd : public ISimd<T> {
 public:
   T value;
 
-  using SimdIter<T>::width;
-  using SimdIter<T>::length;
+  using ISimd<T>::width;
+  using ISimd<T>::length;
 
-  ScalarSimdInpIter(T value, uint16_t width, int64_t length)
-      : value(value), SimdIter<T>(width, length){};
+  SameSimd(T value, uint16_t width, int64_t length)
+      : value(value), ISimd<T>(width, length){};
 
-  ScalarSimdInpIter(const ScalarSimdInpIter &other) = default;
+  SameSimd(const SameSimd &other) = default;
 
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    uint16_t diff = length - ind * width;
+    int16_t diff = length - ind * width;
     if (diff >= width) {
       simd = value;
-      return simd;
-    } else {
+    } else if (diff > 0) {
       for (int i = 0; i < diff; i++) {
         simd[i] = value;
       }
-      return simd;
     }
+    return simd;
   }
 };
 
-#define UNWIND2(A, B, OP, NAME)                                                \
+#define UNWIND3_SAME(A, OP, NAME) OP(A, A, A, NAME)
+
+#define UNWIND2_SAME(A, OP, NAME) OP(A, A, NAME)
+
+#define UWIND3_ALL_TYPES(OP, NAME)                                             \
+  UNWIND3_SAME(int8_t, OP, NAME)                                               \
+  UNWIND3_SAME(int16_t, OP, NAME)                                              \
+  UNWIND3_SAME(int32_t, OP, NAME)                                              \
+  UNWIND3_SAME(int64_t, OP, NAME)                                              \
+  UNWIND3_SAME(uint8_t, OP, NAME)                                              \
+  UNWIND3_SAME(uint16_t, OP, NAME)                                             \
+  UNWIND3_SAME(uint32_t, OP, NAME)                                             \
+  UNWIND3_SAME(uint64_t, OP, NAME)                                             \
+  UNWIND3_SAME(float, OP, NAME)                                                \
+  UNWIND3_SAME(double, OP, NAME)
+
+#define UNWIND2_ALL_TYPES(OP, NAME)                                            \
+  UNWIND2_SAME(int8_t, OP, NAME)                                               \
+  UNWIND2_SAME(int16_t, OP, NAME)                                              \
+  UNWIND2_SAME(int32_t, OP, NAME)                                              \
+  UNWIND2_SAME(int64_t, OP, NAME)                                              \
+  UNWIND2_SAME(uint8_t, OP, NAME)                                              \
+  UNWIND2_SAME(uint16_t, OP, NAME)                                             \
+  UNWIND2_SAME(uint32_t, OP, NAME)                                             \
+  UNWIND2_SAME(uint64_t, OP, NAME)                                             \
+  UNWIND2_SAME(float, OP, NAME)                                                \
+  UNWIND2_SAME(double, OP, NAME)
+
+#define UNWIND3_2(A, B, OP, NAME)                                              \
   OP(A, A, A, NAME)                                                            \
   OP(A, A, B, NAME)                                                            \
   OP(A, B, A, NAME)                                                            \
@@ -246,6 +350,12 @@ public:
   OP(B, A, B, NAME)                                                            \
   OP(B, B, A, NAME)                                                            \
   OP(B, A, A, NAME)
+
+#define UNWIND2_2(A, B, OP, NAME)                                              \
+  OP(A, A, NAME)                                                               \
+  OP(A, B, NAME)                                                               \
+  OP(B, A, NAME)                                                               \
+  OP(B, B, NAME)
 
 #endif // TENSORC_TYPED_ARRAY_HPP
 

@@ -20,8 +20,37 @@ template <typename T> auto testTcPlus(Dim3 size) {
 
   std::chrono::steady_clock::time_point begin =
       std::chrono::steady_clock::now();
-  tcPlus<T, T, T>(
-      out.get(), inp1.get(), inp2.get(), size.nel(), 0, Dim2{0, 0}
+  tcPlus<T, T>(out.get(), inp1.get(), inp2.get(), size.nel(), 0, Dim2{0, 0});
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+  for (uint64_t i = 0; i < size.nel(); i++) {
+    // printf("%d %d %d\n", inp1.get()[i], inp2.get()[i], out.get()[i]);
+    if ((T)(inp1.get()[i] + inp2.get()[i]) != out.get()[i]) {
+      printf(
+          "Error load %lu; %u + %u != %u\n", i, inp1.get()[i], inp2.get()[i],
+          out.get()[i]
+      );
+      break;
+    }
+  }
+  return std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+}
+
+template <typename C, typename T> auto testTcPlusSlow(Dim3 size) {
+  auto inp1 = std::unique_ptr<T>(new T[size.nel()]);
+  auto inp2 = std::unique_ptr<T>(new T[size.nel()]);
+  auto out = std::unique_ptr<T>(new T[size.nel()]);
+
+  for (uint64_t i = 0; i < size.nel(); i++) {
+    inp1.get()[i] = 10 + i;
+    inp2.get()[i] = i;
+  }
+
+  std::chrono::steady_clock::time_point begin =
+      std::chrono::steady_clock::now();
+  tcPlusSlow<C, C>(
+      (C*)out.get(), (C *)inp1.get(), (C *)inp2.get(), size.nel(), 0,
+      Dim2{0, 0}, dtypeOf<T>().index, dtypeOf<T>().index, dtypeOf<T>().index
   );
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
@@ -49,21 +78,21 @@ void tcPlusGeneric(
       stdx::native_simd<I2>::size()
   );
   printf("width: %zu\n", width);
-  std::unique_ptr<SimdIter<I1>> in1It =
-      std::make_unique<SimdIterator<I1>>(inp1, width, nel);
-  std::unique_ptr<SimdIter<I2>> in2It;
+  std::unique_ptr<ISimd<I1>> in1It =
+      std::make_unique<Simd<I1>>(inp1, width, nel);
+  std::unique_ptr<ISimd<I2>> in2It;
   if (mode == ArithMode::ewise) {
-    in2It = std::make_unique<SimdIterator<I2>>(inp2, width, nel);
+    in2It = std::make_unique<Simd<I2>>(inp2, width, nel);
   } else if (mode == ArithMode::rwise) {
-    in2It = std::make_unique<RwiseSimdIterator<I2>>(inp2, width, size);
+    in2It = std::make_unique<RwiseSimd<I2>>(inp2, width, size);
   } else if (mode == ArithMode::scalar) {
-    in2It = std::make_unique<ScalarSimdInpIter<I2>>(
-        ScalarSimdInpIter<I2>(5, width, nel)
+    in2It = std::make_unique<SameSimd<I2>>(
+        SameSimd<I2>(5, width, nel)
     );
   } else {
     throw std::invalid_argument("Invalid mode");
   }
-  auto outIt = SimdIterator<uint8_t>(out, width, nel);
+  auto outIt = Simd<uint8_t>(out, width, nel);
 
   std::for_each(
       std::execution::par, (*in1It).countBegin(), (*in1It).countEnd(),
@@ -79,10 +108,19 @@ void tcPlusGeneric(
  */
 
 int main() {
-  auto size = Dim3{10, 5, 3};
+  auto size = Dim3{10, 500, 500};
 
-  auto dur = testTcPlus<uint8_t>(size);
-  std::cout << "Duration: " << dur.count() << "ns" << std::endl;
+  std::chrono::microseconds dur(0);
+
+  for(int i = 0; i < 5; i++) {
+    dur = testTcPlusSlow<int64_t, uint8_t>(size);
+    std::cout << "SlowDuration: " << dur.count() << "ns" << std::endl;
+
+    dur = testTcPlus<uint8_t>(size);
+    std::cout << "FastDuration: " << dur.count() << "ns" << std::endl;
+  }
+
+  fflush(stdout);
 
   return 0;
 }
