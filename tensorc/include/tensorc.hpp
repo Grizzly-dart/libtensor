@@ -1,7 +1,7 @@
 #ifndef TENSORC_H
 #define TENSORC_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,9 +46,8 @@ extern void tcMemcpy(void *dst, void *src, uint64_t size);
 #endif
 
 template <typename O, typename I1, typename I2>
-const char *tcPlus(
-    O *out, const I1 *inp1, const I2 *inp2, const I2 *scalar, uint64_t nel,
-    uint8_t flip
+extern void tcPlus(
+    O *out, I1 *inp1, I2 *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
 );
 
 #endif // TENSORC_H

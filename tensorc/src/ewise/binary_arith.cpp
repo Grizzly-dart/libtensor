@@ -1,8 +1,6 @@
 #include <algorithm>
 #include <cmath>
 #include <execution>
-#include <stdint.h>
-#include <stdlib.h>
 
 #include "tensorc.hpp"
 #include "typed_array.hpp"
@@ -27,21 +25,32 @@ void tcPlus(
         ScalarSimdInpIter<I2>(5, width, nel)
     );
   } else {
-    in2It = std::make_unique<RwiseSimdIterator<I2>>(inp2, width, size);
+    in2It = std::make_unique<RwiseSimdIterator<I2>>(inp2, width, nel, i2broadcaster);
   }
   auto outIt = SimdIterator<O>(out, width, nel);
 
   std::for_each(
       std::execution::par, (*in1It).countBegin(), (*in1It).countEnd(),
-      [&in1It, &in2It, &outIt, flip](uint64_t a) {
-        if (flip == 0) {
-          outIt[a] = in1It->load(a) + in2It->load(a);
-        } else {
-          outIt[a] = in2It->load(a) - in1It->load(a);
-        }
+      [&in1It, &in2It, &outIt, flip](uint64_t i) {
+        auto a = in1It->load(i);
+        auto b = in2It->load(i);
+        auto res = a + b;
+        outIt.store(i, res);
       }
   );
 }
+
+#define BINARYARITH(O, I1, I2, NAME)                                           \
+  template <> void tc##NAME(                                                      \
+      O *out, I1 *inp1, I2 *inp2, uint64_t nel, uint8_t flip,                  \
+      Dim2 i2broadcaster                                                       \
+  );
+
+// UNWIND2(double, float, BINARYARITH, Plus)
+// BINARYARITH(double, double, double, Plus)
+// BINARYARITH(double, double, float, Plus)
+BINARYARITH(uint8_t, uint8_t, uint8_t, Plus)
+// BINARYARITH(double, float, float, Plus)
 
 /* TODO
 template <typename O, typename I1, typename I2>
@@ -54,6 +63,7 @@ void tcPlusSlow(
 }
 */
 
+/*
 template <typename O, typename I1, typename I2>
 const char *tcPlus(
     O *out, const I1 *inp1, const I2 *inp2, const I2 *scalar, uint64_t nel,
@@ -205,5 +215,6 @@ const char *tcPow(
   }
   return nullptr;
 }
+ */
 
 // #include "binary_arith_gen.inc"

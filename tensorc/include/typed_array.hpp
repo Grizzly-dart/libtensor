@@ -80,7 +80,7 @@ public:
   [[nodiscard]] Range countBegin() const { return Range(0); }
 
   [[nodiscard]] Range countEnd() const {
-    return Range((length + this->width - 1) / this->width);
+    return Range((length + width - 1) / width);
   }
 
   stdx::native_simd<T> load(uint64_t i) const {
@@ -108,21 +108,22 @@ public:
 
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
     for (uint64_t i = 0; i < width; i++) {
-      if (ind * this->width + i >= length) {
+      if (ind * width + i >= length) {
         break;
       }
-      simd[i] = ptr[index + ind * width + i];
+      simd[i] = ptr[ind * width + i];
     }
     return simd;
   }
 
-  void store(uint64_t ind, const stdx::native_simd<T> &simd) {
+  template<typename F>
+  void store(uint64_t ind, const stdx::simd<F> &simd) {
     uint64_t ptrIndex = ind * width;
     for (uint64_t i = 0; i < width; i++) {
       if (ptrIndex + i >= length) {
         break;
       }
-      ptr[ptrIndex + i] = simd[i];
+      ptr[ptrIndex + i] = static_cast<T>(static_cast<F>(simd[i]));
     }
   }
 };
@@ -165,8 +166,8 @@ public:
   using SimdIter<T>::width;
   using SimdIter<T>::length;
 
-  RwiseSimdIterator(T *ptr, uint16_t width, Dim2 size)
-      : ptr(ptr), size(size), SimdIter<T>(width){};
+  RwiseSimdIterator(T *ptr, uint16_t width, uint64_t length, Dim2 size)
+      : ptr(ptr), size(size), SimdIter<T>(width, length){};
 
   RwiseSimdIterator(const RwiseSimdIterator &other) = default;
 
@@ -235,6 +236,16 @@ public:
     }
   }
 };
+
+#define UNWIND2(A, B, OP, NAME)                                                \
+  OP(A, A, A, NAME)                                                            \
+  OP(A, A, B, NAME)                                                            \
+  OP(A, B, A, NAME)                                                            \
+  OP(A, B, B, NAME)                                                            \
+  OP(B, B, B, NAME)                                                            \
+  OP(B, A, B, NAME)                                                            \
+  OP(B, B, A, NAME)                                                            \
+  OP(B, A, A, NAME)
 
 #endif // TENSORC_TYPED_ARRAY_HPP
 

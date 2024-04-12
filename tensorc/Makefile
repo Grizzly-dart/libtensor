@@ -2,6 +2,7 @@ OS := $(shell uname | tr A-Z a-z)
 ifeq ($(OS),linux)
 	CPP := g++
 	SOURCES = ${shell find src/ -type f -regextype egrep -regex ".*\.(cpp|cu|c)$$"}
+	HEADERS = ${shell find include/ -type f -regextype egrep -regex ".*\.(hpp|h)$$"}
 endif
 ifeq ($(OS),darwin)
 	CPPMAJVER = $(shell brew list --versions | fgrep gcc | cut -d ' ' -f 2 | cut -d '.' -f1)
@@ -13,21 +14,22 @@ ifeq ($(OS),darwin)
 	tbbVersions = $(shell brew list --versions | fgrep tbb | cut -d ' ' -f 2)
 	CXXFLAGS +=  -I/opt/homebrew/Cellar/tbb/${tbbVersions}/include -L/opt/homebrew/Cellar/tbb/${tbbVersions}/lib
 	SOURCES = ${shell find -E src -type f -regex ".*\.(cpp|cu|c)$$"}
+	HEADERS = ${shell find -E include -type f -regex ".*\.(hpp|h)$$"}
 endif
 ifeq ($(OS),cygwin)
 
 endif
 
-CXXFLAGS += -I ./include -L ./build -std=c++23 -fmodules-ts -g3 -O3 -lpthread
+CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -O3 -lpthread
 
 all: build build/for_each
 
-build/libtensorc.so: $(SOURCES) scripts/ewise_binary_arith.py
+build/libtensorc.so: $(SOURCES) $(HEADERS)
 	# python3 scripts/ewise_binary_arith.py
 	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorc.so ${SOURCES}
 
 build/for_each: scratch/for_each.cpp build/libtensorc.so
-	${CPP} ${CXXFLAGS} -ltensorc -o $@ $< -ltbb
+	${CPP} ${CXXFLAGS} -o $@ scratch/for_each.cpp -ltensorc -ltbb
 
 build: build/libtensorc.so
 

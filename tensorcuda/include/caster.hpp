@@ -62,4 +62,14 @@ extern __constant__ Caster<int64_t> i64Casters[8];
 
 extern __constant__ Caster<double> f64Casters[4];
 
+#define UNWIND2(A, B, OP, NAME)                                                \
+  OP(A, A, A, NAME)                                                            \
+  OP(A, A, B, NAME)                                                            \
+  OP(A, B, A, NAME)                                                            \
+  OP(A, B, B, NAME)                                                            \
+  OP(B, B, B, NAME)                                                            \
+  OP(B, A, B, NAME)                                                            \
+  OP(B, B, A, NAME)                                                            \
+  OP(B, A, A, NAME)
+
 #endif // TENSORCUDA_CASTER_HPP

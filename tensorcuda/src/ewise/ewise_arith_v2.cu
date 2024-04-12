@@ -125,16 +125,6 @@ const char *tcuPlusSlow(
   return nullptr;
 }
 
-#define UNWIND2(A, B, OP, NAME)                                                \
-  OP(A, A, A, NAME)                                                            \
-  OP(A, A, B, NAME)                                                            \
-  OP(A, B, A, NAME)                                                            \
-  OP(A, B, B, NAME)                                                            \
-  OP(B, B, B, NAME)                                                            \
-  OP(B, A, B, NAME)                                                            \
-  OP(B, B, A, NAME)                                                            \
-  OP(B, A, A, NAME)
-
 #define PLUS(O, I1, I2, NAME)                                                  \
   template const char *tcu##NAME(                                              \
       tcuStream &stream, O *out, I1 *inp1, I2 *inp2, I2 scalar, uint64_t n,    \

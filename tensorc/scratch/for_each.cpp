@@ -1,7 +1,5 @@
 #include <algorithm>
 #include <chrono>
-#include <execution>
-#include <experimental/simd>
 #include <iostream>
 #include <memory>
 
@@ -9,11 +7,6 @@
 #include "typed_array.hpp"
 
 namespace stdx = std::experimental;
-
-template <typename O, typename I1, typename I2>
-extern void tcPlus(
-    O *out, I1 *inp1, I2 *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
-);
 
 template <typename T> auto testTcPlus(Dim3 size) {
   auto inp1 = std::unique_ptr<T>(new T[size.nel()]);
@@ -45,6 +38,7 @@ template <typename T> auto testTcPlus(Dim3 size) {
   return std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 }
 
+/*
 template <typename O, typename I1, typename I2>
 void tcPlusGeneric(
     O *out, I1 *inp1, I2 *inp2, uint64_t nel, uint8_t flip, Dim3 size,
@@ -82,6 +76,7 @@ void tcPlusGeneric(
       }
   );
 }
+ */
 
 int main() {
   auto size = Dim3{10, 5, 3};
