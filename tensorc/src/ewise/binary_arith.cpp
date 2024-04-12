@@ -5,8 +5,16 @@
 #include "tensorc.hpp"
 #include "typed_array.hpp"
 
-template <typename O, typename I>
-void tcPlus(
+enum BinaryOp : uint8_t {
+  Plus,
+  Minus,
+  Mul,
+  Div,
+  Pow,
+};
+
+template <typename O, typename I, BinaryOp op>
+void tcBinaryArith(
     O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
 ) {
   size_t width = std::min(
@@ -30,24 +38,71 @@ void tcPlus(
       std::execution::par, i1.countBegin(), i1.countEnd(),
       [&i1, &i2, &o, flip](uint64_t i) {
         stdx::native_simd<I> a, b;
-        o.store(i, i1.load(i, a) + i2->load(i, b));
+        if constexpr (op == BinaryOp::Plus) {
+          o.store(i, i1.load(i, a) + i2->load(i, b));
+        } else if constexpr (op == BinaryOp::Minus) {
+          if (!flip) {
+            o.store(i, i1.load(i, a) - i2->load(i, b));
+          } else {
+            o.store(i, i2->load(i, b) - i1.load(i, a));
+          }
+        } else if constexpr (op == BinaryOp::Mul) {
+          o.store(i, i1.load(i, a) * i2->load(i, b));
+        } else if constexpr (op == BinaryOp::Div) {
+          if (!flip) {
+            o.store(i, i1.load(i, a) / i2->load(i, b));
+          } else {
+            o.store(i, i2->load(i, b) / i1.load(i, a));
+          }
+        } else if constexpr (op == BinaryOp::Pow) {
+          auto elements = i1.calcRemainingElements(i);
+          using std::pow;
+          if (!flip) {
+            for (int j = 0; j < elements; j++) {
+              uint64_t ind = i * i1.width + j;
+              o.set(ind, pow(i1.get(ind), i2->get(ind)));
+            }
+          } else {
+            for (int j = 0; j < elements; j++) {
+              uint64_t ind = i * i1.width + j;
+              o.set(ind, pow(i2->get(ind), i1.get(ind)));
+            }
+          }
+        }
       }
   );
 }
 
-#define BINARYARITH(O, I, NAME)                                                \
-  template void tc##NAME(                                                      \
-      O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster \
+#define BINARYARITH(O, I)                                                      \
+  template void tcBinaryArith<O, I, BinaryOp::Plus>(                           \
+      O * out, I * inp1, I * inp2, uint64_t nel, uint8_t flip,                 \
+      Dim2 i2broadcaster                                                       \
+  );                                                                           \
+  template void tcBinaryArith<O, I, BinaryOp::Minus>(                          \
+      O * out, I * inp1, I * inp2, uint64_t nel, uint8_t flip,                 \
+      Dim2 i2broadcaster                                                       \
+  );                                                                           \
+  template void tcBinaryArith<O, I, BinaryOp::Mul>(                            \
+      O * out, I * inp1, I * inp2, uint64_t nel, uint8_t flip,                 \
+      Dim2 i2broadcaster                                                       \
+  );                                                                           \
+  template void tcBinaryArith<O, I, BinaryOp::Div>(                            \
+      O * out, I * inp1, I * inp2, uint64_t nel, uint8_t flip,                 \
+      Dim2 i2broadcaster                                                       \
+  );                                                                           \
+  template void tcBinaryArith<O, I, BinaryOp::Pow>(                            \
+      O * out, I * inp1, I * inp2, uint64_t nel, uint8_t flip,                 \
+      Dim2 i2broadcaster                                                       \
   );
 
-UNWIND2_ALL_TYPES(BINARYARITH, Plus)
-BINARYARITH(double, float, Plus)
-BINARYARITH(float, double, Plus)
+UNWIND2_ALL_TYPES(BINARYARITH)
+// BINARYARITH(double, float, Plus)
+// BINARYARITH(float, double, Plus)
 
-template <typename O, typename I>
+template <typename O, typename I, BinaryOp op>
 void tcPlusSlow(
-    O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster,
-    uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+    void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
   size_t width = stdx::native_simd<I>::size();
   printf("width: %zu\n", width);
@@ -70,174 +125,63 @@ void tcPlusSlow(
   }
   std::for_each(
       std::execution::par, i1.countBegin(), i1.countEnd(),
-      [&i1, &i2, &o](uint64_t i) {
+      [&i1, &i2, &o, flip](uint64_t i) {
         stdx::native_simd<I> a, b;
-        o.store(i, i1.load(i, a) + i2->load(i, b));
+        if constexpr (op == BinaryOp::Plus) {
+          o.store(i, i1.load(i, a) + i2->load(i, b));
+        } else if constexpr (op == BinaryOp::Minus) {
+          if (!flip) {
+            o.store(i, i1.load(i, a) - i2->load(i, b));
+          } else {
+            o.store(i, i2->load(i, b) - i1.load(i, a));
+          }
+        } else if constexpr (op == BinaryOp::Mul) {
+          o.store(i, i1.load(i, a) * i2->load(i, b));
+        } else if constexpr (op == BinaryOp::Div) {
+          if (!flip) {
+            o.store(i, i1.load(i, a) / i2->load(i, b));
+          } else {
+            o.store(i, i2->load(i, b) / i1.load(i, a));
+          }
+        } else if constexpr (op == BinaryOp::Pow) {
+          auto elements = i1.calcRemainingElements(i);
+          using std::pow;
+          if (!flip) {
+            for (int j = 0; j < elements; j++) {
+              uint64_t ind = i * i1.width + j;
+              o.set(ind, pow(i1.get(ind), i2->get(ind)));
+            }
+          } else {
+            for (int j = 0; j < elements; j++) {
+              uint64_t ind = i * i1.width + j;
+              o.set(ind, pow(i2->get(ind), i1.get(ind)));
+            }
+          }
+        }
       }
   );
 }
 
-#define BINARYARITH_SLOW(O, I, NAME)                                           \
-  template void tc##NAME##Slow(                                                \
-      O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip,                    \
-      Dim2 i2broadcaster, uint8_t outType, uint8_t inp1Type, uint8_t inp2Type  \
+#define BINARYARITH_SLOW(O, I)                                                 \
+  template void tcPlusSlow<O, I, BinaryOp::Plus>(                              \
+      void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,           \
+      Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
+  );                                                                           \
+  template void tcPlusSlow<O, I, BinaryOp::Minus>(                             \
+      void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,           \
+      Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
+  );                                                                           \
+  template void tcPlusSlow<O, I, BinaryOp::Mul>(                               \
+      void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,           \
+      Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
+  );                                                                           \
+  template void tcPlusSlow<O, I, BinaryOp::Div>(                               \
+      void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,           \
+      Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
+  );                                                                           \
+  template void tcPlusSlow<O, I, BinaryOp::Pow>(                               \
+      void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,           \
+      Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
   );
 
-BINARYARITH_SLOW(float, float, Plus)
-UNWIND2_2(double, int64_t, BINARYARITH_SLOW, Plus)
-
-/*
-template <typename O, typename I1, typename I2>
-const char *tcPlus(
-    O *out, const I1 *inp1, const I2 *inp2, const I2 *scalar, uint64_t nel,
-    uint8_t flip
-) {
-  if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null load the same time";
-  }
-  if (inp2 != nullptr) {
-    std::transform(
-        std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-        [](I1 a, I2 b) { return a + b; }
-    );
-  } else {
-    std::transform(
-        std::execution::par_unseq, inp1, inp1 + nel, out,
-        [scalar](I1 a) { return a + *scalar; }
-    );
-  }
-  return nullptr;
-}
-
-template <typename O, typename I1, typename I2>
-const char *tcMinus(
-    O *out, const I1 *inp1, const I2 *inp2, const I2 *scalar, uint64_t nel,
-    uint8_t flip
-) {
-  if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null load the same time";
-  }
-  if (inp2 != nullptr) {
-    if (!flip) {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-          [](I1 a, I2 b) { return a + b; }
-      );
-    } else {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-          [](I1 a, I2 b) { return b - a; }
-      );
-    }
-  } else {
-    if (!flip) {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, out,
-          [scalar](I1 a) { return a - *scalar; }
-      );
-    } else {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, out,
-          [scalar](I1 a) { return *scalar - a; }
-      );
-    }
-  }
-  return nullptr;
-}
-
-template <typename O, typename I1, typename I2>
-const char *tcMul(
-    O *out, const I1 *inp1, const I2 *inp2, const I2 *scalar, uint64_t nel,
-    uint8_t flip
-) {
-  if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null load the same time";
-  }
-  if (inp2 != nullptr) {
-    std::transform(
-        std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-        [](I1 a, I2 b) { return a * b; }
-    );
-  } else {
-    std::transform(
-        std::execution::par_unseq, inp1, inp1 + nel, out,
-        [scalar](I1 a) { return a * *scalar; }
-    );
-  }
-  return nullptr;
-}
-
-template <typename O, typename I1, typename I2>
-const char *tcDiv(
-    O *out, const I1 *inp1, const I2 *inp2, const I2 *scalar, uint64_t nel,
-    uint8_t flip
-) {
-  if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null load the same time";
-  }
-  if (inp2 != nullptr) {
-    if (!flip) {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-          [](I1 a, I2 b) { return a / b; }
-      );
-    } else {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-          [](I1 a, I2 b) { return b / a; }
-      );
-    }
-  } else {
-    if (!flip) {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, out,
-          [scalar](I1 a) { return a / *scalar; }
-      );
-    } else {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, out,
-          [scalar](I1 a) { return *scalar / a; }
-      );
-    }
-  }
-  return nullptr;
-}
-
-template <typename O, typename I1, typename I2>
-const char *tcPow(
-    O *out, const I1 *inp1, const I2 *inp2, const I2 *scalar, uint64_t nel,
-    uint8_t flip
-) {
-  if ((inp2 == nullptr) == (scalar == nullptr)) {
-    return "Both inp2 and scalar cannot be null or non-null load the same time";
-  }
-  if (inp2 != nullptr) {
-    if (!flip) {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-          [](I1 a, I2 b) { return std::pow(a, b); }
-      );
-    } else {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, inp2, out,
-          [](I1 a, I2 b) { return std::pow(b, a); }
-      );
-    }
-  } else {
-    if (!flip) {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, out,
-          [scalar](I1 a) { return std::pow(a, *scalar); }
-      );
-    } else {
-      std::transform(
-          std::execution::par_unseq, inp1, inp1 + nel, out,
-          [scalar](I1 a) { return std::pow(*scalar, a); }
-      );
-    }
-  }
-  return nullptr;
-}
- */
-
-// #include "binary_arith_gen.inc"
+UNWIND2_2(double, int64_t, BINARYARITH_SLOW)

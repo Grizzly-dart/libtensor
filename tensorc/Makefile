@@ -20,7 +20,7 @@ ifeq ($(OS),cygwin)
 
 endif
 
-CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -O3 -lpthread
+CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -O3 -lpthread -mavx512f
 
 all: build build/for_each
 

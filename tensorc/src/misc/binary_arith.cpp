@@ -6,7 +6,7 @@
 
 /*
 template <typename O, typename I1, typename I2>
-const char *tcPlus(
+const char *tcBinaryArith(
     O *out, const I1 *inp1, const I2 *inp2, uint64_t nel, ArithMode mode,
     uint8_t flip
 ) {

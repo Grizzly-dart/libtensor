@@ -20,7 +20,9 @@ template <typename T> auto testTcPlus(Dim3 size) {
 
   std::chrono::steady_clock::time_point begin =
       std::chrono::steady_clock::now();
-  tcPlus<T, T>(out.get(), inp1.get(), inp2.get(), size.nel(), 0, Dim2{0, 0});
+  tcBinaryArith<T, T>(
+      out.get(), inp1.get(), inp2.get(), size.nel(), 0, Dim2{0, 0}
+  );
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
   for (uint64_t i = 0; i < size.nel(); i++) {
@@ -115,6 +117,9 @@ int main() {
   for(int i = 0; i < 5; i++) {
     dur = testTcPlusSlow<int64_t, uint8_t>(size);
     std::cout << "SlowDuration: " << dur.count() << "ns" << std::endl;
+
+    dur = testTcPlusSlow<int16_t, uint8_t>(size);
+    std::cout << "MediumDuration: " << dur.count() << "ns" << std::endl;
 
     dur = testTcPlus<uint8_t>(size);
     std::cout << "FastDuration: " << dur.count() << "ns" << std::endl;

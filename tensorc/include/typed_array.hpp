@@ -61,7 +61,7 @@ const DType f64 = {11, 4, 3};
 const DType dtypes[] = {i8,  i16, i32,  i64, u8,  u16,
                         u32, u64, bf16, f16, f32, f64};
 
-template <typename T> constexpr DType dtypeOf()  {
+template <typename T> constexpr DType dtypeOf() {
   if constexpr (std::is_same<T, int8_t>::value) {
     return i8;
   } else if constexpr (std::is_same<T, int16_t>::value) {
@@ -126,6 +126,10 @@ extern const Caster<double> f64Casters[12];
 
 extern const Caster<float> f32Casters[12];
 
+extern const Caster<int16_t> i16Casters[12];
+
+extern const Caster<int32_t> i32Casters[12];
+
 template <typename T> class ISimd {
 public:
   uint16_t width;
@@ -146,6 +150,8 @@ public:
 
   virtual stdx::native_simd<T> &load(uint64_t i, stdx::native_simd<T> &simd)
       const = 0;
+
+  virtual T get(uint64_t i) const;
 
   virtual ~ISimd() = default;
 
@@ -183,13 +189,18 @@ public:
     return simd;
   }
 
-  template <typename F> void store(uint64_t ind, const stdx::simd<F> &simd) {
+  template <typename F>
+  void store(uint64_t ind, const stdx::native_simd<F> &simd) {
     uint64_t start = ind * width;
     uint16_t elements = calcRemainingElements(ind);
     for (uint64_t i = 0; i < elements; i++) {
       ptr[start + i] = static_cast<T>(static_cast<F>(simd[i]));
     }
   }
+
+  T get(uint64_t i) const { return ptr[i]; }
+
+  void set(uint64_t i, T value) { ptr[i] = value; }
 };
 
 template <typename T> class CastSimd : public ISimd<T> {
@@ -227,13 +238,18 @@ public:
     return simd;
   }
 
-  template <typename F> void store(uint64_t ind, const stdx::native_simd<F> &simd) {
+  template <typename F>
+  void store(uint64_t ind, const stdx::native_simd<F> &simd) {
     auto elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
       caster.storer(ptr, start + i, static_cast<T>(static_cast<F>(simd[i])));
     }
   }
+
+  T get(uint64_t i) const { return caster.loader(ptr, i); }
+
+  void set(uint64_t i, T value) { caster.storer(ptr, i, value); }
 };
 
 template <typename T> class RwiseSimd : public ISimd<T> {
@@ -258,6 +274,8 @@ public:
     }
     return simd;
   }
+
+  T get(uint64_t i) const { return ptr[(i / size.c) % size.r]; }
 };
 
 template <typename T> class CastRwiseSimd : public ISimd<T> {
@@ -286,6 +304,8 @@ public:
     }
     return simd;
   }
+
+  T get(uint64_t i) const { return caster.loader(ptr, (i / size.c) % size.r); }
 };
 
 template <typename T> class SameSimd : public ISimd<T> {
@@ -311,11 +331,13 @@ public:
     }
     return simd;
   }
+
+  T get(uint64_t i) const { return value; }
 };
 
 #define UNWIND3_SAME(A, OP, NAME) OP(A, A, A, NAME)
 
-#define UNWIND2_SAME(A, OP, NAME) OP(A, A, NAME)
+#define UNWIND2_SAME(A, OP) OP(A, A)
 
 #define UWIND3_ALL_TYPES(OP, NAME)                                             \
   UNWIND3_SAME(int8_t, OP, NAME)                                               \
@@ -329,17 +351,17 @@ public:
   UNWIND3_SAME(float, OP, NAME)                                                \
   UNWIND3_SAME(double, OP, NAME)
 
-#define UNWIND2_ALL_TYPES(OP, NAME)                                            \
-  UNWIND2_SAME(int8_t, OP, NAME)                                               \
-  UNWIND2_SAME(int16_t, OP, NAME)                                              \
-  UNWIND2_SAME(int32_t, OP, NAME)                                              \
-  UNWIND2_SAME(int64_t, OP, NAME)                                              \
-  UNWIND2_SAME(uint8_t, OP, NAME)                                              \
-  UNWIND2_SAME(uint16_t, OP, NAME)                                             \
-  UNWIND2_SAME(uint32_t, OP, NAME)                                             \
-  UNWIND2_SAME(uint64_t, OP, NAME)                                             \
-  UNWIND2_SAME(float, OP, NAME)                                                \
-  UNWIND2_SAME(double, OP, NAME)
+#define UNWIND2_ALL_TYPES(OP)                                                  \
+  UNWIND2_SAME(int8_t, OP)                                                     \
+  UNWIND2_SAME(int16_t, OP)                                                    \
+  UNWIND2_SAME(int32_t, OP)                                                    \
+  UNWIND2_SAME(int64_t, OP)                                                    \
+  UNWIND2_SAME(uint8_t, OP)                                                    \
+  UNWIND2_SAME(uint16_t, OP)                                                   \
+  UNWIND2_SAME(uint32_t, OP)                                                   \
+  UNWIND2_SAME(uint64_t, OP)                                                   \
+  UNWIND2_SAME(float, OP)                                                      \
+  UNWIND2_SAME(double, OP)
 
 #define UNWIND3_2(A, B, OP, NAME)                                              \
   OP(A, A, A, NAME)                                                            \
@@ -351,11 +373,11 @@ public:
   OP(B, B, A, NAME)                                                            \
   OP(B, A, A, NAME)
 
-#define UNWIND2_2(A, B, OP, NAME)                                              \
-  OP(A, A, NAME)                                                               \
-  OP(A, B, NAME)                                                               \
-  OP(B, A, NAME)                                                               \
-  OP(B, B, NAME)
+#define UNWIND2_2(A, B, OP)                                                    \
+  OP(A, A)                                                                     \
+  OP(A, B)                                                                     \
+  OP(B, A)                                                                     \
+  OP(B, B)
 
 #endif // TENSORC_TYPED_ARRAY_HPP
 

@@ -97,6 +97,46 @@ const Caster<float> f32Casters[12] = {
     {castLoader<float, double>, castStorer<float, double>, castIndexer<double>},
 };
 
+const Caster<int16_t> i16Casters[12] = {
+    {castLoader<int16_t, int8_t>, castStorer<int16_t, int8_t>,
+     castIndexer<int8_t>},
+    {castLoader<int16_t, int16_t>, castStorer<int16_t, int16_t>,
+     castIndexer<int16_t>},
+    {},
+    {},
+    {castLoader<int16_t, uint8_t>, castStorer<int16_t, uint8_t>,
+     castIndexer<uint8_t>},
+    {castLoader<int16_t, uint16_t>, castStorer<int16_t, uint16_t>,
+     castIndexer<uint16_t>},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+};
+
+const Caster<int32_t> i32Casters[12] = {
+    {castLoader<int32_t, int8_t>, castStorer<int32_t, int8_t>,
+     castIndexer<int8_t>},
+    {castLoader<int32_t, int16_t>, castStorer<int32_t, int16_t>,
+     castIndexer<int16_t>},
+    {castLoader<int32_t, int32_t>, castStorer<int32_t, int32_t>,
+     castIndexer<int32_t>},
+    {},
+    {castLoader<int32_t, uint8_t>, castStorer<int32_t, uint8_t>,
+     castIndexer<uint8_t>},
+    {castLoader<int32_t, uint16_t>, castStorer<int32_t, uint16_t>,
+     castIndexer<uint16_t>},
+    {castLoader<int32_t, uint32_t>, castStorer<int32_t, uint32_t>,
+     castIndexer<uint32_t>},
+    {},
+    {},
+    {},
+    {},
+    {},
+};
+
 template <typename T> const Caster<T> &Caster<T>::lookup(DType type) {
   if constexpr (std::is_same<T, float>::value) {
     return f32Casters[type.index];
@@ -104,6 +144,10 @@ template <typename T> const Caster<T> &Caster<T>::lookup(DType type) {
     return f64Casters[type.index];
   } else if constexpr (std::is_same<T, int64_t>::value) {
     return i64Casters[type.index];
+  } else if constexpr (std::is_same<T, int16_t>::value) {
+    return i16Casters[type.index];
+  } else if constexpr (std::is_same<T, int32_t>::value) {
+    return i32Casters[type.index];
   } else {
     throw std::runtime_error("Unsupported type");
   }
@@ -112,3 +156,5 @@ template <typename T> const Caster<T> &Caster<T>::lookup(DType type) {
 template const Caster<double> &Caster<double>::lookup(DType type);
 template const Caster<float> &Caster<float>::lookup(DType type);
 template const Caster<int64_t> &Caster<int64_t>::lookup(DType type);
+template const Caster<int32_t> &Caster<int32_t>::lookup(DType type);
+template const Caster<int16_t> &Caster<int16_t>::lookup(DType type);
