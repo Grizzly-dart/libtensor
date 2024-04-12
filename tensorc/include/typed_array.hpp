@@ -335,50 +335,6 @@ public:
   T get(uint64_t i) const { return value; }
 };
 
-#define UNWIND3_SAME(A, OP, NAME) OP(A, A, A, NAME)
-
-#define UNWIND2_SAME(A, OP) OP(A, A)
-
-#define UWIND3_ALL_TYPES(OP, NAME)                                             \
-  UNWIND3_SAME(int8_t, OP, NAME)                                               \
-  UNWIND3_SAME(int16_t, OP, NAME)                                              \
-  UNWIND3_SAME(int32_t, OP, NAME)                                              \
-  UNWIND3_SAME(int64_t, OP, NAME)                                              \
-  UNWIND3_SAME(uint8_t, OP, NAME)                                              \
-  UNWIND3_SAME(uint16_t, OP, NAME)                                             \
-  UNWIND3_SAME(uint32_t, OP, NAME)                                             \
-  UNWIND3_SAME(uint64_t, OP, NAME)                                             \
-  UNWIND3_SAME(float, OP, NAME)                                                \
-  UNWIND3_SAME(double, OP, NAME)
-
-#define UNWIND2_ALL_TYPES(OP)                                                  \
-  UNWIND2_SAME(int8_t, OP)                                                     \
-  UNWIND2_SAME(int16_t, OP)                                                    \
-  UNWIND2_SAME(int32_t, OP)                                                    \
-  UNWIND2_SAME(int64_t, OP)                                                    \
-  UNWIND2_SAME(uint8_t, OP)                                                    \
-  UNWIND2_SAME(uint16_t, OP)                                                   \
-  UNWIND2_SAME(uint32_t, OP)                                                   \
-  UNWIND2_SAME(uint64_t, OP)                                                   \
-  UNWIND2_SAME(float, OP)                                                      \
-  UNWIND2_SAME(double, OP)
-
-#define UNWIND3_2(A, B, OP, NAME)                                              \
-  OP(A, A, A, NAME)                                                            \
-  OP(A, A, B, NAME)                                                            \
-  OP(A, B, A, NAME)                                                            \
-  OP(A, B, B, NAME)                                                            \
-  OP(B, B, B, NAME)                                                            \
-  OP(B, A, B, NAME)                                                            \
-  OP(B, B, A, NAME)                                                            \
-  OP(B, A, A, NAME)
-
-#define UNWIND2_2(A, B, OP)                                                    \
-  OP(A, A)                                                                     \
-  OP(A, B)                                                                     \
-  OP(B, A)                                                                     \
-  OP(B, B)
-
 #endif // TENSORC_TYPED_ARRAY_HPP
 
 #pragma clang diagnostic pop

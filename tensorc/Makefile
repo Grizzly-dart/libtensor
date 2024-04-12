@@ -27,6 +27,7 @@ all: build build/for_each
 build/libtensorc.so: $(SOURCES) $(HEADERS)
 	# python3 scripts/ewise_binary_arith.py
 	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorc.so ${SOURCES}
+	ls -lh build/libtensorc.so
 
 build/for_each: scratch/for_each.cpp build/libtensorc.so
 	${CPP} ${CXXFLAGS} -o $@ scratch/for_each.cpp -ltensorc -ltbb

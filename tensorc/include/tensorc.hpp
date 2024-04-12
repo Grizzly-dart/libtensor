@@ -24,6 +24,14 @@ struct Dim3 {
   [[nodiscard]] uint64_t nel() const { return ch * r * c; }
 };
 
+enum BinaryOp : uint8_t {
+  Plus,
+  Minus,
+  Mul,
+  Div,
+  Pow,
+};
+
 typedef enum PadMode : uint8_t {
   CONSTANT,
   CIRCULAR,
@@ -38,5 +46,16 @@ extern void tcMemcpy(void *dst, void *src, uint64_t size);
 #ifdef __cplusplus
 }
 #endif
+
+template <typename O, typename I, BinaryOp op>
+void tcBinaryArith(
+    O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
+);
+
+template <typename O, typename I, BinaryOp op>
+void tcPlusSlow(
+    void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+);
 
 #endif // TENSORC_H

@@ -5,14 +5,6 @@
 #include "tensorc.hpp"
 #include "typed_array.hpp"
 
-enum BinaryOp : uint8_t {
-  Plus,
-  Minus,
-  Mul,
-  Div,
-  Pow,
-};
-
 template <typename O, typename I, BinaryOp op>
 void tcBinaryArith(
     O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
@@ -94,10 +86,6 @@ void tcBinaryArith(
       O * out, I * inp1, I * inp2, uint64_t nel, uint8_t flip,                 \
       Dim2 i2broadcaster                                                       \
   );
-
-UNWIND2_ALL_TYPES(BINARYARITH)
-// BINARYARITH(double, float, Plus)
-// BINARYARITH(float, double, Plus)
 
 template <typename O, typename I, BinaryOp op>
 void tcPlusSlow(
@@ -184,4 +172,57 @@ void tcPlusSlow(
       Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
   );
 
+
+
+#define UNWIND3_SAME(A, OP, NAME) OP(A, A, A, NAME)
+
+#define UNWIND2_SAME(A, OP) OP(A, A)
+
+#define UWIND3_ALL_TYPES(OP, NAME)                                             \
+  UNWIND3_SAME(int8_t, OP, NAME)                                               \
+  UNWIND3_SAME(int16_t, OP, NAME)                                              \
+  UNWIND3_SAME(int32_t, OP, NAME)                                              \
+  UNWIND3_SAME(int64_t, OP, NAME)                                              \
+  UNWIND3_SAME(uint8_t, OP, NAME)                                              \
+  UNWIND3_SAME(uint16_t, OP, NAME)                                             \
+  UNWIND3_SAME(uint32_t, OP, NAME)                                             \
+  UNWIND3_SAME(uint64_t, OP, NAME)                                             \
+  UNWIND3_SAME(float, OP, NAME)                                                \
+  UNWIND3_SAME(double, OP, NAME)
+
+#define UNWIND2_ALL_TYPES(OP)                                                  \
+  UNWIND2_SAME(int8_t, OP)                                                     \
+  UNWIND2_SAME(int16_t, OP)                                                    \
+  UNWIND2_SAME(int32_t, OP)                                                    \
+  UNWIND2_SAME(int64_t, OP)                                                    \
+  UNWIND2_SAME(uint8_t, OP)                                                    \
+  UNWIND2_SAME(uint16_t, OP)                                                   \
+  UNWIND2_SAME(uint32_t, OP)                                                   \
+  UNWIND2_SAME(uint64_t, OP)                                                   \
+  UNWIND2_SAME(float, OP)                                                      \
+  UNWIND2_SAME(double, OP)
+
+#define UNWIND3_2(A, B, OP, NAME)                                              \
+  OP(A, A, A, NAME)                                                            \
+  OP(A, A, B, NAME)                                                            \
+  OP(A, B, A, NAME)                                                            \
+  OP(A, B, B, NAME)                                                            \
+  OP(B, B, B, NAME)                                                            \
+  OP(B, A, B, NAME)                                                            \
+  OP(B, B, A, NAME)                                                            \
+  OP(B, A, A, NAME)
+
+#define UNWIND2_2(A, B, OP)                                                    \
+  OP(A, A)                                                                     \
+  OP(A, B)                                                                     \
+  OP(B, A)                                                                     \
+  OP(B, B)
+
+UNWIND2_ALL_TYPES(BINARYARITH)
+BINARYARITH(double, float)
+BINARYARITH(float, double)
+
 UNWIND2_2(double, int64_t, BINARYARITH_SLOW)
+BINARYARITH_SLOW(float, float)
+BINARYARITH_SLOW(int32_t, int32_t)
+BINARYARITH_SLOW(int16_t, int16_t)
