@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <execution>
+#include <stdfloat>
 
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
@@ -9,8 +10,7 @@ template <typename O, typename I, BinaryOp op>
 void tcBinaryArith(
     O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
 ) {
-  size_t width =
-      std::min(stdx::native_simd<O>::size(), stdx::native_simd<I>::size());
+  size_t width = stdx::native_simd<I>::size();
   printf("width: %zu\n", width);
   auto i1 = Simd<I>(inp1, width, nel);
   std::unique_ptr<ISimd<I>> i2;
@@ -215,7 +215,7 @@ void tcPlusSlow(
   UNWIND2_SAME(uint64_t, OP)                                                   \
   UNWIND2_SAME(float, OP)                                                      \
   UNWIND2_SAME(double, OP)                                                     \
-  UNWIND2_SAME(std::float16_t, OP)                                         \
+  UNWIND2_SAME(std::float16_t, OP)                                             \
   UNWIND2_SAME(std::bfloat16_t, OP)
 
 #define UNWIND3_2(A, B, OP, NAME)                                              \
