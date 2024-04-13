@@ -148,6 +148,8 @@ public:
   virtual stdx::native_simd<T> &load(uint64_t i, stdx::native_simd<T> &simd)
       const = 0;
 
+  virtual void load(uint64_t ind, std::vector<T> &vec) const = 0;
+
   virtual T get(uint64_t i) const = 0;
 
   virtual ~ISimd() = default;
@@ -186,12 +188,33 @@ public:
     return simd;
   }
 
+  void load(uint64_t ind, std::vector<T> &vec) const {
+    if (vec.size() < width) {
+      vec.resize(width);
+    }
+    auto p = vec.data();
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+#pragma GCC ivdep
+    for (uint64_t i = 0; i < elements; i++) {
+      p[i] = ptr[start + i];
+    }
+  }
+
   template <typename F>
   void store(uint64_t ind, const stdx::native_simd<F> &simd) {
     uint64_t start = ind * width;
     uint16_t elements = calcRemainingElements(ind);
     for (uint64_t i = 0; i < elements; i++) {
       ptr[start + i] = static_cast<T>(static_cast<F>(simd[i]));
+    }
+  }
+
+  template <typename F> void store(uint64_t ind, const std::vector<F> &vec) {
+    uint64_t start = ind * width;
+    uint16_t elements = calcRemainingElements(ind);
+    for (uint64_t i = 0; i < elements; i++) {
+      ptr[start + i] = vec[i];
     }
   }
 
@@ -214,18 +237,6 @@ public:
 
   CastSimd(const CastSimd &other) = default;
 
-  static CastSimd<T> create(
-      DType dtype, void *ptr, uint16_t width, int64_t length
-  ) {
-    if constexpr (isRealNum<T>()) {
-      return CastSimd<T>(f64Casters[dtype.index], ptr, width, length);
-    } else if constexpr (isAnyInt<T>()) {
-      return CastSimd<T>(i64Casters[dtype.index], ptr, width, length);
-    } else {
-      throw std::invalid_argument("Invalid type");
-    }
-  }
-
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
@@ -235,12 +246,31 @@ public:
     return simd;
   }
 
+  void load(uint64_t ind, std::vector<T> &vec) const {
+    if (vec.size() < width) {
+      vec.resize(width);
+    }
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      vec[i] = caster.loader(ptr, start + i);
+    }
+  }
+
   template <typename F>
   void store(uint64_t ind, const stdx::native_simd<F> &simd) {
     auto elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
       caster.storer(ptr, start + i, static_cast<T>(static_cast<F>(simd[i])));
+    }
+  }
+
+  template <typename F> void store(uint64_t ind, const std::vector<F> &vec) {
+    auto elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      caster.storer(ptr, start + i, vec[i]);
     }
   }
 
@@ -270,6 +300,17 @@ public:
       simd[i] = ptr[((start + i) / size.c) % size.r];
     }
     return simd;
+  }
+
+  void load(uint64_t ind, std::vector<T> &vec) const {
+    if (vec.size() < width) {
+      vec.resize(width);
+    }
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      vec[i] = ptr[((start + i) / size.c) % size.r];
+    }
   }
 
   T get(uint64_t i) const { return ptr[(i / size.c) % size.r]; }
@@ -302,6 +343,17 @@ public:
     return simd;
   }
 
+  void load(uint64_t ind, std::vector<T> &vec) const {
+    if (vec.size() < width) {
+      vec.resize(width);
+    }
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    for (uint64_t i = 0; i < elements; i++) {
+      vec[i] = caster.loader(ptr, ((start + i) / size.c) % size.r);
+    }
+  }
+
   T get(uint64_t i) const { return caster.loader(ptr, (i / size.c) % size.r); }
 };
 
@@ -322,11 +374,31 @@ public:
     if (diff >= width) {
       simd = value;
     } else if (diff > 0) {
+#pragma GCC ivdep
       for (int i = 0; i < diff; i++) {
         simd[i] = value;
       }
     }
     return simd;
+  }
+
+  void load(uint64_t ind, std::vector<T> &vec) const {
+    if (vec.size() < width) {
+      vec.resize(width);
+    }
+    auto p = vec.data();
+    int16_t diff = length - ind * width;
+    if (diff >= width) {
+#pragma GCC ivdep
+      for (int i = 0; i < width; i++) {
+        p[i] = value;
+      }
+    } else if (diff > 0) {
+#pragma GCC ivdep
+      for (int i = 0; i < diff; i++) {
+        p[i] = value;
+      }
+    }
   }
 
   T get(uint64_t i) const { return value; }

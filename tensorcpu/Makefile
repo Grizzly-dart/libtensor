@@ -20,7 +20,7 @@ ifeq ($(OS),cygwin)
 
 endif
 
-CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -O3 -lpthread -mavx512f
+CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -O3 -lpthread -mavx512f -ftree-vectorize -ftree-vectorizer-verbose=1
 
 all: build build/for_each
 
@@ -32,8 +32,8 @@ build/libtensorcpu.so: $(SOURCES) $(HEADERS)
 	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorcpu.so ${SOURCES}
 	ls -lh build/libtensorcpu.so
 
-build/for_each: scratch/for_each.cpp build/libtensorcpu.so
-	${CPP} ${CXXFLAGS} -o $@ scratch/for_each.cpp -ltensorcpu -ltbb
+build/for_each: test/for_each.cpp build/libtensorcpu.so
+	${CPP} ${CXXFLAGS} -o $@ test/for_each.cpp -ltensorcpu -ltbb
 
 build: build/libtensorcpu.so
 
@@ -41,6 +41,9 @@ copy_dart: build/libtensorcpu.so only_copy
 
 only_copy:
 	cp build/libtensorcpu.so ../../gpuc_dart/lib/asset/$(OS)/
+
+cmake_gen:
+	cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=ninja -G Ninja -S . -B ./cmake-build-debug
 
 clean:
 	rm -f build/libtensorcpu.so

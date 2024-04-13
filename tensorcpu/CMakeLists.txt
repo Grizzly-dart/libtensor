@@ -2,22 +2,25 @@ cmake_minimum_required(VERSION 3.27)
 include(CMakePrintHelpers)
 set(CMAKE_CXX_STANDARD 23)
 
-execute_process(COMMAND uname OUTPUT_VARIABLE OS)
-execute_process(COMMAND uname -p OUTPUT_VARIABLE ARCH)
+execute_process(COMMAND bash -c "uname | tr -d '\n'" OUTPUT_VARIABLE OS)
+execute_process(COMMAND bash -c "uname -p | tr -d '\n'" OUTPUT_VARIABLE ARCH)
+# cmake_print_variables(OS ARCH)
 
-set(CMAKE_CXX_COMPILER gcc-13)
+set(CMAKE_CXX_COMPILER g++-13)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ftree-vectorize -ffast-math")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-vec-missed -fopt-info-loop-optimized -ftree-vectorizer-verbose=2")
 
-if(OS STREQUAL "Darwin")
+if (OS STREQUAL "Darwin")
 	execute_process(COMMAND brew list --versions | fgrep tbb | cut -d ' ' -f 2 OUTPUT_VARIABLE tbbVersions)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/opt/homebrew/Cellar/tbb/${tbbVersions}/include -L/opt/homebrew/Cellar/tbb/${tbbVersions}/lib")
-	if(ARCH STREQUAL "arm")
+	execute_process(COMMAND g++-13 --version | grep -oP '\\d+\\.\\d+\.\\d+' | head -n 1 OUTPUT_VARIABLE CPPVER)
+	execute_process(COMMAND echo "${CPPVER}" | cut -d '.' -f 1 OUTPUT_VARIABLE CPPMAJVER)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/opt/homebrew/include/c++/${CPPMAJVER} -I/opt/homebrew/Cellar/tbb/${tbbVersions}/include -L/opt/homebrew/Cellar/tbb/${tbbVersions}/lib")
+	if (ARCH STREQUAL "arm")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/opt/homebrew/include/c++/${CPPMAJVER}/aarch64-apple-darwin23")
 	endif ()
-elseif (OS STREQUAL "Linux")
-    message(tejag)
 endif ()
 
-project(tensorcuda CXX)
+project(tensorcpu CXX)
 
 file(GLOB_RECURSE MYSRC CONFIGURE_DEPENDS
 		"src/*.cpp"
@@ -28,12 +31,12 @@ add_library(tensorcpu SHARED
 		${MYSRC}
 )
 
-link_libraries(tbb pthread)
+target_link_libraries(tensorcpu tbb pthread m)
 
 add_executable(for_each test/for_each.cpp)
 
-target_link_directories(for_each PRIVATE ./build)
-target_link_libraries(for_each tensorcpu)
+target_link_directories(for_each PUBLIC ./build)
+target_link_libraries(for_each tensorcpu tbb pthread m)
 
 include_directories(./include)
 
@@ -43,3 +46,5 @@ set_target_properties(tensorcpu
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build"
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build"
 )
+
+set(CMAKE_VERBOSE_MAKEFILE ON)

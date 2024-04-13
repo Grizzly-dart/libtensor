@@ -1,1 +1,1 @@
-+ Vectorize log, exp, pow
++ Vectorize log, exp

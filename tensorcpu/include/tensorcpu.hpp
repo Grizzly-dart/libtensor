@@ -32,6 +32,15 @@ enum BinaryOp : uint8_t {
   Pow,
 };
 
+enum UnaryOp : uint8_t {
+  Sin,
+  Cos,
+  Tan,
+  Sinh,
+  Cosh,
+  Tanh
+};
+
 typedef enum PadMode : uint8_t {
   CONSTANT,
   CIRCULAR,
@@ -57,5 +66,8 @@ void tcPlusSlow(
     void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,
     Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 );
+
+template <typename O, typename I>
+extern const char *tcSin(O *out, const I *inp, uint64_t nel);
 
 #endif // TENSORC_H

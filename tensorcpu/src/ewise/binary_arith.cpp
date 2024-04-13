@@ -9,10 +9,8 @@ template <typename O, typename I, BinaryOp op>
 void tcBinaryArith(
     O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
 ) {
-  size_t width = std::min(
-      std::min(stdx::native_simd<O>::size(), stdx::native_simd<I>::size()),
-      stdx::native_simd<I>::size()
-  );
+  size_t width =
+      std::min(stdx::native_simd<O>::size(), stdx::native_simd<I>::size());
   printf("width: %zu\n", width);
   auto i1 = Simd<I>(inp1, width, nel);
   std::unique_ptr<ISimd<I>> i2;
@@ -29,37 +27,46 @@ void tcBinaryArith(
   std::for_each(
       std::execution::par, i1.countBegin(), i1.countEnd(),
       [&i1, &i2, &o, flip](uint64_t i) {
-        stdx::native_simd<I> a, b;
         if constexpr (op == BinaryOp::Plus) {
+          stdx::native_simd<I> a, b;
           o.store(i, i1.load(i, a) + i2->load(i, b));
         } else if constexpr (op == BinaryOp::Minus) {
+          stdx::native_simd<I> a, b;
           if (!flip) {
             o.store(i, i1.load(i, a) - i2->load(i, b));
           } else {
             o.store(i, i2->load(i, b) - i1.load(i, a));
           }
         } else if constexpr (op == BinaryOp::Mul) {
+          stdx::native_simd<I> a, b;
           o.store(i, i1.load(i, a) * i2->load(i, b));
         } else if constexpr (op == BinaryOp::Div) {
+          stdx::native_simd<I> a, b;
           if (!flip) {
             o.store(i, i1.load(i, a) / i2->load(i, b));
           } else {
             o.store(i, i2->load(i, b) / i1.load(i, a));
           }
         } else if constexpr (op == BinaryOp::Pow) {
-          auto elements = i1.calcRemainingElements(i);
           using std::pow;
+          auto elements = i1.calcRemainingElements(i);
+          std::vector<I> a, b;
+          i1.load(i, a);
+          i2->load(i, b);
+          std::vector<O> res;
+          res.resize(elements);
           if (!flip) {
+#pragma GCC ivdep
             for (int j = 0; j < elements; j++) {
-              uint64_t ind = i * i1.width + j;
-              o.set(ind, pow(i1.get(ind), i2->get(ind)));
+              res[j] = pow(a[j], b[j]);
             }
           } else {
+#pragma GCC ivdep
             for (int j = 0; j < elements; j++) {
-              uint64_t ind = i * i1.width + j;
-              o.set(ind, pow(i2->get(ind), i1.get(ind)));
+              res[j] = pow(b[j], a[j]);
             }
           }
+          o.store(i, res);
         }
       }
   );
@@ -114,37 +121,46 @@ void tcPlusSlow(
   std::for_each(
       std::execution::par, i1.countBegin(), i1.countEnd(),
       [&i1, &i2, &o, flip](uint64_t i) {
-        stdx::native_simd<I> a, b;
         if constexpr (op == BinaryOp::Plus) {
+          stdx::native_simd<I> a, b;
           o.store(i, i1.load(i, a) + i2->load(i, b));
         } else if constexpr (op == BinaryOp::Minus) {
+          stdx::native_simd<I> a, b;
           if (!flip) {
             o.store(i, i1.load(i, a) - i2->load(i, b));
           } else {
             o.store(i, i2->load(i, b) - i1.load(i, a));
           }
         } else if constexpr (op == BinaryOp::Mul) {
+          stdx::native_simd<I> a, b;
           o.store(i, i1.load(i, a) * i2->load(i, b));
         } else if constexpr (op == BinaryOp::Div) {
+          stdx::native_simd<I> a, b;
           if (!flip) {
             o.store(i, i1.load(i, a) / i2->load(i, b));
           } else {
             o.store(i, i2->load(i, b) / i1.load(i, a));
           }
         } else if constexpr (op == BinaryOp::Pow) {
-          auto elements = i1.calcRemainingElements(i);
           using std::pow;
+          auto elements = i1.calcRemainingElements(i);
+          std::vector<I> a, b;
+          i1.load(i, a);
+          i2->load(i, b);
+          std::vector<O> res;
+          res.resize(elements);
           if (!flip) {
+#pragma GCC ivdep
             for (int j = 0; j < elements; j++) {
-              uint64_t ind = i * i1.width + j;
-              o.set(ind, pow(i1.get(ind), i2->get(ind)));
+              res[j] = pow(a[j], b[j]);
             }
           } else {
+#pragma GCC ivdep
             for (int j = 0; j < elements; j++) {
-              uint64_t ind = i * i1.width + j;
-              o.set(ind, pow(i2->get(ind), i1.get(ind)));
+              res[j] = pow(b[j], a[j]);
             }
           }
+          o.store(i, res);
         }
       }
   );
@@ -172,8 +188,6 @@ void tcPlusSlow(
       Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
   );
 
-
-
 #define UNWIND3_SAME(A, OP, NAME) OP(A, A, A, NAME)
 
 #define UNWIND2_SAME(A, OP) OP(A, A)
@@ -200,7 +214,9 @@ void tcPlusSlow(
   UNWIND2_SAME(uint32_t, OP)                                                   \
   UNWIND2_SAME(uint64_t, OP)                                                   \
   UNWIND2_SAME(float, OP)                                                      \
-  UNWIND2_SAME(double, OP)
+  UNWIND2_SAME(double, OP)                                                     \
+  UNWIND2_SAME(std::float16_t, OP)                                         \
+  UNWIND2_SAME(std::bfloat16_t, OP)
 
 #define UNWIND3_2(A, B, OP, NAME)                                              \
   OP(A, A, A, NAME)                                                            \
@@ -220,7 +236,6 @@ void tcPlusSlow(
 
 UNWIND2_ALL_TYPES(BINARYARITH)
 BINARYARITH(double, float)
-BINARYARITH(float, double)
 
 UNWIND2_2(double, int64_t, BINARYARITH_SLOW)
 BINARYARITH_SLOW(float, float)
