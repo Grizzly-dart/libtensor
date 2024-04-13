@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#include "tensorc.hpp"
+#include "tensorcpu.hpp"
 
 void tcFree(void* ptr) {
   free(ptr);

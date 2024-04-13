@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "tensorc.hpp"
+#include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
 template <typename T>

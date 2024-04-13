@@ -3,7 +3,7 @@
 #include <iostream>
 #include <memory>
 
-#include "tensorc.hpp"
+#include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
 namespace stdx = std::experimental;

@@ -2,7 +2,7 @@
 #include <iterator>
 #include <stdfloat>
 
-#include "tensorc.hpp"
+#include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
 namespace stdx = std::experimental;

@@ -2,7 +2,7 @@
 #include <cmath>
 #include <execution>
 
-#include "tensorc.hpp"
+#include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
 template <typename O, typename I, BinaryOp op>

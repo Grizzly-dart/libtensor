@@ -1,11 +1,8 @@
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cert-dcl21-cpp"
-//
-// Created by tejag on 2024-04-06.
-//
 
-#ifndef TENSORC_TYPED_ARRAY_HPP
-#define TENSORC_TYPED_ARRAY_HPP
+#ifndef TENSORCPU_TYPED_ARRAY_HPP
+#define TENSORCPU_TYPED_ARRAY_HPP
 
 #include <experimental/simd>
 #include <iterator>
@@ -13,7 +10,7 @@
 #include <stdfloat>
 
 #include "range.hpp"
-#include "tensorc.hpp"
+#include "tensorcpu.hpp"
 
 namespace stdx = std::experimental;
 
@@ -335,6 +332,6 @@ public:
   T get(uint64_t i) const { return value; }
 };
 
-#endif // TENSORC_TYPED_ARRAY_HPP
+#endif // TENSORCPU_TYPED_ARRAY_HPP
 
 #pragma clang diagnostic pop
