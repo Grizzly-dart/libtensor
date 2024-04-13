@@ -148,7 +148,7 @@ public:
   virtual stdx::native_simd<T> &load(uint64_t i, stdx::native_simd<T> &simd)
       const = 0;
 
-  virtual T get(uint64_t i) const;
+  virtual T get(uint64_t i) const = 0;
 
   virtual ~ISimd() = default;
 
