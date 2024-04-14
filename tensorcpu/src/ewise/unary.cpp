@@ -21,13 +21,23 @@ const char *tcUnary(O *out, I *inp, UnaryOp op, uint64_t nel) {
   Kernel kernel;
   // TODO
 
-  std::for_each(std::execution::par, i1.countBegin(), i1.countEnd(), kernel);
+  std::for_each(std::execution::par_unseq, i1.countBegin(), i1.countEnd(), kernel);
   return nullptr;
 }
 
 template <typename O, typename I>
 const char *tcCast(O *out, const I *inp, uint64_t nel) {
-  // TODO
+  std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
+    return static_cast<O>(a);
+  });
+  return nullptr;
+}
+
+template <typename O, typename I>
+const char *tcCastPlain(O *out, const I *inp, uint64_t nel) {
+  std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
+    return static_cast<O>(a);
+  });
   return nullptr;
 }
 

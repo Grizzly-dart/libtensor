@@ -22,7 +22,7 @@ static Kernel makeKernel(
 }
 
 template <typename O, typename I>
-const char *tcTrignometry(O *out, I *inp, FUnaryOp op, uint64_t nel) {
+const char *tcFUnary(O *out, I *inp, FUnaryOp op, uint64_t nel) {
   size_t width = stdx::native_simd<I>::size();
   printf("width: %zu\n", width);
   auto i1 = Simd<I>(inp, width, nel);
@@ -88,8 +88,74 @@ const char *tcTrignometry(O *out, I *inp, FUnaryOp op, uint64_t nel) {
   return nullptr;
 }
 
-#define TRIGNOMETRY(O, I)                                                      \
-  template const char *tcTrignometry<O, I>(                                    \
+template <typename O, typename I>
+const char *tcFUnaryPlain(O *out, I *inp, FUnaryOp op, uint64_t nel) {
+  std::function<O(I)> func;
+  switch (op) {
+  case FUnaryOp::Log:
+    func = [](I a) { return std::log(a); };
+    break;
+  case FUnaryOp::Exp:
+    func = [](I a) { return std::exp(a); };
+    break;
+  case FUnaryOp::Expm1:
+    func = [](I a) { return std::expm1(a); };
+    break;
+  case FUnaryOp::Sqrt:
+    func = [](I a) { return std::sqrt(a); };
+    break;
+  case FUnaryOp::Sin:
+    func = [](I a) { return std::sin(a); };
+    break;
+  case FUnaryOp::Cos:
+    func = [](I a) { return std::cos(a); };
+    break;
+  case FUnaryOp::Tan:
+    func = [](I a) { return std::tan(a); };
+    break;
+  case FUnaryOp::Sinh:
+    func = [](I a) { return std::sinh(a); };
+    break;
+  case FUnaryOp::Cosh:
+    func = [](I a) { return std::cosh(a); };
+    break;
+  case FUnaryOp::Tanh:
+    func = [](I a) { return std::tanh(a); };
+    break;
+  case FUnaryOp::ASin:
+    func = [](I a) { return std::asin(a); };
+    break;
+  case FUnaryOp::ACos:
+    func = [](I a) { return std::acos(a); };
+    break;
+  case FUnaryOp::ATan:
+    func = [](I a) { return std::atan(a); };
+    break;
+  case FUnaryOp::ASinh:
+    func = [](I a) { return std::asinh(a); };
+    break;
+  case FUnaryOp::ACosh:
+    func = [](I a) { return std::acosh(a); };
+    break;
+  case FUnaryOp::ATanh:
+    func = [](I a) { return std::atanh(a); };
+    break;
+  default:
+    return "Invalid unary operation";
+  }
+
+  std::transform(std::execution::par_unseq, inp, inp + nel, out, func);
+
+  return nullptr;
+}
+
+#define FUNARY(O, I)                                                           \
+  template const char *tcFUnary<O, I>(                                         \
+      O * out, I * inp, FUnaryOp op, uint64_t nel                              \
+  );
+
+#define FUNARY_PLAIN(O, I)                                                     \
+  template const char *tcFUnaryPlain<O, I>(                                    \
       O * out, I * inp, FUnaryOp op, uint64_t nel                              \
   );
 
@@ -105,5 +171,8 @@ const char *tcTrignometry(O *out, I *inp, FUnaryOp op, uint64_t nel) {
   OP(T, float)                                                                 \
   OP(T, double)
 
-UNWIND2_2ND(float, TRIGNOMETRY)
-UNWIND2_2ND(double, TRIGNOMETRY)
+UNWIND2_2ND(float, FUNARY)
+UNWIND2_2ND(double, FUNARY)
+
+UNWIND2_2ND(float, FUNARY_PLAIN)
+UNWIND2_2ND(double, FUNARY_PLAIN)

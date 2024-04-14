@@ -85,6 +85,9 @@ extern void tcBinaryArithCastedPlain(
 );
 
 template <typename O, typename I>
-extern const char *tcTrignometry(O *out, I *inp, FUnaryOp op, uint64_t nel);
+extern const char *tcFUnary(O *out, I *inp, FUnaryOp op, uint64_t nel);
+
+template <typename O, typename I>
+extern const char *tcFUnaryPlain(O *out, I *inp, FUnaryOp op, uint64_t nel);
 
 #endif // TENSORC_H
