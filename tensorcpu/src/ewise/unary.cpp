@@ -1,10 +1,37 @@
 #include <algorithm>
 #include <cmath>
 #include <execution>
-#include <stdint.h>
-#include <stdlib.h>
 #include <limits>
+#include <stdfloat>
 
+#include "tensorcpu.hpp"
+#include "typed_array.hpp"
+
+enum UnaryOp : uint8_t {
+  Neg,
+  Abs,
+};
+
+template <typename O, typename I>
+const char *tcUnary(O *out, I *inp, UnaryOp op, uint64_t nel) {
+  size_t width = stdx::native_simd<I>::size();
+  printf("width: %zu\n", width);
+  auto i1 = Simd<I>(inp, width, nel);
+
+  Kernel kernel;
+  // TODO
+
+  std::for_each(std::execution::par, i1.countBegin(), i1.countEnd(), kernel);
+  return nullptr;
+}
+
+template <typename O, typename I>
+const char *tcCast(O *out, const I *inp, uint64_t nel) {
+  // TODO
+  return nullptr;
+}
+
+/*
 template <typename O, typename I>
 const char *tcCast(O *out, const I *inp, uint64_t nel) {
   std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
@@ -32,19 +59,4 @@ const char *tcAbs(T *out, const T *inp, uint64_t nel) {
   });
   return nullptr;
 }
-
-template <typename O, typename I>
-const char *tcExp(O *out, const I *inp, uint64_t nel) {
-  std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
-    return std::exp(a);
-  });
-  return nullptr;
-}
-
-template <typename O, typename I>
-const char *tcLog(O *out, const I *inp, uint64_t nel) {
-  std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
-    return std::log(a);
-  });
-  return nullptr;
-}
+ */

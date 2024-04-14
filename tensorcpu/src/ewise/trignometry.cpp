@@ -7,46 +7,103 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
-template <typename O, typename I, UnaryOp op>
-void tcTrignometry(O *out, I *inp1, uint64_t nel) {
+template <typename O, typename I>
+static Kernel makeKernel(
+    O *out, I *inp, Simd<I> &i1, uint16_t width, std::function<O(I)> op
+) {
+  return [&out, &inp, &width, &i1, &op](uint64_t simdI) {
+    auto elements = i1.calcRemainingElements(simdI);
+    auto start = simdI * width;
+#pragma GCC ivdep
+    for (uint64_t i = 0; i < elements; i++) {
+      out[start] = op(inp[start]);
+    }
+  };
+}
+
+template <typename O, typename I>
+const char *tcTrignometry(O *out, I *inp, FUnaryOp op, uint64_t nel) {
   size_t width = stdx::native_simd<I>::size();
   printf("width: %zu\n", width);
-  auto i1 = Simd<I>(inp1, width, nel);
-  auto o = Simd<O>(out, width, nel);
+  auto i1 = Simd<I>(inp, width, nel);
+
+  std::function<O(I)> func;
+  switch (op) {
+  case FUnaryOp::Log:
+    func = [](I a) { return std::log(a); };
+    break;
+  case FUnaryOp::Exp:
+    func = [](I a) { return std::exp(a); };
+    break;
+  case FUnaryOp::Expm1:
+    func = [](I a) { return std::expm1(a); };
+    break;
+  case FUnaryOp::Sqrt:
+    func = [](I a) { return std::sqrt(a); };
+    break;
+  case FUnaryOp::Sin:
+    func = [](I a) { return std::sin(a); };
+    break;
+  case FUnaryOp::Cos:
+    func = [](I a) { return std::cos(a); };
+    break;
+  case FUnaryOp::Tan:
+    func = [](I a) { return std::tan(a); };
+    break;
+  case FUnaryOp::Sinh:
+    func = [](I a) { return std::sinh(a); };
+    break;
+  case FUnaryOp::Cosh:
+    func = [](I a) { return std::cosh(a); };
+    break;
+  case FUnaryOp::Tanh:
+    func = [](I a) { return std::tanh(a); };
+    break;
+  case FUnaryOp::ASin:
+    func = [](I a) { return std::asin(a); };
+    break;
+  case FUnaryOp::ACos:
+    func = [](I a) { return std::acos(a); };
+    break;
+  case FUnaryOp::ATan:
+    func = [](I a) { return std::atan(a); };
+    break;
+  case FUnaryOp::ASinh:
+    func = [](I a) { return std::asinh(a); };
+    break;
+  case FUnaryOp::ACosh:
+    func = [](I a) { return std::acosh(a); };
+    break;
+  case FUnaryOp::ATanh:
+    func = [](I a) { return std::atanh(a); };
+    break;
+  default:
+    return "Invalid unary operation";
+  }
 
   std::for_each(
       std::execution::par, i1.countBegin(), i1.countEnd(),
-      [&i1, &o](uint64_t i) {
-        using std::pow;
-        auto elements = i1.calcRemainingElements(i);
-        std::vector<I> a, b;
-        i1.load(i, a);
-        std::vector<O> res;
-        res.resize(elements);
-
-#pragma GCC ivdep
-        for (int j = 0; j < elements; j++) {
-          if constexpr (op == UnaryOp::Log) {
-            res[j] = std::log(a[j]);
-          } else if constexpr (op == UnaryOp::Exp) {
-            res[j] = std::exp(a[j]);
-          } else if constexpr (op == UnaryOp::Sin) {
-            res[j] = std::sin(a[j]);
-          } else if constexpr (op == UnaryOp::Cos) {
-            res[j] = std::cos(a[j]);
-          } else if constexpr (op == UnaryOp::Tan) {
-            res[j] = std::tan(a[j]);
-          } else if constexpr (op == UnaryOp::Sinh) {
-            res[j] = std::sinh(a[j]);
-          } else if constexpr (op == UnaryOp::Cosh) {
-            res[j] = std::cosh(a[j]);
-          } else if constexpr (op == UnaryOp::Tanh) {
-            res[j] = std::tanh(a[j]);
-          }
-        }
-        o.store(i, res);
-      }
+      makeKernel<O, I>(out, inp, i1, width, func)
   );
+  return nullptr;
 }
 
-// #define TRIGNOMETRY(O, I, op)
+#define TRIGNOMETRY(O, I)                                                      \
+  template const char *tcTrignometry<O, I>(                                    \
+      O * out, I * inp, FUnaryOp op, uint64_t nel                              \
+  );
+
+#define UNWIND2_2ND(T, OP)                                                     \
+  OP(T, int8_t)                                                                \
+  OP(T, int16_t)                                                               \
+  OP(T, int32_t)                                                               \
+  OP(T, int64_t)                                                               \
+  OP(T, uint8_t)                                                               \
+  OP(T, uint16_t)                                                              \
+  OP(T, uint32_t)                                                              \
+  OP(T, uint64_t)                                                              \
+  OP(T, float)                                                                 \
+  OP(T, double)
+
+UNWIND2_2ND(float, TRIGNOMETRY)
+UNWIND2_2ND(double, TRIGNOMETRY)

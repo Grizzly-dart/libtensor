@@ -33,10 +33,10 @@ add_library(tensorcpu SHARED
 
 target_link_libraries(tensorcpu tbb pthread m)
 
-add_executable(for_each test/for_each.cpp)
+add_executable(binary_arith_test test/binary_arith_test.cpp)
 
-target_link_directories(for_each PUBLIC ./build)
-target_link_libraries(for_each tensorcpu tbb pthread m)
+target_link_directories(binary_arith_test PUBLIC ./build)
+target_link_libraries(binary_arith_test tensorcpu tbb pthread m)
 
 include_directories(./include)
 

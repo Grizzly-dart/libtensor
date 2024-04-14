@@ -15,7 +15,9 @@
 namespace stdx = std::experimental;
 
 template <typename T> constexpr bool isRealNum() {
-  return std::is_same<T, float>::value || std::is_same<T, double>::value;
+  // TODO add bfloat16_t
+  return std::is_same<T, float>::value || std::is_same<T, double>::value ||
+         std::is_same<T, std::float16_t>::value;
 }
 
 template <typename T> constexpr bool isAnyInt() {
@@ -34,6 +36,8 @@ template <typename T> constexpr bool isUInt() {
   return std::is_same<T, uint8_t>::value || std::is_same<T, uint16_t>::value ||
          std::is_same<T, uint32_t>::value || std::is_same<T, uint64_t>::value;
 }
+
+using Kernel = std::function<void(uint64_t)>;
 
 struct DType {
 public:
@@ -95,24 +99,35 @@ void castStorer(void *ptr, uint64_t index, O value);
 
 template <typename I> void castIndexer(void **dst, void *src, int64_t index);
 
+template <typename O, typename I>
+void castSimdLoader(void *ptr, uint64_t index, stdx::native_simd<O> &simd);
+
 template <typename O> using CastLoader = O (*)(void *, uint64_t);
 template <typename O> using CastStorer = void (*)(void *, uint64_t, O);
 using CastIndexer = void (*)(void **dst, void *src, int64_t offset);
+template <typename O>
+using CastSimdLoader = void (*)(void *, uint64_t, stdx::native_simd<O> &);
 
 template <typename T> struct Caster {
   CastLoader<T> loader = nullptr;
   CastStorer<T> storer = nullptr;
   CastIndexer indexer = nullptr;
+  CastSimdLoader<T> simdLoader = nullptr;
 
-  Caster() : loader(nullptr), storer(nullptr), indexer(nullptr) {}
+  Caster()
+      : loader(nullptr), storer(nullptr), indexer(nullptr),
+        simdLoader(nullptr) {}
 
   constexpr Caster(
-      CastLoader<T> loader, CastStorer<T> storer, CastIndexer indexer
+      CastLoader<T> loader, CastStorer<T> storer, CastIndexer indexer,
+      CastSimdLoader<T> simdLoader
   )
-      : loader(loader), storer(storer), indexer(indexer) {}
+      : loader(loader), storer(storer), indexer(indexer),
+        simdLoader(simdLoader) {}
 
   Caster(Caster<T> &other)
-      : loader(other.loader), storer(other.storer), indexer(other.indexer) {}
+      : loader(other.loader), storer(other.storer), indexer(other.indexer),
+        simdLoader(other.simdLoader) {}
 
   static const Caster<T> &lookup(DType dtype);
 };
@@ -148,7 +163,7 @@ public:
   virtual stdx::native_simd<T> &load(uint64_t i, stdx::native_simd<T> &simd)
       const = 0;
 
-  virtual void load(uint64_t ind, std::vector<T> &vec) const = 0;
+  virtual void load(uint64_t ind, T *p) const = 0;
 
   virtual T get(uint64_t i) const = 0;
 
@@ -180,19 +195,11 @@ public:
   Simd(const Simd &other) = default;
 
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    uint16_t elements = calcRemainingElements(ind);
-    uint64_t start = ind * width;
-    for (uint64_t i = 0; i < elements; i++) {
-      simd[i] = ptr[start + i];
-    }
+    simd.copy_from(ptr + ind * width, stdx::vector_aligned);
     return simd;
   }
 
-  void load(uint64_t ind, std::vector<T> &vec) const {
-    if (vec.size() < width) {
-      vec.resize(width);
-    }
-    auto p = vec.data();
+  void load(uint64_t ind, T *p) const {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
 #pragma GCC ivdep
@@ -203,16 +210,26 @@ public:
 
   template <typename F>
   void store(uint64_t ind, const stdx::native_simd<F> &simd) {
-    uint64_t start = ind * width;
     uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    if (elements == width) {
+      if constexpr (std::is_same<T, F>::value) {
+        simd.copy_to(ptr + start, stdx::vector_aligned);
+        return;
+      } else if constexpr (!std::is_same<T, F>::value) {
+        stdx::simd_cast<T>(simd).copy_to(ptr + start, stdx::vector_aligned);
+        return;
+      }
+    }
     for (uint64_t i = 0; i < elements; i++) {
       ptr[start + i] = static_cast<T>(static_cast<F>(simd[i]));
     }
   }
 
-  template <typename F> void store(uint64_t ind, const std::vector<F> &vec) {
+  template <typename F>
+  void store(uint64_t ind, const F *vec, uint64_t elements) {
     uint64_t start = ind * width;
-    uint16_t elements = calcRemainingElements(ind);
+#pragma GCC ivdep
     for (uint64_t i = 0; i < elements; i++) {
       ptr[start + i] = vec[i];
     }
@@ -238,18 +255,11 @@ public:
   CastSimd(const CastSimd &other) = default;
 
   stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    uint16_t elements = calcRemainingElements(ind);
-    uint64_t start = ind * width;
-    for (uint64_t i = 0; i < elements; i++) {
-      simd[i] = caster.loader(ptr, start + i);
-    }
+    caster.simdLoader(ptr, ind * width, simd);
     return simd;
   }
 
-  void load(uint64_t ind, std::vector<T> &vec) const {
-    if (vec.size() < width) {
-      vec.resize(width);
-    }
+  void load(uint64_t ind, T *vec) const {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
@@ -266,8 +276,8 @@ public:
     }
   }
 
-  template <typename F> void store(uint64_t ind, const std::vector<F> &vec) {
-    auto elements = calcRemainingElements(ind);
+  template <typename F>
+  void store(uint64_t ind, const F *vec, uint64_t elements) {
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
       caster.storer(ptr, start + i, vec[i]);
@@ -302,10 +312,7 @@ public:
     return simd;
   }
 
-  void load(uint64_t ind, std::vector<T> &vec) const {
-    if (vec.size() < width) {
-      vec.resize(width);
-    }
+  void load(uint64_t ind, T *vec) const {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
@@ -343,10 +350,7 @@ public:
     return simd;
   }
 
-  void load(uint64_t ind, std::vector<T> &vec) const {
-    if (vec.size() < width) {
-      vec.resize(width);
-    }
+  void load(uint64_t ind, T *vec) const {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
@@ -369,39 +373,27 @@ public:
 
   SameSimd(const SameSimd &other) = default;
 
-  stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
-    int16_t diff = length - ind * width;
-    if (diff >= width) {
-      simd = value;
-    } else if (diff > 0) {
-#pragma GCC ivdep
-      for (int i = 0; i < diff; i++) {
-        simd[i] = value;
-      }
-    }
+  stdx::native_simd<T> &load(uint64_t, stdx::native_simd<T> &simd) const {
+    simd = value;
     return simd;
   }
 
-  void load(uint64_t ind, std::vector<T> &vec) const {
-    if (vec.size() < width) {
-      vec.resize(width);
-    }
-    auto p = vec.data();
+  void load(uint64_t ind, T *vec) const {
     int16_t diff = length - ind * width;
     if (diff >= width) {
 #pragma GCC ivdep
       for (int i = 0; i < width; i++) {
-        p[i] = value;
+        vec[i] = value;
       }
     } else if (diff > 0) {
 #pragma GCC ivdep
       for (int i = 0; i < diff; i++) {
-        p[i] = value;
+        vec[i] = value;
       }
     }
   }
 
-  T get(uint64_t i) const { return value; }
+  T get(uint64_t) const { return value; }
 };
 
 #endif // TENSORCPU_TYPED_ARRAY_HPP

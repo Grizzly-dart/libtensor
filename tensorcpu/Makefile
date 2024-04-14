@@ -32,7 +32,7 @@ build/libtensorcpu.so: $(SOURCES) $(HEADERS)
 	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorcpu.so ${SOURCES}
 	ls -lh build/libtensorcpu.so
 
-build/for_each: test/for_each.cpp build/libtensorcpu.so
+build/for_each: test/binary_arith_test.cpp build/libtensorcpu.so
 	${CPP} ${CXXFLAGS} -o $@ test/for_each.cpp -ltensorcpu -ltbb
 
 build: build/libtensorcpu.so

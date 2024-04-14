@@ -32,7 +32,24 @@ enum BinaryOp : uint8_t {
   Pow,
 };
 
-enum UnaryOp : uint8_t { Log, Exp, Sin, Cos, Tan, Sinh, Cosh, Tanh };
+enum FUnaryOp : uint8_t {
+  Log,
+  Exp,
+  Expm1,
+  Sqrt,
+  Sin,
+  Cos,
+  Tan,
+  Sinh,
+  Cosh,
+  Tanh,
+  ASin,
+  ACos,
+  ATan,
+  ASinh,
+  ACosh,
+  ATanh
+};
 
 typedef enum PadMode : uint8_t {
   CONSTANT,
@@ -49,18 +66,25 @@ extern void tcMemcpy(void *dst, void *src, uint64_t size);
 }
 #endif
 
-template <typename O, typename I, BinaryOp op>
+template <typename O, typename I>
 extern void tcBinaryArith(
-    O *out, I *inp1, I *inp2, uint64_t nel, uint8_t flip, Dim2 i2broadcaster
+    O *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster
 );
 
-template <typename O, typename I, BinaryOp op>
-extern void tcPlusSlow(
-    void *out, void *inp1, void *inp2, uint64_t nel, uint8_t flip,
+template <typename O, typename I>
+extern void tcBinaryArithCasted(
+    void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
     Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 );
 
-template <typename O, typename I, UnaryOp op>
-extern void tcTrignometry(O *out, I *inp1, uint64_t nel);
+template <typename O, typename I1, typename I2>
+extern void tcBinaryArithCastedPlain(
+    void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+);
+
+template <typename O, typename I>
+extern const char *tcTrignometry(O *out, I *inp, FUnaryOp op, uint64_t nel);
 
 #endif // TENSORC_H
