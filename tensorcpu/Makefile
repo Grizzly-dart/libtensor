@@ -20,7 +20,7 @@ ifeq ($(OS),cygwin)
 
 endif
 
-CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -O3 -lpthread -mavx512f -ftree-vectorize -ftree-vectorizer-verbose=1
+CXXFLAGS += -I ./include -L ./build -std=c++23 -ltbb -g3 -O3 -lpthread -ftree-vectorize -ftree-vectorizer-verbose=1
 
 all: build build/for_each
 
@@ -44,6 +44,13 @@ only_copy:
 
 cmake_gen:
 	cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=ninja -G Ninja -S . -B ./cmake-build-debug
+
+setup_darwin:
+	brew install gcc@13
+	brew install tbb
+	brew install openblas
+	find /opt/homebrew/Cellar -name 'pkgconfig' -type d | grep -E 'tbb|openblas' | tr '\n' ':'
+	@echo "\nAdd the above directories to PKG_CONFIG_PATH in your .bashrc or .zshrc"
 
 clean:
 	rm -f build/libtensorcpu.so
