@@ -22,6 +22,21 @@ void mm_naive(
   }
 }
 
+void mm_tiled(
+    float *__restrict__ out, const float *__restrict__ inp1,
+    const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
+) {
+  for (uint32_t i = 0; i < inp1S.r; i++) {
+    for (uint32_t k = 0; k < inp1S.c; k++) {
+      float a = inp1[i * inp1S.c + k];
+#pragma GCC ivdep
+      for (uint32_t j = 0; j < inp2S.c; j++) {
+        out[i * inp2S.c + j] += a * inp2[k * inp2S.c + j];
+      }
+    }
+  }
+}
+
 void mm_naive_loopReordered(
     float *__restrict__ out, const float *__restrict__ inp1,
     const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
