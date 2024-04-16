@@ -20,6 +20,10 @@ if (OS STREQUAL "Darwin")
     endif ()
 endif ()
 
+if (ARCH MATCHES "^x86")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
+endif ()
+
 project(tensorcpu CXX)
 
 file(GLOB_RECURSE MYSRC CONFIGURE_DEPENDS
