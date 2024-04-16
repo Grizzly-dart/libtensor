@@ -1,25 +1,28 @@
+#include <algorithm>
 #include <cblas.h>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <future>
 #include <iostream>
 #include <memory>
 #include <thread>
 
 #include "tensorcpu.hpp"
+#include "typed_array.hpp"
 
 void mm_naive(
     float *__restrict__ out, const float *__restrict__ inp1,
     const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
 ) {
-  for (uint32_t i = 0; i < inp1S.r; i++) {
-    for (uint32_t j = 0; j < inp2S.c; j++) {
+  for (uint32_t m = 0; m < inp1S.r; m++) {
+    for (uint32_t n = 0; n < inp2S.c; n++) {
       float sum = 0;
 #pragma GCC ivdep
       for (uint32_t k = 0; k < inp1S.c; k++) {
-        sum += inp1[i * inp1S.c + k] * inp2[k * inp2S.c + j];
+        sum += inp1[m * inp1S.c + k] * inp2[k * inp2S.c + n];
       }
-      out[i * inp2S.c + j] = sum;
+      out[m * inp2S.c + n] = sum;
     }
   }
 }
@@ -28,48 +31,86 @@ void mm_naive_loopReordered(
     float *__restrict__ out, const float *__restrict__ inp1,
     const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
 ) {
-  for (uint32_t i = 0; i < inp1S.r; i++) {
+  for (uint32_t m = 0; m < inp1S.r; m++) {
     for (uint32_t k = 0; k < inp1S.c; k++) {
-      float a = inp1[i * inp1S.c + k];
+      float a = inp1[m * inp1S.c + k];
 #pragma GCC ivdep
-      for (uint32_t j = 0; j < inp2S.c; j++) {
-        out[i * inp2S.c + j] += a * inp2[k * inp2S.c + j];
+      for (uint32_t n = 0; n < inp2S.c; n++) {
+        out[m * inp2S.c + n] += a * inp2[k * inp2S.c + n];
       }
     }
   }
 }
 
 void mm_multithreaded(
-    float *__restrict__ out, const float *__restrict__ inp1,
-    const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
+    float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
+    uint16_t tileSize
 ) {
-  const uint16_t tileSize = 16;
+  if (tileSize == 0) {
+    tileSize = 64 / sizeof(float);
+  }
   uint16_t numThreads = std::thread::hardware_concurrency();
-  uint32_t numTiles;
-  uint16_t tilesPerThread = numTiles / numThreads;
+  const uint32_t i1NTilesR = (inp1S.r + tileSize - 1) / tileSize;
+  const uint32_t i1NTilesC = (inp1S.c + tileSize - 1) / tileSize;
+  const uint32_t i1NTiles = i1NTilesR * i1NTilesC;
+  const uint32_t i2NTilesC = (inp2S.c + tileSize - 1) / tileSize;
+  uint16_t tilesPerThread;
+  if (i1NTiles < numThreads) {
+    tilesPerThread = 1;
+    numThreads = i1NTiles;
+  } else {
+    tilesPerThread = (i1NTiles + numThreads - 1) / numThreads;
+  }
 
-  // TODO fix this
   std::vector<std::future<void>> futures;
   for (uint16_t i = 0; i < numThreads; i++) {
     futures.push_back(std::async(
         std::launch::async,
-        [i, tilesPerThread, tileSize, &out, &inp1, &inp2, inp1S, inp2S]() {
+        [i, tilesPerThread, &out, &inp1, &inp2, inp1S, inp2S, i1NTilesR,
+         i2NTilesC, tileSize]() {
           for (uint16_t j = 0; j < tilesPerThread; j++) {
-            uint16_t tileRow = (i * tilesPerThread + j) / (inp2S.c / tileSize);
-            uint16_t tileCol = (i * tilesPerThread + j) % (inp2S.c / tileSize);
-            for (uint16_t k = 0; k < tileSize; k++) {
-              for (uint16_t l = 0; l < tileSize; l++) {
-                for (uint16_t m = 0; m < inp1S.c; m++) {
-                  out[(tileRow * tileSize + k) * inp2S.c + tileCol * tileSize +
-                      l] += inp1[tileRow * tileSize + k * inp1S.c + m] *
-                            inp2[m * inp2S.c + tileCol * tileSize + l];
+            uint16_t tile = i * tilesPerThread + j;
+            uint32_t aTileR = tile % i1NTilesR;
+            uint32_t aTileC = tile / i1NTilesR;
+
+            uint16_t kMax =
+                std::min(uint16_t(inp1S.c - aTileC * tileSize), tileSize);
+
+            for (uint32_t m = aTileR * tileSize;
+                 m < std::min((aTileR * tileSize) + tileSize, inp1S.r); m++) {
+              for (uint32_t i2Tc = 0; i2Tc < i2NTilesC; i2Tc++) {
+                for (uint32_t k = 0; k < kMax; k++) {
+                  uint32_t curK = aTileC * tileSize + k;
+                  float i1 = inp1[m * inp1S.c + curK];
+#pragma GCC ivdep
+                  for (uint32_t n = i2Tc * tileSize;
+                       n < std::min((i2Tc * tileSize) + tileSize, inp2S.c);
+                       n++) {
+                    // out[m * inp2S.c + n] += i1 * inp2[curK * inp2S.c + n];
+                    float v = i1 * inp2[curK * inp2S.c + n];
+                    float *ptr = out + m * inp2S.c + n;
+                    asm volatile( //"STR %q1, [%0] ; hello\n"
+                        "1: LDXR w0, [%0]\n"
+                        "FADD s0, s0, %s1\n"
+                        "STXR w1, w0, [%0]\n"
+                        "CBNZ w1, 1b\n"
+                        :
+                        : "r"(ptr), "w"(v)
+                        : "d0", "w0", "s0", "w1", "memory", "cc"
+                    );
+                    // *ptr += v;
+                    // std::cout << "x: " << *ptr << std::endl;
+                  }
                 }
               }
             }
           }
         }
     ));
-    // TODO
+  }
+
+  for (auto &f : futures) {
+    f.get();
   }
 }
 
@@ -87,21 +128,40 @@ template <typename T> std::unique_ptr<T> allocate(uint64_t size) {
 template <typename T> void fill1(T *arr, uint64_t size) {
   for (uint64_t i = 0; i < size; i++) {
     arr[i] = i + 1;
-    if (arr[i] == 0) {
-      arr[i] = 1;
+    if (isRealNum<T>()) {
+      arr[i] = arr[i] / 1000000;
     }
   }
 }
 
+template <typename T> void zero(T *arr, uint64_t size) {
+  std::fill(arr, arr + size, 0);
+}
+
 template <typename T> void fill1(T *arr, Dim2 size) { fill1(arr, size.nel()); }
+
+template <typename T> void check(T *expected, T *produced, Dim2 size) {
+  for (uint32_t m = 0; m < size.r; m++) {
+    for (uint32_t n = 0; n < size.c; n++) {
+      T a = expected[m * size.c + n];
+      T b = produced[m * size.c + n];
+      T diff = std::abs(a - b);
+      if (diff > 1e-4) {
+        std::cout << "Mismatch at " << m << ":" << n << " => " << a
+                  << " != " << b << "; " << diff << std::endl;
+        return;
+      }
+    }
+  }
+}
 
 namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t m = 512;
+  uint32_t m = 256;
   uint32_t k = 256;
-  uint32_t n = 512;
+  uint32_t n = 256;
 
   Dim2 inp1S = {m, k};
   Dim2 inp2S = {k, n};
@@ -112,35 +172,51 @@ int main() {
   fill1(inp1.get(), inp1S);
   fill1(inp2.get(), inp2S);
 
-  steady_clock::time_point begin = steady_clock::now();
-  mm_openBlas(out.get(), inp1.get(), inp2.get(), inp1S, inp2S);
-  steady_clock::time_point end = steady_clock::now();
+  for (int j = 0; j < 2; j++) {
+    steady_clock::time_point begin = steady_clock::now();
+    mm_openBlas(out.get(), inp1.get(), inp2.get(), inp1S, inp2S);
+    steady_clock::time_point end = steady_clock::now();
+    std::cout
+        << "Time: "
+        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
+        << "us" << std::endl;
 
-  std::cout << "Time: "
-            << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-            << "us" << std::endl;
+    auto out1 = allocate<float>(m * n);
+    begin = steady_clock::now();
+    mm_naive(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S);
+    end = steady_clock::now();
+    std::cout
+        << "Time: "
+        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
+        << "us" << std::endl;
+    check<float>(out.get(), out1.get(), {m, n});
 
-  begin = steady_clock::now();
-  mm_naive(out.get(), inp1.get(), inp2.get(), inp1S, inp2S);
-  end = steady_clock::now();
+    zero(out1.get(), m * n);
+    begin = steady_clock::now();
+    mm_naive_loopReordered(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S);
+    end = steady_clock::now();
+    std::cout
+        << "Time: "
+        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
+        << "us" << std::endl;
+    check<float>(out.get(), out1.get(), {m, n});
 
-  std::cout << "Time: "
-            << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-            << "us" << std::endl;
+    zero(out1.get(), m * n);
+    begin = steady_clock::now();
+    mm_multithreaded(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, 0);
+    end = steady_clock::now();
+    std::cout
+        << "Time: "
+        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
+        << "us" << std::endl;
+    check<float>(out.get(), out1.get(), {m, n});
 
-  begin = steady_clock::now();
-  mm_naive_loopReordered(out.get(), inp1.get(), inp2.get(), inp1S, inp2S);
-  end = steady_clock::now();
-
-  std::cout << "Time: "
-            << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-            << "us" << std::endl;
-
-  /*
-  for (uint64_t i = 0; i < m * n; i++) {
-    std::cout << "@" << i << " " << out.get()[i] << std::endl;
+    /*
+    for (uint64_t i = 0; i < m * n; i++) {
+      std::cout << "@" << i << " " << out.get()[i] << std::endl;
+    }
+     */
   }
-   */
 
   return 0;
 }

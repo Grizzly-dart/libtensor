@@ -9,10 +9,10 @@ ifeq ($(OS),darwin)
 	CPP = g++-${CPPMAJVER}
 	CXXFLAGS += -I/opt/homebrew/include/c++/${CPPMAJVER}
 	ifeq ($(shell uname -p),arm)
-		CXXFLAGS += -I/opt/homebrew/include/c++/${CPPMAJVER}/aarch64-apple-darwin23
+		CXXFLAGS += -I/opt/homebrew/include/c++/${CPPMAJVER}/aarch64-apple-darwin23 -arch arm64
 	endif
-	tbbVersions = $(shell brew list --versions | fgrep tbb | cut -d ' ' -f 2)
-	CXXFLAGS +=  -I/opt/homebrew/Cellar/tbb/${tbbVersions}/include -L/opt/homebrew/Cellar/tbb/${tbbVersions}/lib
+	#tbbVersions = $(shell brew list --versions | fgrep tbb | cut -d ' ' -f 2)
+	#CXXFLAGS +=  -I/opt/homebrew/Cellar/tbb/${tbbVersions}/include -L/opt/homebrew/Cellar/tbb/${tbbVersions}/lib
 	SOURCES = ${shell find -E src -type f -regex ".*\.(cpp|cu|c)$$"}
 	HEADERS = ${shell find -E include -type f -regex ".*\.(hpp|h)$$"}
 endif
@@ -20,7 +20,13 @@ ifeq ($(OS),cygwin)
 
 endif
 
-CXXFLAGS += -I ./include -L ./build -std=c++23 -ltbb -g3 -O3 -lpthread -ftree-vectorize -ftree-vectorizer-verbose=1
+CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -OO -lpthread -ftree-vectorize -ftree-vectorizer-verbose=1
+# CXXFLAGS += -save-temps
+
+CXXFLAGS += $(shell pkg-config --cflags tbb)
+LDFLAGS += $(shell pkg-config --libs tbb)
+CXXFLAGS += $(shell pkg-config --cflags openblas)
+LDFLAGS += $(shell pkg-config --libs openblas)
 
 all: build build/for_each
 
@@ -29,11 +35,17 @@ all: build build/for_each
 
 build/libtensorcpu.so: $(SOURCES) $(HEADERS)
 	# python3 scripts/ewise_binary_arith.py
-	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorcpu.so ${SOURCES}
+	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorcpu.so ${SOURCES} ${LDFLAGS}
 	ls -lh build/libtensorcpu.so
 
-build/for_each: test/binary_arith_test.cpp build/libtensorcpu.so
-	${CPP} ${CXXFLAGS} -o $@ test/for_each.cpp -ltensorcpu -ltbb
+build/binary_arith_test: test/binary_arith_test.cpp build/libtensorcpu.so
+	${CPP} ${CXXFLAGS} -o $@ test/binary_arith_test.cpp -ltensorcpu ${LDFLAGS}
+
+build/gemm_test: test/gemm_test.cpp build/libtensorcpu.so
+	${CPP} ${CXXFLAGS} -save-temps -o $@ test/gemm_test.cpp -ltensorcpu ${LDFLAGS}
+
+build/dummy: test/dummy.cpp build/libtensorcpu.so
+	${CPP} ${CXXFLAGS} -o $@ test/dummy.cpp -ltensorcpu ${LDFLAGS}
 
 build: build/libtensorcpu.so
 
