@@ -1,8 +1,10 @@
 #include <cblas.h>
 #include <chrono>
 #include <cstdint>
+#include <future>
 #include <iostream>
 #include <memory>
+#include <thread>
 
 #include "tensorcpu.hpp"
 
@@ -49,6 +51,40 @@ void mm_naive_loopReordered(
         out[i * inp2S.c + j] += a * inp2[k * inp2S.c + j];
       }
     }
+  }
+}
+
+void mm_multithreaded(
+    float *__restrict__ out, const float *__restrict__ inp1,
+    const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
+) {
+  const uint16_t tileSize = 16;
+  uint16_t numThreads = std::thread::hardware_concurrency();
+  uint32_t numTiles;
+  uint16_t tilesPerThread = numTiles / numThreads;
+
+  // TODO fix this
+  std::vector<std::future<void>> futures;
+  for (uint16_t i = 0; i < numThreads; i++) {
+    futures.push_back(std::async(
+        std::launch::async,
+        [i, tilesPerThread, tileSize, &out, &inp1, &inp2, inp1S, inp2S]() {
+          for (uint16_t j = 0; j < tilesPerThread; j++) {
+            uint16_t tileRow = (i * tilesPerThread + j) / (inp2S.c / tileSize);
+            uint16_t tileCol = (i * tilesPerThread + j) % (inp2S.c / tileSize);
+            for (uint16_t k = 0; k < tileSize; k++) {
+              for (uint16_t l = 0; l < tileSize; l++) {
+                for (uint16_t m = 0; m < inp1S.c; m++) {
+                  out[(tileRow * tileSize + k) * inp2S.c + tileCol * tileSize +
+                      l] += inp1[tileRow * tileSize + k * inp1S.c + m] *
+                            inp2[m * inp2S.c + tileCol * tileSize + l];
+                }
+              }
+            }
+          }
+        }
+    ));
+    // TODO
   }
 }
 

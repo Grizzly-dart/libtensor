@@ -45,6 +45,9 @@ only_copy:
 cmake_gen:
 	cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=ninja -G Ninja -S . -B ./cmake-build-debug
 
+setup_ubuntu:
+	sudo apt-get install -y libtbb-dev libopenblas-openmp-dev
+
 setup_darwin:
 	brew install gcc@13
 	brew install tbb
