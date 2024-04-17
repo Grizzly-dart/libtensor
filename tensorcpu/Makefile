@@ -20,7 +20,7 @@ ifeq ($(OS),cygwin)
 
 endif
 
-CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -OO -lpthread -ftree-vectorize -ftree-vectorizer-verbose=1
+CXXFLAGS += -I ./include -L ./build -std=c++23 -g3 -O0 -lpthread -ftree-vectorize -ftree-vectorizer-verbose=1
 # CXXFLAGS += -save-temps
 
 CXXFLAGS += $(shell pkg-config --cflags tbb)

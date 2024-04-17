@@ -11,6 +11,8 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
+#include "native.hpp"
+
 void mm_naive(
     float *__restrict__ out, const float *__restrict__ inp1,
     const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
@@ -39,6 +41,29 @@ void mm_naive_loopReordered(
         out[m * inp2S.c + n] += a * inp2[k * inp2S.c + n];
       }
     }
+  }
+}
+
+template <typename T> void atomicAdd(T *ptr, T val) {
+  if constexpr (isRealNum<T>()) {
+    // TODO perform normal move
+    // val = *ptr;
+    float a;
+    val = *ptr;
+    std::cout << " bef: " << " a:"<< *ptr << " val: " << val << std::endl;
+    asm volatile(// "loop: MOVQ %%rax, %[ptr]\n"
+                 "MOVSS %[a], (%[ptr])\n"
+                 "ADDSS %[a], %[val] \n"
+                 "MOV %%rdx, %[a]\n"
+                 // "lock xchg %1, %%rdx\n"
+                 // "JNE loop\n"
+                 // "MOVSS %[a], %%xmm0\n"
+                 : [a] "=x"(a)
+                 : [val]"x"(val), [ptr]"r"(ptr)
+                 : "rax", "memory", "cc");
+    std::cout << " gg: " << val << " a:"<< a << " ptr:" << *ptr << std::endl;
+  } else {
+    asm volatile("lock xadd %0, %1" : "+m"(*ptr) : "x"(val) : "memory");
   }
 }
 
@@ -86,19 +111,14 @@ void mm_multithreaded(
                   for (uint32_t n = i2Tc * tileSize;
                        n < std::min((i2Tc * tileSize) + tileSize, inp2S.c);
                        n++) {
-                    // out[m * inp2S.c + n] += i1 * inp2[curK * inp2S.c + n];
+                    out[m * inp2S.c + n] += i1 * inp2[curK * inp2S.c + n];
                     float v = i1 * inp2[curK * inp2S.c + n];
-                    float *ptr = out + m * inp2S.c + n;
-                    asm volatile( //"STR %q1, [%0] ; hello\n"
-                        "1: LDXR w0, [%0]\n"
-                        "FADD s0, s0, %s1\n"
-                        "STXR w1, w0, [%0]\n"
-                        "CBNZ w1, 1b\n"
-                        :
-                        : "r"(ptr), "w"(v)
-                        : "d0", "w0", "s0", "w1", "memory", "cc"
-                    );
-                    // *ptr += v;
+                    float *ptr = &out[m * inp2S.c + n];
+                    std::cout << " bef => v: " << v << " ptr: " << *ptr << std::endl;
+                    atomicAdd(ptr, v);
+                    if (m == 0 && n == 0) {
+                      std::cout << " v: " << v << " ptr: " << *ptr << std::endl;
+                    }
                     // std::cout << "x: " << *ptr << std::endl;
                   }
                 }
@@ -125,17 +145,17 @@ template <typename T> std::unique_ptr<T> allocate(uint64_t size) {
   return std::unique_ptr<T>(new T[size]);
 }
 
+template <typename T> void zero(T *arr, uint64_t size) {
+  std::fill(arr, arr + size, 0);
+}
+
 template <typename T> void fill1(T *arr, uint64_t size) {
   for (uint64_t i = 0; i < size; i++) {
     arr[i] = i + 1;
     if (isRealNum<T>()) {
-      arr[i] = arr[i] / 1000000;
+      arr[i] = arr[i]; //  / 1000000;
     }
   }
-}
-
-template <typename T> void zero(T *arr, uint64_t size) {
-  std::fill(arr, arr + size, 0);
 }
 
 template <typename T> void fill1(T *arr, Dim2 size) { fill1(arr, size.nel()); }
@@ -159,9 +179,9 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t m = 256;
-  uint32_t k = 256;
-  uint32_t n = 256;
+  uint32_t m = 2;
+  uint32_t k = 2;
+  uint32_t n = 2;
 
   Dim2 inp1S = {m, k};
   Dim2 inp2S = {k, n};

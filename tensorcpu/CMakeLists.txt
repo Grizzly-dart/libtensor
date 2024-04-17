@@ -22,7 +22,7 @@ if (OS STREQUAL "Darwin")
 endif ()
 
 if (ARCH MATCHES "^x86")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
 endif ()
 if (ARCH MATCHES "^arm")
 endif ()

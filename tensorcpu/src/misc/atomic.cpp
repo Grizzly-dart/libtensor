@@ -1,4 +1,3 @@
-#if 0
 #if __GNUC__
 #if defined(__x86_64__) || defined(__i386__)
 #define ARCH_X86
@@ -11,33 +10,32 @@
 
 #if defined(ARCH_X86)
 
+/*
 template <typename T>
 [[gnu::always_inline]]
+__attribute__((always_inline))
 inline void atomicAdd(T *ptr, T val) {
   asm volatile("lock xadd %0, %1" : "+r"(val), "+m"(*ptr) : : "memory");
 }
+ */
 
 #elif defined(ARCH_ARM)
 
 template <typename T>
 [[gnu::always_inline]]
 inline void atomicAdd(T *ptr, T val) {
-/*  asm volatile("ldrex x0, [%0]\n"
-               "add x0, x0, %1\n"
-               "strex x1, x0, [%0]\n"
-               "cmp x1, #0\n"
-               "bne 1b"
-               : "+r"(ptr)
-               : "r"(val)
-               : "r0", "r1", "memory");
-               */
+  asm volatile( //"STR %q1, [%0] ; hello\n"
+      "1: LDXR w0, [%0]\n"
+      "FADD s0, s0, %s1\n"
+      "STXR w1, w0, [%0]\n"
+      "CBNZ w1, 1b\n"
+      :
+      : "r"(ptr), "w"(v)
+      : "d0", "w0", "s0", "w1", "memory", "cc"
+  );
 }
 
 #endif
-
-#define ATOMICADD(T) template void atomicAdd(T *ptr, T val);
-
-ATOMICADD(float)
 // ATOMICADD(double)
 
 /*
@@ -58,7 +56,6 @@ ATOMICADD(float)
                                  : "r0", "r1", "memory");
 #endif
  */
-#endif
 
 /*
 asm volatile("ldrex r0, [%0]\n"
