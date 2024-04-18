@@ -46,22 +46,28 @@ void mm_naive_loopReordered(
 
 template <typename T> void atomicAdd(T *ptr, T val) {
   if constexpr (isRealNum<T>()) {
-    // TODO perform normal move
-    // val = *ptr;
-    float a;
-    val = *ptr;
-    std::cout << " bef: " << " a:"<< *ptr << " val: " << val << std::endl;
-    asm volatile(// "loop: MOVQ %%rax, %[ptr]\n"
-                 "MOVSS %[a], (%[ptr])\n"
-                 "ADDSS %[a], %[val] \n"
-                 "MOV %%rdx, %[a]\n"
-                 // "lock xchg %1, %%rdx\n"
-                 // "JNE loop\n"
-                 // "MOVSS %[a], %%xmm0\n"
-                 : [a] "=x"(a)
-                 : [val]"x"(val), [ptr]"r"(ptr)
-                 : "rax", "memory", "cc");
-    std::cout << " gg: " << val << " a:"<< a << " ptr:" << *ptr << std::endl;
+    volatile float a = 0;
+    /*asm volatile( // "loop: MOVQ %%rax, %[ptr]\n"
+        "MOVSS (%[ptr]), %[a]\n"
+        "ADDSS %[val], %[a]\n"
+        "MOVSS %[a], (%[ptr])\n"
+        : [ptr] "+r"(ptr), [a] "+&x"(a)
+        : [val] "x"(val), [F] "F"(5.5)
+        : "memory", "cc"
+    );*/
+    /*std::cout << " bef => " << ptr << " " << val << " a:" << a
+              << " ptr:" << *ptr << std::endl;*/
+    asm volatile("tjloop: MOVSS (%[ptr]), %[a]\n"
+                 "MOVQ %[a], %%rax\n"
+                 "ADDSS %[val], %[a]\n"
+                 "MOVQ %[a], %%rdx\n"
+                 "lock cmpxchg %%edx, (%[ptr])\n"
+                 "jnz tjloop\n"
+                 : [ptr] "+r"(ptr), [a] "=&x"(a)
+                 : [val] "x"(val)
+                 : "rax", "rdx", "memory", "cc");
+    /*std::cout << " gg => " << ptr << " " << val << " a:" << a << " ptr:" << *ptr
+              << std::endl;*/
   } else {
     asm volatile("lock xadd %0, %1" : "+m"(*ptr) : "x"(val) : "memory");
   }
@@ -111,15 +117,10 @@ void mm_multithreaded(
                   for (uint32_t n = i2Tc * tileSize;
                        n < std::min((i2Tc * tileSize) + tileSize, inp2S.c);
                        n++) {
-                    out[m * inp2S.c + n] += i1 * inp2[curK * inp2S.c + n];
+                    // out[m * inp2S.c + n] += i1 * inp2[curK * inp2S.c + n];
                     float v = i1 * inp2[curK * inp2S.c + n];
                     float *ptr = &out[m * inp2S.c + n];
-                    std::cout << " bef => v: " << v << " ptr: " << *ptr << std::endl;
                     atomicAdd(ptr, v);
-                    if (m == 0 && n == 0) {
-                      std::cout << " v: " << v << " ptr: " << *ptr << std::endl;
-                    }
-                    // std::cout << "x: " << *ptr << std::endl;
                   }
                 }
               }
@@ -153,7 +154,7 @@ template <typename T> void fill1(T *arr, uint64_t size) {
   for (uint64_t i = 0; i < size; i++) {
     arr[i] = i + 1;
     if (isRealNum<T>()) {
-      arr[i] = arr[i]; //  / 1000000;
+      arr[i] = arr[i] / 1000000;
     }
   }
 }
@@ -179,9 +180,9 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t m = 2;
-  uint32_t k = 2;
-  uint32_t n = 2;
+  uint32_t m = 512;
+  uint32_t k = 256;
+  uint32_t n = 512;
 
   Dim2 inp1S = {m, k};
   Dim2 inp2S = {k, n};
@@ -236,6 +237,8 @@ int main() {
       std::cout << "@" << i << " " << out.get()[i] << std::endl;
     }
      */
+
+    std::cout << "====================" << std::endl;
   }
 
   return 0;
