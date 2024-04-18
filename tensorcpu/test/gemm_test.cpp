@@ -149,17 +149,17 @@ void mm_multithreaded_colwise(
             const float *i1 = inp1 + b * inp1S.r * inp1S.c;
             const float *i2 = inp2 + b * inp2S.r * inp2S.c;
             for (uint16_t tile = 0; tile < i1NTiles; tile++) {
-              uint32_t aTileR = tile % i1NTilesR;
-              uint32_t aTileC = tile / i1NTilesR;
+              uint32_t i1TileR = tile % i1NTilesR;
+              uint32_t i1TileC = tile / i1NTilesR;
 
               uint16_t kMax =
-                  std::min(uint16_t(inp1S.c - aTileC * tileSize), tileSize);
+                  std::min(uint16_t(inp1S.c - i1TileC * tileSize), tileSize);
 
-              for (uint32_t m = aTileR * tileSize;
-                   m < std::min((aTileR * tileSize) + tileSize, inp1S.r); m++) {
+              for (uint32_t m = i1TileR * tileSize;
+                   m < std::min((i1TileR * tileSize) + tileSize, inp1S.r); m++) {
                 for (uint32_t i2Tc = 0; i2Tc < i2NTilesC; i2Tc++) {
                   for (uint32_t k = 0; k < kMax; k++) {
-                    uint32_t curK = aTileC * tileSize + k;
+                    uint32_t curK = i1TileC * tileSize + k;
                     float a = i1[m * inp1S.c + curK];
 #pragma GCC ivdep
                     for (uint32_t n = i2Tc * tileSize;
@@ -181,18 +181,19 @@ void mm_multithreaded_colwise(
   }
 }
 
-void mm_multithread(
+void mm_openBlas(
     float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
-    uint16_t tileSize
+    uint32_t batchSize
 ) {
-  // TODO
-}
-
-void mm_openBlas(float *out, float *inp1, float *inp2, Dim2 inp1S, Dim2 inp2S) {
-  cblas_sgemm(
-      CblasRowMajor, CblasNoTrans, CblasNoTrans, inp1S.r, inp2S.c, inp1S.c,
-      1.0f, inp1, inp1S.c, inp2, inp2S.c, 0.0f, out, inp2S.c
-  );
+  for (uint32_t b = 0; b < batchSize; b++) {
+    float *o = out + b * inp1S.r * inp2S.c;
+    const float *i1 = inp1 + b * inp1S.r * inp1S.c;
+    const float *i2 = inp2 + b * inp2S.r * inp2S.c;
+    cblas_sgemm(
+        CblasRowMajor, CblasNoTrans, CblasNoTrans, inp1S.r, inp2S.c, inp1S.c,
+        1.0f, i1, inp1S.c, i2, inp2S.c, 0.0f, o, inp2S.c
+    );
+  }
 }
 
 template <typename T> std::unique_ptr<T> allocate(uint64_t size) {
@@ -214,16 +215,20 @@ template <typename T> void fill1(T *arr, uint64_t size) {
 
 template <typename T> void fill1(T *arr, Dim2 size) { fill1(arr, size.nel()); }
 
-template <typename T> void check(T *expected, T *produced, Dim2 size) {
-  for (uint32_t m = 0; m < size.r; m++) {
-    for (uint32_t n = 0; n < size.c; n++) {
-      T a = expected[m * size.c + n];
-      T b = produced[m * size.c + n];
-      T diff = std::abs(a - b);
-      if (diff > 1e-4) {
-        std::cout << "Mismatch at " << m << ":" << n << " => " << a
-                  << " != " << b << "; " << diff << std::endl;
-        return;
+template <typename T> void check(T *expected, T *produced, Dim3 size) {
+  for (uint32_t bat = 0; bat < size.c; bat++) {
+    T *e = expected + bat * size.r * size.c;
+    T *p = produced + bat * size.r * size.c;
+    for (uint32_t m = 0; m < size.r; m++) {
+      for (uint32_t n = 0; n < size.c; n++) {
+        T a = e[m * size.c + n];
+        T b = p[m * size.c + n];
+        T diff = std::abs(a - b);
+        if (diff > 1e-4) {
+          std::cout << "Mismatch at " << b << ":" << m << ":" << n << " => "
+                    << a << " != " << b << "; " << diff << std::endl;
+          return;
+        }
       }
     }
   }
@@ -233,22 +238,23 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
+  uint32_t b = 100;
   uint32_t m = 256;
   uint32_t k = 256;
   uint32_t n = 256;
 
   Dim2 inp1S = {m, k};
   Dim2 inp2S = {k, n};
-  auto out = allocate<float>(m * n);
+  auto out = allocate<float>(b * m * n);
 
-  auto inp1 = allocate<float>(inp1S.nel());
-  auto inp2 = allocate<float>(inp2S.nel());
+  auto inp1 = allocate<float>(b * inp1S.nel());
+  auto inp2 = allocate<float>(b * inp2S.nel());
   fill1(inp1.get(), inp1S);
   fill1(inp2.get(), inp2S);
 
-  for (int j = 0; j < 2; j++) {
+  for (int j = 0; j < 3; j++) {
     steady_clock::time_point begin = steady_clock::now();
-    mm_openBlas(out.get(), inp1.get(), inp2.get(), inp1S, inp2S);
+    mm_openBlas(out.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     steady_clock::time_point end = steady_clock::now();
     std::cout
         << "Time: "
@@ -257,7 +263,7 @@ int main() {
 
     auto out1 = allocate<float>(m * n);
     begin = steady_clock::now();
-    mm_naive(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S);
+    mm_naive(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     end = steady_clock::now();
     std::cout
         << "Time: "
@@ -267,7 +273,7 @@ int main() {
 
     zero(out1.get(), m * n);
     begin = steady_clock::now();
-    mm_naive_loopReordered(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S);
+    mm_naive_loopReordered(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     end = steady_clock::now();
     std::cout
         << "Time: "
@@ -278,14 +284,14 @@ int main() {
     zero(out1.get(), m * n);
     begin = steady_clock::now();
     mm_multithreaded_colwise(
-        out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, 0
+        out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b, 0
     );
     end = steady_clock::now();
     std::cout
         << "Time: "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
-    check<float>(out.get(), out1.get(), {m, n});
+    check<float>(out.get(), out1.get(), {b, m, n});
 
     /*
     for (uint64_t i = 0; i < m * n; i++) {
