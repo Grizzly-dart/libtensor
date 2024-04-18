@@ -15,67 +15,48 @@
 
 void mm_naive(
     float *__restrict__ out, const float *__restrict__ inp1,
-    const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
+    const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S, uint32_t batchSize
 ) {
-  for (uint32_t m = 0; m < inp1S.r; m++) {
-    for (uint32_t n = 0; n < inp2S.c; n++) {
-      float sum = 0;
+  for (uint32_t b = 0; b < batchSize; b++) {
+    float *o = out + b * inp1S.r * inp2S.c;
+    const float *i1 = inp1 + b * inp1S.r * inp1S.c;
+    const float *i2 = inp2 + b * inp2S.r * inp2S.c;
+    for (uint32_t m = 0; m < inp1S.r; m++) {
+      for (uint32_t n = 0; n < inp2S.c; n++) {
+        float sum = 0;
 #pragma GCC ivdep
-      for (uint32_t k = 0; k < inp1S.c; k++) {
-        sum += inp1[m * inp1S.c + k] * inp2[k * inp2S.c + n];
+        for (uint32_t k = 0; k < inp1S.c; k++) {
+          sum += i1[m * inp1S.c + k] * i2[k * inp2S.c + n];
+        }
+        o[m * inp2S.c + n] = sum;
       }
-      out[m * inp2S.c + n] = sum;
     }
   }
 }
 
 void mm_naive_loopReordered(
     float *__restrict__ out, const float *__restrict__ inp1,
-    const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S
+    const float *__restrict__ inp2, Dim2 inp1S, Dim2 inp2S, uint32_t batchSize
 ) {
-  for (uint32_t m = 0; m < inp1S.r; m++) {
-    for (uint32_t k = 0; k < inp1S.c; k++) {
-      float a = inp1[m * inp1S.c + k];
+  for (uint32_t b = 0; b < batchSize; b++) {
+    float *o = out + b * inp1S.r * inp2S.c;
+    const float *i1 = inp1 + b * inp1S.r * inp1S.c;
+    const float *i2 = inp2 + b * inp2S.r * inp2S.c;
+    for (uint32_t m = 0; m < inp1S.r; m++) {
+      for (uint32_t k = 0; k < inp1S.c; k++) {
+        float a = i1[m * inp1S.c + k];
 #pragma GCC ivdep
-      for (uint32_t n = 0; n < inp2S.c; n++) {
-        out[m * inp2S.c + n] += a * inp2[k * inp2S.c + n];
+        for (uint32_t n = 0; n < inp2S.c; n++) {
+          o[m * inp2S.c + n] += a * i2[k * inp2S.c + n];
+        }
       }
     }
   }
 }
 
-template <typename T> void atomicAdd(T *ptr, T val) {
-  if constexpr (isRealNum<T>()) {
-    volatile float a = 0;
-    /*asm volatile( // "loop: MOVQ %%rax, %[ptr]\n"
-        "MOVSS (%[ptr]), %[a]\n"
-        "ADDSS %[val], %[a]\n"
-        "MOVSS %[a], (%[ptr])\n"
-        : [ptr] "+r"(ptr), [a] "+&x"(a)
-        : [val] "x"(val), [F] "F"(5.5)
-        : "memory", "cc"
-    );*/
-    /*std::cout << " bef => " << ptr << " " << val << " a:" << a
-              << " ptr:" << *ptr << std::endl;*/
-    asm volatile("tjloop: MOVSS (%[ptr]), %[a]\n"
-                 "MOVQ %[a], %%rax\n"
-                 "ADDSS %[val], %[a]\n"
-                 "MOVQ %[a], %%rdx\n"
-                 "lock cmpxchg %%edx, (%[ptr])\n"
-                 "jnz tjloop\n"
-                 : [ptr] "+r"(ptr), [a] "=&x"(a)
-                 : [val] "x"(val)
-                 : "rax", "rdx", "memory", "cc");
-    /*std::cout << " gg => " << ptr << " " << val << " a:" << a << " ptr:" << *ptr
-              << std::endl;*/
-  } else {
-    asm volatile("lock xadd %0, %1" : "+m"(*ptr) : "x"(val) : "memory");
-  }
-}
-
-void mm_multithreaded(
+void mm_multithreaded_colwise_nobatch(
     float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
-    uint16_t tileSize
+    uint32_t batchSize, uint16_t tileSize
 ) {
   if (tileSize == 0) {
     tileSize = 64 / sizeof(float);
@@ -135,6 +116,78 @@ void mm_multithreaded(
   }
 }
 
+void mm_multithreaded_colwise(
+    float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
+    uint32_t batchSize, uint16_t tileSize
+) {
+  if (tileSize == 0) {
+    tileSize = 64 / sizeof(float);
+  }
+  uint16_t numThreads = std::thread::hardware_concurrency();
+  const uint32_t i1NTilesR = (inp1S.r + tileSize - 1) / tileSize;
+  const uint32_t i1NTilesC = (inp1S.c + tileSize - 1) / tileSize;
+  const uint32_t i1NTiles = i1NTilesR * i1NTilesC;
+  const uint32_t i2NTilesC = (inp2S.c + tileSize - 1) / tileSize;
+  uint32_t batchesPerThread;
+  if (batchSize < numThreads) {
+    batchesPerThread = 1;
+    numThreads = batchSize;
+  } else {
+    batchesPerThread = (batchSize + numThreads - 1) / numThreads;
+  }
+
+  std::vector<std::future<void>> futures;
+  for (uint16_t i = 0; i < numThreads; i++) {
+    futures.push_back(std::async(
+        std::launch::async,
+        [i, batchesPerThread, &out, &inp1, &inp2, inp1S, inp2S, i1NTilesR,
+         i2NTilesC, tileSize, batchSize, i1NTiles]() {
+          for (uint32_t b = i * batchesPerThread;
+               b < std::min(i * batchesPerThread + batchesPerThread, batchSize);
+               b++) {
+            float *o = out + b * inp1S.r * inp2S.c;
+            const float *i1 = inp1 + b * inp1S.r * inp1S.c;
+            const float *i2 = inp2 + b * inp2S.r * inp2S.c;
+            for (uint16_t tile = 0; tile < i1NTiles; tile++) {
+              uint32_t aTileR = tile % i1NTilesR;
+              uint32_t aTileC = tile / i1NTilesR;
+
+              uint16_t kMax =
+                  std::min(uint16_t(inp1S.c - aTileC * tileSize), tileSize);
+
+              for (uint32_t m = aTileR * tileSize;
+                   m < std::min((aTileR * tileSize) + tileSize, inp1S.r); m++) {
+                for (uint32_t i2Tc = 0; i2Tc < i2NTilesC; i2Tc++) {
+                  for (uint32_t k = 0; k < kMax; k++) {
+                    uint32_t curK = aTileC * tileSize + k;
+                    float a = i1[m * inp1S.c + curK];
+#pragma GCC ivdep
+                    for (uint32_t n = i2Tc * tileSize;
+                         n < std::min((i2Tc * tileSize) + tileSize, inp2S.c);
+                         n++) {
+                      o[m * inp2S.c + n] += a * i2[curK * inp2S.c + n];
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    ));
+  }
+
+  for (auto &f : futures) {
+    f.get();
+  }
+}
+
+void mm_multithread(
+    float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
+    uint16_t tileSize
+) {
+  // TODO
+}
+
 void mm_openBlas(float *out, float *inp1, float *inp2, Dim2 inp1S, Dim2 inp2S) {
   cblas_sgemm(
       CblasRowMajor, CblasNoTrans, CblasNoTrans, inp1S.r, inp2S.c, inp1S.c,
@@ -154,7 +207,7 @@ template <typename T> void fill1(T *arr, uint64_t size) {
   for (uint64_t i = 0; i < size; i++) {
     arr[i] = i + 1;
     if (isRealNum<T>()) {
-      arr[i] = arr[i] / 1000000;
+      arr[i] = arr[i] / 100000;
     }
   }
 }
@@ -180,9 +233,9 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t m = 512;
+  uint32_t m = 256;
   uint32_t k = 256;
-  uint32_t n = 512;
+  uint32_t n = 256;
 
   Dim2 inp1S = {m, k};
   Dim2 inp2S = {k, n};
@@ -224,7 +277,9 @@ int main() {
 
     zero(out1.get(), m * n);
     begin = steady_clock::now();
-    mm_multithreaded(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, 0);
+    mm_multithreaded_colwise(
+        out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, 0
+    );
     end = steady_clock::now();
     std::cout
         << "Time: "

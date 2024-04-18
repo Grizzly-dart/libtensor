@@ -67,8 +67,14 @@ setup_darwin:
 	find /opt/homebrew/Cellar -name 'pkgconfig' -type d | grep -E 'tbb|openblas' | tr '\n' ':'
 	@echo "\nAdd the above directories to PKG_CONFIG_PATH in your .bashrc or .zshrc"
 
-clean:
-	rm -f build/libtensorcpu.so
-	rm -f build/for_each
+clean/gemm_test:
+	rm -rf build/gemm_test.dSYM
+	rm -f build/gemm_test*
+
+clean: clean_gemm
+	# rm -rf build/
+	rm -f build/libtensorcpu.so build/libtensorcpu.dylib
+	rm -f build/binary_arith_test*
+	rm -f build/dummy*
 
 .PHONY: all build clean copy_dart only_copy
