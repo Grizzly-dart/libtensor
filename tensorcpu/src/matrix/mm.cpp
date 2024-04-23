@@ -50,14 +50,16 @@ template <typename T>
 static void mmKernel(T *out, const T *inp1, const T *inp2, uint16_t tileSize) {
   constexpr const uint16_t laneSize = 64 / sizeof(T);
 
-  for(uint16_t m = 0; m < tileSize; m++) {
+  for (uint16_t m = 0; m < tileSize; m++) {
     for (uint16_t k = 0; k < tileSize; k += laneSize) {
-      stdx::fixed_size_simd<T, laneSize> c;
-      c.copy_from(out + (m * tileSize) + k);
+      stdx::fixed_size_simd<T, laneSize> c(
+          out + (m * tileSize) + k, stdx::vector_aligned
+      );
       for (uint16_t n = 0; n < tileSize; n++) {
-        stdx::fixed_size_simd<T, laneSize> b;
-        b.copy_from(inp2 + (n * tileSize) + k);
-        stdx::fixed_size_simd<T, laneSize> a = *(inp1 + (m * tileSize) + n);
+        stdx::fixed_size_simd<T, laneSize> b(
+            inp2 + (n * tileSize) + k, stdx::vector_aligned
+        );
+        stdx::fixed_size_simd<T, laneSize> a(*(inp1 + (m * tileSize) + n));
         c += a * b;
       }
       c.copy_to(out + (m * tileSize) + k);
