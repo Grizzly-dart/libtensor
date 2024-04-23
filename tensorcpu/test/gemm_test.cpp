@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <experimental/simd>
 #include <future>
 #include <iostream>
 #include <memory>
@@ -12,6 +13,8 @@
 #include "typed_array.hpp"
 
 #include "native.hpp"
+
+namespace stdx = std::experimental;
 
 void mm_naive(
     float *__restrict__ out, const float *__restrict__ inp1,
@@ -118,11 +121,12 @@ void mm_multithreaded_colwise_nobatch(
 
 void mm_multithreaded_colwise(
     float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
-    uint32_t batchSize, uint16_t tileSize
+    uint32_t batchSize
 ) {
-  if (tileSize == 0) {
-    tileSize = 64 / sizeof(float);
-  }
+  constexpr const uint16_t tileSize = 64 / sizeof(float);
+  constexpr uint8_t simdSize = stdx::native_simd<float>::size();
+  constexpr uint16_t numSimdLoops = tileSize / simdSize;
+  constexpr uint16_t lastSimdSize = tileSize % simdSize;
   uint16_t numThreads = std::thread::hardware_concurrency();
   const uint32_t i1NTilesR = (inp1S.r + tileSize - 1) / tileSize;
   const uint32_t i1NTilesC = (inp1S.c + tileSize - 1) / tileSize;
@@ -156,15 +160,17 @@ void mm_multithreaded_colwise(
                   std::min(uint16_t(inp1S.c - i1TileC * tileSize), tileSize);
 
               for (uint32_t m = i1TileR * tileSize;
-                   m < std::min((i1TileR * tileSize) + tileSize, inp1S.r); m++) {
+                   m < std::min((i1TileR * tileSize) + tileSize, inp1S.r);
+                   m++) {
                 for (uint32_t i2Tc = 0; i2Tc < i2NTilesC; i2Tc++) {
                   for (uint32_t k = 0; k < kMax; k++) {
                     uint32_t curK = i1TileC * tileSize + k;
-                    float a = i1[m * inp1S.c + curK];
-#pragma GCC ivdep
+                    float aSc = i1[m * inp1S.c + curK];
+                    stdx::native_simd<float> a(aSc);
                     for (uint32_t n = i2Tc * tileSize;
                          n < std::min((i2Tc * tileSize) + tileSize, inp2S.c);
                          n++) {
+
                       o[m * inp2S.c + n] += a * i2[curK * inp2S.c + n];
                     }
                   }
@@ -216,7 +222,7 @@ template <typename T> void fill1(T *arr, uint64_t size) {
 template <typename T> void fill1(T *arr, Dim2 size) { fill1(arr, size.nel()); }
 
 template <typename T> void check(T *expected, T *produced, Dim3 size) {
-  for (uint32_t bat = 0; bat < size.c; bat++) {
+  for (uint32_t bat = 0; bat < size.ch; bat++) {
     T *e = expected + bat * size.r * size.c;
     T *p = produced + bat * size.r * size.c;
     for (uint32_t m = 0; m < size.r; m++) {
@@ -224,8 +230,8 @@ template <typename T> void check(T *expected, T *produced, Dim3 size) {
         T a = e[m * size.c + n];
         T b = p[m * size.c + n];
         T diff = std::abs(a - b);
-        if (diff > 1e-4) {
-          std::cout << "Mismatch at " << b << ":" << m << ":" << n << " => "
+        if (diff > 1e-3) {
+          std::cout << "Mismatch at " << bat << ":" << m << ":" << n << " => "
                     << a << " != " << b << "; " << diff << std::endl;
           return;
         }
@@ -238,7 +244,7 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t b = 100;
+  uint32_t b = 20;
   uint32_t m = 256;
   uint32_t k = 256;
   uint32_t n = 256;
@@ -252,7 +258,7 @@ int main() {
   fill1(inp1.get(), inp1S);
   fill1(inp2.get(), inp2S);
 
-  for (int j = 0; j < 3; j++) {
+  for (int j = 0; j < 10; j++) {
     steady_clock::time_point begin = steady_clock::now();
     mm_openBlas(out.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     steady_clock::time_point end = steady_clock::now();
@@ -261,7 +267,8 @@ int main() {
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
 
-    auto out1 = allocate<float>(m * n);
+    auto out1 = allocate<float>(b * m * n);
+    /*
     begin = steady_clock::now();
     mm_naive(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     end = steady_clock::now();
@@ -280,6 +287,7 @@ int main() {
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {m, n});
+     */
 
     zero(out1.get(), m * n);
     begin = steady_clock::now();

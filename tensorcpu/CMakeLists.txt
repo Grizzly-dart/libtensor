@@ -8,7 +8,7 @@ execute_process(COMMAND bash -c "uname -p | tr -d '\n'" OUTPUT_VARIABLE ARCH)
 cmake_print_variables(OS ARCH)
 
 set(CMAKE_CXX_COMPILER g++-13)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ftree-vectorize -ffast-math")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -ftree-vectorize -ffast-math")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-vec-missed -fopt-info-loop-optimized -ftree-vectorizer-verbose=2")
 
