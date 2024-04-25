@@ -140,7 +140,6 @@ void mm(
         std::launch::async,
         [i, out, inp1, inp2, size, k, tileSize, numBlocks, numBlocksPerThread,
          numBlocksPerMatrix]() {
-          // TODO adaptive tile size for last
           auto a = std::unique_ptr<T>(new T[tileSize * tileSize]);
           auto b = std::unique_ptr<T>(new T[tileSize * tileSize]);
           auto c = std::unique_ptr<T>(new T[tileSize * tileSize]);
