@@ -96,4 +96,10 @@ extern void mm(
     uint32_t batchSize, uint16_t tileSize
 );
 
+template <typename T>
+void mmBt(
+    T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
+    uint32_t batchSize, uint16_t tileSize
+);
+
 #endif // TENSORC_H

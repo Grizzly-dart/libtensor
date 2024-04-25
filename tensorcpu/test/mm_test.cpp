@@ -176,7 +176,7 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t b = 100;
+  uint32_t b = 1;
   uint32_t m = 2048;
   uint32_t n = 2048;
   uint32_t k = 2048;
@@ -200,7 +200,7 @@ int main() {
     mm_openBlas(out.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     steady_clock::time_point end = steady_clock::now();
     std::cout
-        << "OpenBlas Time: "
+        << "OpenBlas Time:    "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
 
@@ -211,18 +211,17 @@ int main() {
     mm(out1.get(), inp1.get(), inp2.get(), outS, k, b, 128);
     end = steady_clock::now();
     std::cout
-        << "Tiled128 Time: "
+        << "Tiled128 Time:    "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {b, m, n});
 
-    /*
     zero(out1.get(), m * n);
     begin = steady_clock::now();
     mm_naive(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     end = steady_clock::now();
     std::cout
-        << "Naive Time: "
+        << "Naive Time:       "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {m, n});
@@ -236,7 +235,6 @@ int main() {
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {m, n});
-  */
 
     /*
     for (uint64_t i = 0; i < m * n; i++) {

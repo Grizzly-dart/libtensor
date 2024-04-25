@@ -1,6 +1,4 @@
-//
 // Created by Teja Gudapati on 2024-04-16.
-//
 
 #ifndef TENSORCPU_NATIVE_HPP
 #define TENSORCPU_NATIVE_HPP
@@ -15,5 +13,13 @@
 
 template <typename T>
 void atomicAdd(T *ptr, T val);
+
+extern size_t cacheLineSize();
+
+extern size_t cacheSizeL1d();
+
+extern size_t cacheSizeL2d();
+
+extern size_t cacheSizeL3d();
 
 #endif // TENSORCPU_NATIVE_HPP

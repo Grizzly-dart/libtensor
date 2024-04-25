@@ -64,11 +64,8 @@ static void mmTile(
   constexpr const uint16_t laneSize = 64 / sizeof(T);
 
   for (uint16_t m = 0; m < tileSize.r; m++) {
-    for (uint16_t n = 0; n < tileSize.c; n += laneSize) {
+    for (uint16_t n = 0; n < tileSize.c; n++) {
       stdx::fixed_size_simd<T, laneSize> c(0);
-      if (!first) {
-        c.copy_from(out + (m * origTileSize) + n, stdx::vector_aligned);
-      }
       for (uint16_t k = 0; k < kTileSize; k += laneSize) {
         stdx::fixed_size_simd<T, laneSize> a(inp1 + k, stdx::vector_aligned);
         stdx::fixed_size_simd<T, laneSize> b(inp2 + k, stdx::vector_aligned);
@@ -79,7 +76,7 @@ static void mmTile(
       for(uint16_t i = 0; i < laneSize; i++) {
         sum += static_cast<T>(c[i]);
       }
-      out[m * origTileSize + n] = sum;
+      out[m * origTileSize + n] += sum;
       inp2 += origTileSize;
     }
     inp1 += origTileSize;

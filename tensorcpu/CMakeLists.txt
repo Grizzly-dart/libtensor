@@ -47,17 +47,17 @@ target_link_libraries(tensorcpu pthread m)
 ###### binary_arith_test
 add_executable(binary_arith_test test/binary_arith_test.cpp)
 
-###### gemm_test
-add_executable(gemm_test test/gemm_test.cpp)
+###### mm_test
+add_executable(mm_test test/mm_test.cpp)
 
-###### dummy
-add_executable(dummy test/dummy.cpp)
+###### mmBt_test
+add_executable(mmBt_test test/mmBt_test.cpp)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPENBLAS REQUIRED openblas)
 pkg_check_modules(TBB REQUIRED tbb)
 
-foreach (target IN ITEMS tensorcpu binary_arith_test gemm_test dummy)
+foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test)
     target_link_directories(${target} PUBLIC ./build)
     if (NOT ${target} STREQUAL "tensorcpu")
         target_link_libraries(${target} tensorcpu)
