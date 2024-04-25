@@ -90,4 +90,10 @@ extern const char *tcFUnary(O *out, I *inp, FUnaryOp op, uint64_t nel);
 template <typename O, typename I>
 extern const char *tcFUnaryPlain(O *out, I *inp, FUnaryOp op, uint64_t nel);
 
+template <typename T>
+extern void mm(
+    T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
+    uint32_t batchSize, uint16_t tileSize
+);
+
 #endif // TENSORC_H

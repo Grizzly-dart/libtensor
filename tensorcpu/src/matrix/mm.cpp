@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <execution>
 #include <experimental/simd>
@@ -13,135 +14,158 @@
 namespace stdx = std::experimental;
 
 template <typename T>
-static void loadATile(
-    T *out, const T *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize
+static void loadTile(
+    T *out, const T *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize,
+    uint16_t origTileSize
 ) {
-  // TODO vectorize loads
   for (uint32_t i = 0; i < tileSize.r; i++) {
+    uint32_t row = tileOffset.r + i;
+    if (row >= size.r) {
+#pragma GCC ivdep
+      for (uint32_t j = 0; j < tileSize.c; j++) {
+        out[i * origTileSize + j] = 0;
+      }
+      continue;
+    }
+#pragma GCC ivdep
     for (uint32_t j = 0; j < tileSize.c; j++) {
-      uint32_t idx = (tileOffset.r + i) * size.c + tileOffset.c + j;
-      if (idx < size.r * size.c) {
-        out[i * tileSize.c + j] = inp[idx];
+      uint32_t col = tileOffset.c + j;
+      if (col < size.c) {
+        uint32_t idx = row * size.c + col;
+        out[i * origTileSize + j] = inp[idx];
       } else {
-        out[i * tileSize.c + j] = 0;
+        out[i * origTileSize + j] = 0;
       }
     }
   }
 }
 
 template <typename T>
-static void loadBTileT(
-    T *out, const T *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize
+static void storeTile(
+    T *out, const T *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize,
+    uint16_t origTileSize
 ) {
-  // TODO vectorize loads
   for (uint32_t i = 0; i < tileSize.r; i++) {
+#pragma GCC ivdep
     for (uint32_t j = 0; j < tileSize.c; j++) {
       uint32_t idx = (tileOffset.r + i) * size.c + tileOffset.c + j;
       if (idx < size.r * size.c) {
-        out[j * tileSize.r + i] = inp[idx];
-      } else {
-        out[j * tileSize.r + i] = 0;
+        out[idx] = inp[i * origTileSize + j];
       }
-    }
-  }
-}
-
-template <typename T>
-static void mmKernel(T *out, const T *inp1, const T *inp2, uint16_t tileSize) {
-  constexpr const uint16_t laneSize = 64 / sizeof(T);
-
-  for (uint16_t m = 0; m < tileSize; m++) {
-    for (uint16_t k = 0; k < tileSize; k += laneSize) {
-      stdx::fixed_size_simd<T, laneSize> c(
-          out + (m * tileSize) + k, stdx::vector_aligned
-      );
-      for (uint16_t n = 0; n < tileSize; n++) {
-        stdx::fixed_size_simd<T, laneSize> b(
-            inp2 + (n * tileSize) + k, stdx::vector_aligned
-        );
-        stdx::fixed_size_simd<T, laneSize> a(*(inp1 + (m * tileSize) + n));
-        c += a * b;
-      }
-      c.copy_to(out + (m * tileSize) + k);
     }
   }
 }
 
 template <typename T>
 static void mmTile(
-    T *out, const T *inp1, const T *inp2, Dim2 size, Dim2 tileOffset,
-    Dim2 tileSize
+    T *out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize,
+    uint16_t origTileSize, bool first
 ) {
-  loadATile(out, inp1, size, tileOffset, tileSize);
-  loadBTileT(out, inp2, size, tileOffset, tileSize);
+  constexpr const uint16_t laneSize = 64 / sizeof(T);
 
-  // TODO
+  for (uint16_t m = 0; m < tileSize.r; m++) {
+    for (uint16_t n = 0; n < tileSize.c; n += laneSize) {
+      stdx::fixed_size_simd<T, laneSize> c = 0;
+      if (!first) {
+        c.copy_from(out + (m * origTileSize) + n, stdx::vector_aligned);
+      }
+      for (uint16_t k = 0; k < kTileSize; k++) {
+        stdx::fixed_size_simd<T, laneSize> b(
+            inp2 + (k * origTileSize) + n, stdx::vector_aligned
+        );
+        stdx::fixed_size_simd<T, laneSize> a(*(inp1 + (m * origTileSize) + k));
+        c += a * b;
+      }
+      auto rem = tileSize.c - n;
+      if (rem >= laneSize) {
+        c.copy_to(out + m * origTileSize + n, stdx::vector_aligned);
+      } else {
+#pragma GCC ivdep
+        for (uint16_t i = 0; i < rem; i++) {
+          out[m * origTileSize + n + i] = static_cast<T>(c[i]);
+        }
+      }
+    }
+  }
 }
 
-void mm(
-    float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
-    uint32_t batchSize
+template <typename T>
+static void gemmRows(
+    T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
+    uint16_t tileSize, uint32_t start, uint32_t end, T *c, T *a, T *b
 ) {
-  constexpr const uint16_t tileSize = 64 / sizeof(float);
-  constexpr uint8_t simdSize = stdx::native_simd<float>::size();
-  constexpr uint16_t numSimdLoops = tileSize / simdSize;
-  constexpr uint16_t lastSimdSize = tileSize % simdSize;
-  uint16_t numThreads = std::thread::hardware_concurrency();
-  const uint32_t i1NTilesR = (inp1S.r + tileSize - 1) / tileSize;
-  const uint32_t i1NTilesC = (inp1S.c + tileSize - 1) / tileSize;
-  const uint32_t i1NTiles = i1NTilesR * i1NTilesC;
-  const uint32_t i2NTilesC = (inp2S.c + tileSize - 1) / tileSize;
-  uint32_t batchesPerThread;
-  if (batchSize < numThreads) {
-    batchesPerThread = 1;
-    numThreads = batchSize;
-  } else {
-    batchesPerThread = (batchSize + numThreads - 1) / numThreads;
+
+  for (uint32_t mOffset = start; mOffset < end; mOffset += tileSize) {
+    uint32_t mTileSize = std::min(uint32_t(tileSize), end - mOffset);
+    for (uint32_t nOffset = 0; nOffset < size.c; nOffset += tileSize) {
+      uint32_t nTileSize = std::min(uint32_t(tileSize), size.c - nOffset);
+      for (uint32_t kOffset = 0; kOffset < k; kOffset += tileSize) {
+        uint16_t kTileSize = std::min(uint32_t(tileSize), k - kOffset);
+        loadTile(
+            a, inp1, {.r = size.r, .c = k}, {.r = mOffset, .c = kOffset},
+            {mTileSize, kTileSize}, tileSize
+        );
+        loadTile(
+            b, inp2, {.r = k, .c = size.c}, {.r = kOffset, .c = nOffset},
+            {kTileSize, nTileSize}, tileSize
+        );
+        mmTile(
+            c, a, b, {mTileSize, nTileSize}, kTileSize, tileSize, kOffset == 0
+        );
+      }
+      storeTile(
+          out, c, size, {.r = mOffset, .c = nOffset}, {mTileSize, nTileSize},
+          tileSize
+      );
+    }
   }
+}
+
+template <typename T>
+void mm(
+    T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
+    uint32_t batchSize, uint16_t tileSize
+) {
+  uint16_t numThreads = std::thread::hardware_concurrency();
+  uint32_t numBlocksPerMatrix = (size.r + tileSize - 1) / tileSize;
+  uint32_t numBlocks = numBlocksPerMatrix * batchSize;
+  if (numBlocks < numThreads) {
+    numThreads = numBlocks;
+  }
+  uint32_t numBlocksPerThread = (numBlocks + numThreads - 1) / numThreads;
 
   std::vector<std::future<void>> futures;
   for (uint16_t i = 0; i < numThreads; i++) {
     futures.push_back(std::async(
         std::launch::async,
-        [i, batchesPerThread, &out, &inp1, &inp2, inp1S, inp2S, i1NTilesR,
-         i2NTilesC, tileSize, batchSize, i1NTiles]() {
-          for (uint32_t b = i * batchesPerThread;
-               b < std::min(i * batchesPerThread + batchesPerThread, batchSize);
-               b++) {
-            float *o = out + b * inp1S.r * inp2S.c;
-            const float *i1 = inp1 + b * inp1S.r * inp1S.c;
-            const float *i2 = inp2 + b * inp2S.r * inp2S.c;
-            for (uint16_t tile = 0; tile < i1NTiles; tile++) {
-              uint32_t i1TileR = tile % i1NTilesR;
-              uint32_t i1TileC = tile / i1NTilesR;
+        [i, out, inp1, inp2, size, k, tileSize, numBlocks, numBlocksPerThread,
+         numBlocksPerMatrix]() {
+          // TODO adaptive tile size for last
+          auto a = std::unique_ptr<T>(new T[tileSize * tileSize]);
+          auto b = std::unique_ptr<T>(new T[tileSize * tileSize]);
+          auto c = std::unique_ptr<T>(new T[tileSize * tileSize]);
 
-              uint16_t kMax =
-                  std::min(uint16_t(inp1S.c - i1TileC * tileSize), tileSize);
-
-              for (uint32_t m = i1TileR * tileSize;
-                   m < std::min((i1TileR * tileSize) + tileSize, inp1S.r);
-                   m++) {
-                for (uint32_t i2Tc = 0; i2Tc < i2NTilesC; i2Tc++) {
-                  for (uint32_t k = 0; k < kMax; k++) {
-                    uint32_t curK = i1TileC * tileSize + k;
-                    float aSc = i1[m * inp1S.c + curK];
-                    stdx::native_simd<float> a(aSc);
-                    for (uint32_t n = i2Tc * tileSize;
-                         n < std::min((i2Tc * tileSize) + tileSize, inp2S.c);
-                         n++) {
-
-                      o[m * inp2S.c + n] += a * i2[curK * inp2S.c + n];
-                    }
-                  }
-                }
-              }
-            }
+          for (uint32_t block = i * numBlocksPerThread;
+               block <
+               std::min(i * numBlocksPerThread + numBlocksPerThread, numBlocks);
+               block++) {
+            uint32_t batch = block / numBlocksPerMatrix;
+            gemmRows(
+                out + batch * size.r * size.c, inp1 + batch * size.r * k,
+                inp2 + batch * k * size.c, size, k, tileSize, block * tileSize,
+                (block + 1) * tileSize, c.get(), a.get(), b.get()
+            );
           }
         }
     ));
   }
 
   for (auto &f : futures) {
-    f.get();
+    f.wait();
   }
 }
+
+template void mm<float>(
+    float *out, const float *inp1, const float *inp2, Dim2 size, uint32_t k,
+    uint32_t batchSize, uint16_t tileSize
+);

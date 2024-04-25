@@ -162,7 +162,7 @@ template <typename T> void check(T *expected, T *produced, Dim3 size) {
         T a = e[m * size.c + n];
         T b = p[m * size.c + n];
         T diff = std::abs(a - b);
-        if (diff > 1e-3) {
+        if (diff > a * 1e-3) {
           std::cout << "Mismatch at " << bat << ":" << m << ":" << n << " => "
                     << a << " != " << b << "; " << diff << std::endl;
           return;
@@ -176,13 +176,14 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t b = 20;
-  uint32_t m = 256;
-  uint32_t k = 256;
-  uint32_t n = 256;
+  uint32_t b = 100;
+  uint32_t m = 2048;
+  uint32_t n = 2048;
+  uint32_t k = 2048;
 
   Dim2 inp1S = {m, k};
   Dim2 inp2S = {k, n};
+  Dim2 outS = {m, n};
   auto out = allocate<float>(b * m * n);
 
   auto inp1 = allocate<float>(b * inp1S.nel());
@@ -190,22 +191,38 @@ int main() {
   fill1(inp1.get(), inp1S);
   fill1(inp2.get(), inp2S);
 
+  std::cout << "Concurrent: " << std::thread::hardware_concurrency()
+            << std::endl;
+
   for (int j = 0; j < 10; j++) {
+    zero(out.get(), m * n);
     steady_clock::time_point begin = steady_clock::now();
     mm_openBlas(out.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     steady_clock::time_point end = steady_clock::now();
     std::cout
-        << "Time: "
+        << "OpenBlas Time: "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
 
     auto out1 = allocate<float>(b * m * n);
+
+    zero(out1.get(), m * n);
+    begin = steady_clock::now();
+    mm(out1.get(), inp1.get(), inp2.get(), outS, k, b, 128);
+    end = steady_clock::now();
+    std::cout
+        << "Tiled128 Time: "
+        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
+        << "us" << std::endl;
+    check<float>(out.get(), out1.get(), {b, m, n});
+
     /*
+    zero(out1.get(), m * n);
     begin = steady_clock::now();
     mm_naive(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     end = steady_clock::now();
     std::cout
-        << "Time: "
+        << "Naive Time: "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {m, n});
@@ -215,23 +232,11 @@ int main() {
     mm_naive_loopReordered(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
     end = steady_clock::now();
     std::cout
-        << "Time: "
+        << "LoopOrdered Time: "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {m, n});
-     */
-
-    zero(out1.get(), m * n);
-    begin = steady_clock::now();
-    mm_multithreaded_colwise(
-        out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b, 0
-    );
-    end = steady_clock::now();
-    std::cout
-        << "Time: "
-        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-        << "us" << std::endl;
-    check<float>(out.get(), out1.get(), {b, m, n});
+  */
 
     /*
     for (uint64_t i = 0; i < m * n; i++) {
