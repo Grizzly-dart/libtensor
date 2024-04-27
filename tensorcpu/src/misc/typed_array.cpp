@@ -18,8 +18,8 @@ void castStorer(void *ptr, uint64_t index, O value) {
   ((I *)ptr)[index] = tmp;
 }
 
-template <typename I> void castIndexer(void **dst, void *src, int64_t index) {
-  *dst = ((I *)src) + index;
+template <typename I> void* castIndexer(void *src, int64_t index) {
+  return ((I *)src) + index;
 }
 
 template <typename O, typename I>

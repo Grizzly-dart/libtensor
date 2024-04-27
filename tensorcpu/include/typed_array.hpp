@@ -91,14 +91,14 @@ template <typename O, typename I> O castLoader(void *ptr, uint64_t index);
 template <typename O, typename I>
 void castStorer(void *ptr, uint64_t index, O value);
 
-template <typename I> void castIndexer(void **dst, void *src, int64_t index);
+template <typename I> void* castIndexer(void *src, int64_t index);
 
 template <typename O, typename I>
 void castSimdLoader(void *ptr, uint64_t index, stdx::native_simd<O> &simd);
 
 template <typename O> using CastLoader = O (*)(void *, uint64_t);
 template <typename O> using CastStorer = void (*)(void *, uint64_t, O);
-using CastIndexer = void (*)(void **dst, void *src, int64_t offset);
+using CastIndexer = void* (*)(void *src, int64_t offset);
 template <typename O>
 using CastSimdLoader = void (*)(void *, uint64_t, stdx::native_simd<O> &);
 

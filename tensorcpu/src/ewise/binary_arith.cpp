@@ -132,7 +132,6 @@ void tcBinaryArithCasted(
         Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
     size_t width = stdx::native_simd<I>::size();
-    printf("width: %zu\n", width);
     DType outType = dtypes[outTID];
     DType inp1Type = dtypes[i1TID];
     DType inp2Type = dtypes[i2TID];
