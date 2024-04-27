@@ -27,7 +27,7 @@ extern void mm_same_slow(
 );
 
 template <typename T>
-void mmBt_slow(
+void mmBt_same_slow(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
     uint32_t batchSize
 );

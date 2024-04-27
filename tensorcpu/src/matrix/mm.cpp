@@ -24,7 +24,7 @@ const char *mm(
     if(!bT) {
       return mm_same_slow<T>(out, inp1, inp2, size, k, batchSize);
     } else {
-      return "Not implemented yet!";
+      return mmBt_same_slow<T>(out, inp1, inp2, size, k, batchSize);
     }
   }
   return nullptr;

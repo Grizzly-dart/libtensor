@@ -102,7 +102,7 @@ int main() {
 
     zero(out1.get(), m * n);
     begin = steady_clock::now();
-    mmBt_slow(out1.get(), inp1.get(), inp2.get(), outS, k, b);
+    mmBt_same_slow(out1.get(), inp1.get(), inp2.get(), outS, k, b);
     end = steady_clock::now();
     std::cout
         << "Tiled128 Time: "

@@ -81,7 +81,7 @@ static void gemmRows(
 }
 
 template <typename T>
-void mmBt_slow(
+void mmBt_same_slow(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
     uint32_t batchSize
 ) {
@@ -125,7 +125,7 @@ void mmBt_slow(
 }
 
 #define MMBT_SLOW(T)                                                           \
-  template void mmBt_slow<T>(                                                       \
+  template void mmBt_same_slow<T>(                                                       \
       T * out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,            \
       uint32_t batchSize                                                       \
   );
