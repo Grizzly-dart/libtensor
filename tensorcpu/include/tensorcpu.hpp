@@ -91,15 +91,9 @@ template <typename O, typename I>
 extern const char *tcFUnaryPlain(O *out, I *inp, FUnaryOp op, uint64_t nel);
 
 template <typename T>
-extern void mm(
+extern const char *mm(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
-    uint32_t batchSize, uint16_t tileSize
-);
-
-template <typename T>
-void mmBt(
-    T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
-    uint32_t batchSize, uint16_t tileSize
+    uint32_t batchSize, uint8_t bT
 );
 
 #endif // TENSORC_H
