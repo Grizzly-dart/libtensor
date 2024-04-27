@@ -11,6 +11,7 @@
 
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
+#include "matrix.hpp"
 
 #include "native.hpp"
 
@@ -57,68 +58,6 @@ void mm_naive_loopReordered(
   }
 }
 
-void mm_multithreaded_colwise_nobatch(
-    float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
-    uint32_t batchSize, uint16_t tileSize
-) {
-  if (tileSize == 0) {
-    tileSize = 64 / sizeof(float);
-  }
-  uint16_t numThreads = std::thread::hardware_concurrency();
-  const uint32_t i1NTilesR = (inp1S.r + tileSize - 1) / tileSize;
-  const uint32_t i1NTilesC = (inp1S.c + tileSize - 1) / tileSize;
-  const uint32_t i1NTiles = i1NTilesR * i1NTilesC;
-  const uint32_t i2NTilesC = (inp2S.c + tileSize - 1) / tileSize;
-  uint16_t tilesPerThread;
-  if (i1NTiles < numThreads) {
-    tilesPerThread = 1;
-    numThreads = i1NTiles;
-  } else {
-    tilesPerThread = (i1NTiles + numThreads - 1) / numThreads;
-  }
-
-  std::vector<std::future<void>> futures;
-  for (uint16_t i = 0; i < numThreads; i++) {
-    futures.push_back(std::async(
-        std::launch::async,
-        [i, tilesPerThread, &out, &inp1, &inp2, inp1S, inp2S, i1NTilesR,
-         i2NTilesC, tileSize]() {
-          for (uint16_t j = 0; j < tilesPerThread; j++) {
-            uint16_t tile = i * tilesPerThread + j;
-            uint32_t aTileR = tile % i1NTilesR;
-            uint32_t aTileC = tile / i1NTilesR;
-
-            uint16_t kMax =
-                std::min(uint16_t(inp1S.c - aTileC * tileSize), tileSize);
-
-            for (uint32_t m = aTileR * tileSize;
-                 m < std::min((aTileR * tileSize) + tileSize, inp1S.r); m++) {
-              for (uint32_t i2Tc = 0; i2Tc < i2NTilesC; i2Tc++) {
-                for (uint32_t k = 0; k < kMax; k++) {
-                  uint32_t curK = aTileC * tileSize + k;
-                  float i1 = inp1[m * inp1S.c + curK];
-#pragma GCC ivdep
-                  for (uint32_t n = i2Tc * tileSize;
-                       n < std::min((i2Tc * tileSize) + tileSize, inp2S.c);
-                       n++) {
-                    // out[m * inp2S.c + n] += i1 * inp2[curK * inp2S.c + n];
-                    float v = i1 * inp2[curK * inp2S.c + n];
-                    float *ptr = &out[m * inp2S.c + n];
-                    atomicAdd(ptr, v);
-                  }
-                }
-              }
-            }
-          }
-        }
-    ));
-  }
-
-  for (auto &f : futures) {
-    f.get();
-  }
-}
-
 void mm_openBlas(
     float *out, const float *inp1, const float *inp2, Dim2 inp1S, Dim2 inp2S,
     uint32_t batchSize
@@ -145,7 +84,7 @@ template <typename T> void zero(T *arr, uint64_t size) {
 template <typename T> void fill1(T *arr, uint64_t size) {
   for (uint64_t i = 0; i < size; i++) {
     arr[i] = i + 1;
-    if (isRealNum<T>()) {
+    if (std::is_floating_point<T>::value) {
       arr[i] = arr[i] / 100000;
     }
   }
@@ -176,7 +115,7 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 int main() {
-  uint32_t b = 1;
+  uint32_t b = 10;
   uint32_t m = 2048;
   uint32_t n = 2048;
   uint32_t k = 2048;
@@ -208,7 +147,7 @@ int main() {
 
     zero(out1.get(), m * n);
     begin = steady_clock::now();
-    mm(out1.get(), inp1.get(), inp2.get(), outS, k, b, 128);
+    mm_same_slow(out1.get(), inp1.get(), inp2.get(), outS, k, b);
     end = steady_clock::now();
     std::cout
         << "Tiled128 Time:    "
@@ -216,6 +155,7 @@ int main() {
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {b, m, n});
 
+    /*
     zero(out1.get(), m * n);
     begin = steady_clock::now();
     mm_naive(out1.get(), inp1.get(), inp2.get(), inp1S, inp2S, b);
@@ -235,6 +175,7 @@ int main() {
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check<float>(out.get(), out1.get(), {m, n});
+     */
 
     /*
     for (uint64_t i = 0; i < m * n; i++) {

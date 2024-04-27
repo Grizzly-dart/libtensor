@@ -54,7 +54,7 @@ void tcBinaryArith(
     } else if (op == BinaryOp::Div) {
         if (!flip) {
             kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
-                if constexpr (isRealNum<I>()) {
+                if constexpr (std::is_floating_point<I>::value) {
                     stdx::native_simd<I> a, b;
                     o.store(i, i1.load(i, a) / i2->load(i, b));
                 } else {
@@ -71,7 +71,7 @@ void tcBinaryArith(
             };
         } else {
             kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
-                if constexpr (isRealNum<I>()) {
+                if constexpr (std::is_floating_point<I>::value) {
                     stdx::native_simd<I> a, b;
                     o.store(i, i2->load(i, b) / i1.load(i, a));
                 } else {
@@ -178,7 +178,7 @@ void tcBinaryArithCasted(
         if (!flip) {
             kernel = [&i1, &i2, &o](uint64_t i) {
                 // WORKAROUND: SIMD integer division not working for some reason
-                if constexpr (isRealNum<I>()) {
+                if constexpr (std::is_floating_point<I>::value) {
                     stdx::native_simd<I> a, b;
                     o.store(i, i1.load(i, a) / i2->load(i, b));
                 } else {
@@ -196,7 +196,7 @@ void tcBinaryArithCasted(
             };
         } else {
             kernel = [&i1, &i2, &o](uint64_t i) {
-                if constexpr (isRealNum<I>()) {
+                if constexpr (std::is_floating_point<I>::value) {
                     stdx::native_simd<I> a, b;
                     o.store(i, i2->load(i, b) / i1.load(i, a));
                 } else {

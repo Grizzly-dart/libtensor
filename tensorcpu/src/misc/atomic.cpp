@@ -1,11 +1,6 @@
-#include <type_traits>
-
 #include "native.hpp"
-#include "typed_array.hpp"
 
 template <typename T>
-[[gnu::always_inline]]
-[[clang::always_inline]]
 inline void atomicAdd(T *ptr, T val) {
 #if defined(TC_ARCH_X86)
   if constexpr (std::is_same<T, float>::value) {
@@ -50,5 +45,3 @@ inline void atomicAdd(T *ptr, T val) {
   static_assert(false, "Unsupported architecture");
 #endif
 }
-
-template void atomicAdd<float>(float *ptr, float val);

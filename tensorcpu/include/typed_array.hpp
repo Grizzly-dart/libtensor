@@ -14,12 +14,6 @@
 
 namespace stdx = std::experimental;
 
-template <typename T> constexpr bool isRealNum() {
-  // TODO add bfloat16_t
-  return std::is_same<T, float>::value || std::is_same<T, double>::value ||
-         std::is_same<T, std::float16_t>::value;
-}
-
 template <typename T> constexpr bool isAnyInt() {
   return std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
          std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value ||

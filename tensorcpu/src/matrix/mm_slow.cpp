@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 #include <execution>
 #include <experimental/simd>
@@ -10,76 +9,42 @@
 #include <typeinfo>
 
 #include "tensorcpu.hpp"
+#include "matrix.hpp"
 
 namespace stdx = std::experimental;
-
-template <typename T>
-static void loadTile(
-    T *out, const T *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize,
-    uint16_t origTileSize
-) {
-  for (uint32_t i = 0; i < tileSize.r; i++) {
-    uint32_t row = tileOffset.r + i;
-    if (row >= size.r) {
-#pragma GCC ivdep
-      for (uint32_t j = 0; j < tileSize.c; j++) {
-        out[i * origTileSize + j] = 0;
-      }
-      continue;
-    }
-#pragma GCC ivdep
-    for (uint32_t j = 0; j < tileSize.c; j++) {
-      uint32_t col = tileOffset.c + j;
-      if (col < size.c) {
-        uint32_t idx = row * size.c + col;
-        out[i * origTileSize + j] = inp[idx];
-      } else {
-        out[i * origTileSize + j] = 0;
-      }
-    }
-  }
-}
-
-template <typename T>
-static void storeTile(
-    T *out, const T *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize,
-    uint16_t origTileSize
-) {
-  for (uint32_t i = 0; i < tileSize.r; i++) {
-#pragma GCC ivdep
-    for (uint32_t j = 0; j < tileSize.c; j++) {
-      uint32_t idx = (tileOffset.r + i) * size.c + tileOffset.c + j;
-      if (idx < size.r * size.c) {
-        out[idx] = inp[i * origTileSize + j];
-      }
-    }
-  }
-}
 
 template <typename T>
 static void mmTile(
     T *out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize,
     uint16_t origTileSize, bool first
 ) {
-  constexpr const uint16_t laneSize = 64 / sizeof(T);
+  constexpr const uint16_t laneSize = std::min(
+      uint16_t(64 / sizeof(T)), uint16_t(stdx::native_simd<T>::size())
+  );
 
-  for (uint16_t m = 0; m < tileSize.r; m++) {
-    for (uint16_t n = 0; n < tileSize.c; n++) {
+  for (uint32_t m = 0; m < tileSize.r; m++) {
+    for (uint32_t n = 0; n < tileSize.c; n += laneSize) {
       stdx::fixed_size_simd<T, laneSize> c(0);
-      for (uint16_t k = 0; k < kTileSize; k += laneSize) {
-        stdx::fixed_size_simd<T, laneSize> a(inp1 + k, stdx::vector_aligned);
-        stdx::fixed_size_simd<T, laneSize> b(inp2 + k, stdx::vector_aligned);
+      if (!first) {
+        c.copy_from(out + (m * origTileSize) + n, stdx::vector_aligned);
+      }
+      for (uint32_t k = 0; k < kTileSize; k++) {
+        stdx::fixed_size_simd<T, laneSize> b(
+            inp2 + (k * origTileSize) + n, stdx::vector_aligned
+        );
+        stdx::fixed_size_simd<T, laneSize> a(*(inp1 + (m * origTileSize) + k));
         c += a * b;
       }
-      T sum = 0;
-      // TODO vectorize horizontal sum
-      for(uint16_t i = 0; i < laneSize; i++) {
-        sum += static_cast<T>(c[i]);
+      auto rem = tileSize.c - n;
+      if (rem >= laneSize) {
+        c.copy_to(out + m * origTileSize + n, stdx::vector_aligned);
+      } else {
+#pragma GCC ivdep
+        for (uint32_t i = 0; i < rem; i++) {
+          out[m * origTileSize + n + i] = static_cast<T>(c[i]);
+        }
       }
-      out[m * origTileSize + n] += sum;
-      inp2 += origTileSize;
     }
-    inp1 += origTileSize;
   }
 }
 
@@ -100,8 +65,8 @@ static void gemmRows(
             {mTileSize, kTileSize}, tileSize
         );
         loadTile(
-            b, inp2, {.r = size.c, .c = k}, {.r = nOffset, .c = kOffset},
-            {nTileSize, kTileSize}, tileSize
+            b, inp2, {.r = k, .c = size.c}, {.r = kOffset, .c = nOffset},
+            {kTileSize, nTileSize}, tileSize
         );
         mmTile(
             c, a, b, {mTileSize, nTileSize}, kTileSize, tileSize, kOffset == 0
@@ -116,10 +81,11 @@ static void gemmRows(
 }
 
 template <typename T>
-void mmBt(
+void mm_same_slow(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
-    uint32_t batchSize, uint16_t tileSize
+    uint32_t batchSize
 ) {
+  constexpr const uint16_t tileSize = 128; // TODO deduce tileSize
   uint16_t numThreads = std::thread::hardware_concurrency();
   uint32_t numBlocksPerMatrix = (size.r + tileSize - 1) / tileSize;
   uint32_t numBlocks = numBlocksPerMatrix * batchSize;
@@ -158,7 +124,10 @@ void mmBt(
   }
 }
 
-template void mmBt<float>(
-    float *out, const float *inp1, const float *inp2, Dim2 size, uint32_t k,
-    uint32_t batchSize, uint16_t tileSize
-);
+#define MM_SLOW(T)                                                             \
+  template void mm_same_slow<T>(                                                    \
+      T * out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,            \
+      uint32_t batchSize                                                       \
+  );
+
+UNWIND1_ALL_TYPES(MM_SLOW)

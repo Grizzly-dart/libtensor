@@ -3,16 +3,13 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
-#include <experimental/simd>
-#include <future>
 #include <iostream>
 #include <memory>
 #include <thread>
 
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
-
-#include "native.hpp"
+#include "matrix.hpp"
 
 namespace stdx = std::experimental;
 
@@ -42,7 +39,7 @@ template <typename T> void zero(T *arr, uint64_t size) {
 template <typename T> void fill1(T *arr, uint64_t size) {
   for (uint64_t i = 0; i < size; i++) {
     arr[i] = i + 1;
-    if (isRealNum<T>()) {
+    if (std::is_floating_point<T>::value) {
       arr[i] = arr[i] / 100000;
     }
   }
@@ -105,7 +102,7 @@ int main() {
 
     zero(out1.get(), m * n);
     begin = steady_clock::now();
-    mmBt(out1.get(), inp1.get(), inp2.get(), outS, k, b, 128);
+    mmBt_slow(out1.get(), inp1.get(), inp2.get(), outS, k, b);
     end = steady_clock::now();
     std::cout
         << "Tiled128 Time: "

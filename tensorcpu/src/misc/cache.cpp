@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <cstring>
 
 #include "native.hpp"
 

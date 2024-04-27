@@ -3,6 +3,10 @@
 #ifndef TENSORCPU_NATIVE_HPP
 #define TENSORCPU_NATIVE_HPP
 
+#include <cstddef>
+#include <type_traits>
+#include "typed_array.hpp"
+
 #if __GNUC__
 #if defined(__x86_64__) || defined(__i386__)
 #define TC_ARCH_X86
@@ -12,7 +16,14 @@
 #endif
 
 template <typename T>
-void atomicAdd(T *ptr, T val);
+#if defined(__GNUC__)
+#if defined(__clang__)
+[[clang::always_inline]]
+#else
+[[gnu::always_inline]]
+#endif
+#endif
+inline void atomicAdd(T *ptr, T val);
 
 extern size_t cacheLineSize();
 
