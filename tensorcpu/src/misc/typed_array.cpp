@@ -18,7 +18,7 @@ void castStorer(void *ptr, uint64_t index, O value) {
   ((I *)ptr)[index] = tmp;
 }
 
-template <typename I> void* castIndexer(void *src, int64_t index) {
+template <typename I> void *castIndexer(void *src, int64_t index) {
   return ((I *)src) + index;
 }
 
@@ -36,132 +36,65 @@ void castSimdStorer(void *ptr, uint64_t index, stdx::native_simd<O> &simd) {
   tmp.copy_to(((I *)ptr) + index, stdx::element_aligned);
 }
 
-const Caster<int64_t> i64Casters[12] = {
-    {castLoader<int64_t, int8_t>, castStorer<int64_t, int8_t>,
-     castIndexer<int8_t>, castSimdLoader<int64_t, int8_t>},
-    {castLoader<int64_t, int16_t>, castStorer<int64_t, int16_t>,
-     castIndexer<int16_t>, castSimdLoader<int64_t, int16_t>},
-    {castLoader<int64_t, int32_t>, castStorer<int64_t, int32_t>,
-     castIndexer<int32_t>, castSimdLoader<int64_t, int32_t>},
-    {castLoader<int64_t, int64_t>, castStorer<int64_t, int64_t>,
-     castIndexer<int64_t>, castSimdLoader<int64_t, int64_t>},
-    {castLoader<int64_t, uint8_t>, castStorer<int64_t, uint8_t>,
-     castIndexer<uint8_t>, castSimdLoader<int64_t, uint8_t>},
-    {castLoader<int64_t, uint16_t>, castStorer<int64_t, uint16_t>,
-     castIndexer<uint16_t>, castSimdLoader<int64_t, uint16_t>},
-    {castLoader<int64_t, uint32_t>, castStorer<int64_t, uint32_t>,
-     castIndexer<uint32_t>, castSimdLoader<int64_t, uint32_t>},
-    {castLoader<int64_t, uint64_t>, castStorer<int64_t, uint64_t>,
-     castIndexer<uint64_t>, castSimdLoader<int64_t, uint64_t>},
-    {},
-    {},
-    {castLoader<int64_t, float>, castStorer<int64_t, float>, castIndexer<float>,
-     castSimdLoader<int64_t, float>},
-    {castLoader<int64_t, double>, castStorer<int64_t, double>,
-     castIndexer<double>, castSimdLoader<int64_t, double>},
-};
+#define CASTER(TNAME, T)                                                       \
+  const Caster<T> TNAME##Casters[10] = {                                        \
+      {castLoader<T, int8_t>, castStorer<T, int8_t>, castIndexer<int8_t>,      \
+       castSimdLoader<T, int8_t>, castSimdStorer<T, int8_t>},                  \
+      {castLoader<T, int16_t>, castStorer<T, int16_t>, castIndexer<int16_t>,   \
+       castSimdLoader<T, int16_t>, castSimdStorer<T, int16_t>},                \
+      {castLoader<T, int32_t>, castStorer<T, int32_t>, castIndexer<int32_t>,   \
+       castSimdLoader<T, int32_t>, castSimdStorer<T, int32_t>},                \
+      {castLoader<T, int64_t>, castStorer<T, int64_t>, castIndexer<int64_t>,   \
+       castSimdLoader<T, int64_t>, castSimdStorer<T, int64_t>},                \
+      {castLoader<T, uint8_t>, castStorer<T, uint8_t>, castIndexer<uint8_t>,   \
+       castSimdLoader<T, uint8_t>, castSimdStorer<T, uint8_t>},                \
+      {castLoader<T, uint16_t>, castStorer<T, uint16_t>,                       \
+       castIndexer<uint16_t>, castSimdLoader<T, uint16_t>,                     \
+       castSimdStorer<T, uint16_t>},                                           \
+      {castLoader<T, uint32_t>, castStorer<T, uint32_t>,                       \
+       castIndexer<uint32_t>, castSimdLoader<T, uint32_t>,                     \
+       castSimdStorer<T, uint32_t>},                                           \
+      {castLoader<T, uint64_t>, castStorer<T, uint64_t>,                       \
+       castIndexer<uint64_t>, castSimdLoader<T, uint64_t>,                     \
+       castSimdStorer<T, uint64_t>},                                           \
+      {castLoader<T, float>, castStorer<T, float>, castIndexer<float>,         \
+       castSimdLoader<T, float>, castSimdStorer<T, float>},                    \
+      {castLoader<T, double>, castStorer<T, double>, castIndexer<T>,           \
+       castSimdLoader<T, double>, castSimdStorer<T, double>}                   \
+  };
 
-const Caster<double> f64Casters[12] = {
-    {castLoader<double, int8_t>, castStorer<double, int8_t>,
-     castIndexer<int8_t>, castSimdLoader<double, int8_t>},
-    {castLoader<double, int16_t>, castStorer<double, int16_t>,
-     castIndexer<int16_t>, castSimdLoader<double, int16_t>},
-    {castLoader<double, int32_t>, castStorer<double, int32_t>,
-     castIndexer<int32_t>, castSimdLoader<double, int32_t>},
-    {castLoader<double, int64_t>, castStorer<double, int64_t>,
-     castIndexer<int64_t>, castSimdLoader<double, int64_t>},
-    {castLoader<double, uint8_t>, castStorer<double, uint8_t>,
-     castIndexer<uint8_t>, castSimdLoader<double, uint8_t>},
-    {castLoader<double, uint16_t>, castStorer<double, uint16_t>,
-     castIndexer<uint16_t>, castSimdLoader<double, uint16_t>},
-    {castLoader<double, uint32_t>, castStorer<double, uint32_t>,
-     castIndexer<uint32_t>, castSimdLoader<double, uint32_t>},
-    {castLoader<double, uint64_t>, castStorer<double, uint64_t>,
-     castIndexer<uint64_t>, castSimdLoader<double, uint64_t>},
-    {},
-    {},
-    {castLoader<double, float>, castStorer<double, float>, castIndexer<float>,
-     castSimdLoader<double, float>},
-    {castLoader<double, double>, castStorer<double, double>,
-     castIndexer<double>, castSimdLoader<double, double>},
-};
-
-const Caster<float> f32Casters[12] = {
-    {castLoader<float, int8_t>, castStorer<float, int8_t>, castIndexer<int8_t>,
-     castSimdLoader<float, int8_t>},
-    {castLoader<float, int16_t>, castStorer<float, int16_t>,
-     castIndexer<int16_t>, castSimdLoader<float, int16_t>},
-    {castLoader<float, int32_t>, castStorer<float, int32_t>,
-     castIndexer<int32_t>, castSimdLoader<float, int32_t>},
-    {castLoader<float, int64_t>, castStorer<float, int64_t>,
-     castIndexer<int64_t>, castSimdLoader<float, int64_t>},
-    {castLoader<float, uint8_t>, castStorer<float, uint8_t>,
-     castIndexer<uint8_t>, castSimdLoader<float, uint8_t>},
-    {castLoader<float, uint16_t>, castStorer<float, uint16_t>,
-     castIndexer<uint16_t>, castSimdLoader<float, uint16_t>},
-    {castLoader<float, uint32_t>, castStorer<float, uint32_t>,
-     castIndexer<uint32_t>, castSimdLoader<float, uint32_t>},
-    {castLoader<float, uint64_t>, castStorer<float, uint64_t>,
-     castIndexer<uint64_t>, castSimdLoader<float, uint64_t>},
-    {},
-    {},
-    {castLoader<float, float>, castStorer<float, float>, castIndexer<float>,
-     castSimdLoader<float, float>},
-    {castLoader<float, double>, castStorer<float, double>, castIndexer<double>,
-     castSimdLoader<float, double>},
-};
-
-const Caster<int16_t> i16Casters[12] = {
-    {castLoader<int16_t, int8_t>, castStorer<int16_t, int8_t>,
-     castIndexer<int8_t>, castSimdLoader<int16_t, int8_t>},
-    {castLoader<int16_t, int16_t>, castStorer<int16_t, int16_t>,
-     castIndexer<int16_t>, castSimdLoader<int16_t, int16_t>},
-    {},
-    {},
-    {castLoader<int16_t, uint8_t>, castStorer<int16_t, uint8_t>,
-     castIndexer<uint8_t>, castSimdLoader<int16_t, uint8_t>},
-    {castLoader<int16_t, uint16_t>, castStorer<int16_t, uint16_t>,
-     castIndexer<uint16_t>, castSimdLoader<int16_t, uint16_t>},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-};
-
-const Caster<int32_t> i32Casters[12] = {
-    {castLoader<int32_t, int8_t>, castStorer<int32_t, int8_t>,
-     castIndexer<int8_t>, castSimdLoader<int32_t, int8_t>},
-    {castLoader<int32_t, int16_t>, castStorer<int32_t, int16_t>,
-     castIndexer<int16_t>, castSimdLoader<int32_t, int16_t>},
-    {castLoader<int32_t, int32_t>, castStorer<int32_t, int32_t>,
-     castIndexer<int32_t>, castSimdLoader<int32_t, int32_t>},
-    {},
-    {castLoader<int32_t, uint8_t>, castStorer<int32_t, uint8_t>,
-     castIndexer<uint8_t>, castSimdLoader<int32_t, uint8_t>},
-    {castLoader<int32_t, uint16_t>, castStorer<int32_t, uint16_t>,
-     castIndexer<uint16_t>, castSimdLoader<int32_t, uint16_t>},
-    {castLoader<int32_t, uint32_t>, castStorer<int32_t, uint32_t>,
-     castIndexer<uint32_t>, castSimdLoader<int32_t, uint32_t>},
-    {},
-    {},
-    {},
-    {},
-    {},
-};
+CASTER(f64, double)
+CASTER(f32, float)
+CASTER(i8, int8_t)
+CASTER(i16, int16_t)
+CASTER(i32, int32_t)
+CASTER(i64, int64_t)
+CASTER(u8, uint8_t)
+CASTER(u16, uint16_t)
+CASTER(u32, uint32_t)
+CASTER(u64, uint64_t)
 
 template <typename T> const Caster<T> &Caster<T>::lookup(DType type) {
-  if constexpr (std::is_same<T, float>::value) {
-    return f32Casters[type.index];
-  } else if constexpr (std::is_same<T, double>::value) {
-    return f64Casters[type.index];
-  } else if constexpr (std::is_same<T, int64_t>::value) {
-    return i64Casters[type.index];
+  if constexpr (std::is_same<T, uint8_t>::value) {
+    return u8Casters[type.index];
+  } else if constexpr (std::is_same<T, uint16_t>::value) {
+    return u16Casters[type.index];
+  } else if constexpr (std::is_same<T, uint32_t>::value) {
+    return u32Casters[type.index];
+  } else if constexpr (std::is_same<T, uint64_t>::value) {
+    return u64Casters[type.index];
+  } else if constexpr (std::is_same<T, int8_t>::value) {
+    return i8Casters[type.index];
   } else if constexpr (std::is_same<T, int16_t>::value) {
     return i16Casters[type.index];
   } else if constexpr (std::is_same<T, int32_t>::value) {
     return i32Casters[type.index];
+  } else if constexpr (std::is_same<T, int64_t>::value) {
+    return i64Casters[type.index];
+  } else if constexpr (std::is_same<T, float>::value) {
+    return f32Casters[type.index];
+  } else if constexpr (std::is_same<T, double>::value) {
+    return f64Casters[type.index];
   } else {
     throw std::runtime_error("Unsupported type");
   }
@@ -169,6 +102,11 @@ template <typename T> const Caster<T> &Caster<T>::lookup(DType type) {
 
 template const Caster<double> &Caster<double>::lookup(DType type);
 template const Caster<float> &Caster<float>::lookup(DType type);
-template const Caster<int64_t> &Caster<int64_t>::lookup(DType type);
-template const Caster<int32_t> &Caster<int32_t>::lookup(DType type);
+template const Caster<int8_t> &Caster<int8_t>::lookup(DType type);
 template const Caster<int16_t> &Caster<int16_t>::lookup(DType type);
+template const Caster<int32_t> &Caster<int32_t>::lookup(DType type);
+template const Caster<int64_t> &Caster<int64_t>::lookup(DType type);
+template const Caster<uint8_t> &Caster<uint8_t>::lookup(DType type);
+template const Caster<uint16_t> &Caster<uint16_t>::lookup(DType type);
+template const Caster<uint32_t> &Caster<uint32_t>::lookup(DType type);
+template const Caster<uint64_t> &Caster<uint64_t>::lookup(DType type);

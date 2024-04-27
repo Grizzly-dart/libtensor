@@ -2,30 +2,26 @@
 // Created by tejag on 2024-04-26.
 //
 
-#include <cstdint>
 #include <cxxabi.h>
 #include <experimental/simd>
 #include <iostream>
-#include <type_traits>
-#include <typeinfo>
-#include <vector>
+#include <stdfloat>
 
 template <typename T> void printType() {
   std::cout << abi::__cxa_demangle(typeid(T).name(), NULL, NULL, NULL);
 }
 
+template <typename T> void add(T a, T b) {
+  T c = a + b;
+  printType<T>();
+  std::cout << " => a: " << a << " b: " << b << " c: " << c << std::endl;
+}
+
 namespace stdx = std::experimental;
 
 int main() {
-  using toFloat = stdx::rebind_simd_t<float, stdx::fixed_size_simd<uint8_t, 4>>;
-  std::vector<uint8_t> v = {1, 2, 3, 4};
-  stdx::fixed_size_simd<uint8_t, 4> a(v.data(), stdx::vector_aligned);
-  auto fs = stdx::simd_cast<toFloat>(a) + 0.5f;
-  std::vector<float> out(4);
-  fs.copy_to(out.data(), stdx::vector_aligned);
-  for (auto i : out) {
-    std::cout << i << std::endl;
-  }
+  add<std::float16_t>(1.0, 2.0);
+  add<std::bfloat16_t>(1.0, 2.0);
 
   return 0;
 }

@@ -14,7 +14,7 @@
 namespace stdx = std::experimental;
 
 template <typename T>
-static void mmTile(
+void mmTile(
     T *out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize,
     uint16_t origTileSize, bool first
 ) {
@@ -47,6 +47,14 @@ static void mmTile(
     }
   }
 }
+
+#define MMTILE(T)                                                             \
+  template void mmTile<T>(                                                     \
+      T * out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize, \
+      uint16_t origTileSize, bool first                                        \
+  );
+
+UNWIND1_ALL_TYPES(MMTILE)
 
 template <typename T>
 static void gemmRows(

@@ -14,7 +14,7 @@
 namespace stdx = std::experimental;
 
 template <typename T>
-static void mmTile(
+void mmBtTile(
     T *out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize,
     uint16_t origTileSize, bool first
 ) {
@@ -48,6 +48,14 @@ static void mmTile(
   }
 }
 
+#define MMBTTILE(T)                                                           \
+  template void mmBtTile<T>(                                                       \
+      T * out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize, \
+      uint16_t origTileSize, bool first                                        \
+  );
+
+UNWIND1_ALL_TYPES(MMBTTILE)
+
 template <typename T>
 static void gemmRows(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
@@ -68,7 +76,7 @@ static void gemmRows(
             b, inp2, {.r = size.c, .c = k}, {.r = nOffset, .c = kOffset},
             {nTileSize, kTileSize}, tileSize
         );
-        mmTile(
+        mmBtTile(
             c, a, b, {mTileSize, nTileSize}, kTileSize, tileSize, kOffset == 0
         );
       }

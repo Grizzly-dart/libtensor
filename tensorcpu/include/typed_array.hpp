@@ -48,13 +48,14 @@ const DType u8 = {4, 1, 4};
 const DType u16 = {5, 2, 5};
 const DType u32 = {6, 4, 6};
 const DType u64 = {7, 8, 7};
-const DType bf16 = {8, 2, 0};
-const DType f16 = {9, 2, 1};
-const DType f32 = {10, 4, 2};
-const DType f64 = {11, 4, 3};
+const DType f32 = {8, 4, 2};
+const DType f64 = {9, 4, 3};
+/*const DType bf16 = {10, 2, 0};
+const DType f16 = {11, 2, 1};*/
 
-const DType dtypes[] = {i8,  i16, i32,  i64, u8,  u16,
-                        u32, u64, bf16, f16, f32, f64};
+const DType dtypes[] = {
+    i8, i16, i32, i64, u8, u16, u32, u64, f32, f64,
+};
 
 template <typename T> constexpr DType dtypeOf() {
   if constexpr (std::is_same<T, int8_t>::value) {
@@ -73,10 +74,6 @@ template <typename T> constexpr DType dtypeOf() {
     return u32;
   } else if constexpr (std::is_same<T, uint64_t>::value) {
     return u64;
-  } else if constexpr (std::is_same<T, std::bfloat16_t>::value) {
-    return bf16;
-  } else if constexpr (std::is_same<T, std::float16_t>::value) {
-    return f16;
   } else if constexpr (std::is_same<T, float>::value) {
     return f32;
   } else if constexpr (std::is_same<T, double>::value) {
@@ -91,50 +88,46 @@ template <typename O, typename I> O castLoader(void *ptr, uint64_t index);
 template <typename O, typename I>
 void castStorer(void *ptr, uint64_t index, O value);
 
-template <typename I> void* castIndexer(void *src, int64_t index);
+template <typename I> void *castIndexer(void *src, int64_t index);
 
 template <typename O, typename I>
 void castSimdLoader(void *ptr, uint64_t index, stdx::native_simd<O> &simd);
 
+template <typename O, typename I>
+void castSimdStorer(void *ptr, uint64_t index, stdx::native_simd<O> &simd);
+
 template <typename O> using CastLoader = O (*)(void *, uint64_t);
 template <typename O> using CastStorer = void (*)(void *, uint64_t, O);
-using CastIndexer = void* (*)(void *src, int64_t offset);
+using CastIndexer = void *(*)(void *src, int64_t offset);
 template <typename O>
 using CastSimdLoader = void (*)(void *, uint64_t, stdx::native_simd<O> &);
+template <typename O>
+using CastSimdStorer = void (*)(void *, uint64_t, stdx::native_simd<O> &);
 
 template <typename T> struct Caster {
   CastLoader<T> loader = nullptr;
   CastStorer<T> storer = nullptr;
   CastIndexer indexer = nullptr;
   CastSimdLoader<T> simdLoader = nullptr;
+  CastSimdStorer<T> simdStorer = nullptr;
 
   Caster()
-      : loader(nullptr), storer(nullptr), indexer(nullptr),
-        simdLoader(nullptr) {}
+      : loader(nullptr), storer(nullptr), indexer(nullptr), simdLoader(nullptr),
+        simdStorer(nullptr) {}
 
   constexpr Caster(
       CastLoader<T> loader, CastStorer<T> storer, CastIndexer indexer,
-      CastSimdLoader<T> simdLoader
+      CastSimdLoader<T> simdLoader, CastSimdStorer<T> simdStorer
   )
       : loader(loader), storer(storer), indexer(indexer),
-        simdLoader(simdLoader) {}
+        simdLoader(simdLoader), simdStorer(simdStorer) {}
 
   Caster(Caster<T> &other)
       : loader(other.loader), storer(other.storer), indexer(other.indexer),
-        simdLoader(other.simdLoader) {}
+        simdLoader(other.simdLoader), simdStorer(other.simdStorer) {}
 
   static const Caster<T> &lookup(DType dtype);
 };
-
-extern const Caster<int64_t> i64Casters[12];
-
-extern const Caster<double> f64Casters[12];
-
-extern const Caster<float> f32Casters[12];
-
-extern const Caster<int16_t> i16Casters[12];
-
-extern const Caster<int32_t> i32Casters[12];
 
 template <typename T> class ISimd {
 public:

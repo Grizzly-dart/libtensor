@@ -35,7 +35,7 @@ static void gemmRows(
             b, inp2, {.r = k, .c = size.c}, {.r = kOffset, .c = nOffset},
             {kTileSize, nTileSize}, tileSize, i2Caster
         );
-        mmTile(
+        mmBtTile(
             c, a, b, {mTileSize, nTileSize}, kTileSize, tileSize, kOffset == 0
         );
       }
@@ -48,7 +48,7 @@ static void gemmRows(
 }
 
 template <typename T>
-void mm_casted_slow(
+void mmBt_casted_slow(
     void *out, void *inp1, void *inp2, Dim2 size, uint32_t k,
     uint32_t batchSize, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
@@ -100,10 +100,10 @@ void mm_casted_slow(
   }
 }
 
-#define MM_CASTED_SLOW(O)                                                      \
-  template void mm_casted_slow<O>(                                             \
+#define MMBT_CASTED_SLOW(O)                                                      \
+  template void mmBt_casted_slow<O>(                                             \
       void *out, void *inp1, void *inp2, Dim2 size, uint32_t k,                \
       uint32_t batchSize, uint8_t outTID, uint8_t i1TID, uint8_t i2TID         \
   );
 
-UNWIND1_ALL_TYPES(MM_CASTED_SLOW)
+UNWIND1_ALL_TYPES(MMBT_CASTED_SLOW)
