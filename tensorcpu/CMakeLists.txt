@@ -54,6 +54,9 @@ add_executable(mm_test test/mm_test.cpp)
 ###### mmBt_test
 add_executable(mmBt_test test/mmBt_test.cpp)
 
+###### cast_test
+add_executable(cast_test test/cast_test.cpp)
+
 ###### dummy_test
 add_executable(dummy_test test/dummy.cpp)
 
@@ -61,7 +64,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPENBLAS REQUIRED openblas)
 pkg_check_modules(TBB REQUIRED tbb)
 
-foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test dummy_test)
+foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test dummy_test)
     target_link_directories(${target} PUBLIC ./build)
     if (NOT ${target} STREQUAL "tensorcpu")
         target_link_libraries(${target} tensorcpu)

@@ -20,7 +20,7 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 template <typename O, typename I>
-const char *tcCast(O *out, I *inp, uint64_t nel) {
+const char *tcCastSlow(O *out, I *inp, uint64_t nel) {
   constexpr size_t laneSize = simdSize<I>();
   uint16_t concurrency = std::thread::hardware_concurrency();
   auto iAccessor = Accessor<I>(inp, laneSize, nel);
@@ -52,17 +52,6 @@ const char *tcCast(O *out, I *inp, uint64_t nel) {
 }
 
 template <typename O, typename I>
-const char *tcCastPlain(O *out, const I *inp, uint64_t nel) {
-  /*for(uint64_t i = 0; i < nel; i++) {
-    out[i] = static_cast<O>(inp[i]);
-  }*/
-  std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
-    return static_cast<O>(a);
-  });
-  return nullptr;
-}
-
-template <typename O, typename I>
 void check(const O *out, const I *inp, uint64_t nel) {
   for (uint64_t i = 0; i < nel; i++) {
     O res = static_cast<O>(inp[i]);
@@ -79,18 +68,22 @@ int main() {
   using I = float;
   using O = uint8_t;
   const uint64_t size = 2048 * 10000;
-  I *inp = new(std::align_val_t(128)) I[size];
-  O *out = new(std::align_val_t(128)) O[size];
+  I *inp = new (std::align_val_t(128)) I[size];
+  O *out = new (std::align_val_t(128)) O[size];
 
   for (uint64_t i = 0; i < size; i++) {
     inp[i] = static_cast<I>(i);
   }
 
-  for (uint8_t i = 0; i < 10; i++) {
+  int64_t timeSum = 0;
+  const uint64_t iterations = 10;
+  for (uint8_t i = 0; i < iterations; i++) {
     memset(out, 0, size * sizeof(O));
     steady_clock::time_point begin = steady_clock::now();
-    tcCast<O, I>(out, inp, size);
+    tcCastSlow<O, I>(out, inp, size);
     steady_clock::time_point end = steady_clock::now();
+    auto timeA =
+        chrono::duration_cast<chrono::microseconds>(end - begin).count();
     std::cout
         << "SIMDed: "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
@@ -99,14 +92,18 @@ int main() {
 
     memset(out, 0, size * sizeof(O));
     begin = steady_clock::now();
-    tcCastPlain<O, I>(out, inp, size);
+    tcCast<O, I>(out, inp, size);
     end = steady_clock::now();
+    auto timeB =
+        chrono::duration_cast<chrono::microseconds>(end - begin).count();
     std::cout
         << "Plain: "
         << chrono::duration_cast<chrono::microseconds>(end - begin).count()
         << "us" << std::endl;
     check(out, inp, size);
+    timeSum += timeA - timeB;
   }
+  std::cout << "Time diff: " << timeSum/iterations << "us" << std::endl;
 
   delete[] inp;
   delete[] out;

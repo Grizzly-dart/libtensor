@@ -23,6 +23,8 @@ static Kernel makeKernel(
 
 template <typename O, typename I>
 const char *tcFUnary(O *out, I *inp, FUnaryOp op, uint64_t nel) {
+  static_assert(std::is_floating_point<O>::value, "O must be floating point");
+
   size_t width = stdx::native_simd<I>::size();
   printf("width: %zu\n", width);
   auto i1 = Accessor<I>(inp, width, nel);
