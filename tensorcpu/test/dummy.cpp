@@ -6,22 +6,21 @@
 #include <experimental/simd>
 #include <iostream>
 #include <stdfloat>
-
-template <typename T> void printType() {
-  std::cout << abi::__cxa_demangle(typeid(T).name(), NULL, NULL, NULL);
-}
-
-template <typename T> void add(T a, T b) {
-  T c = a + b;
-  printType<T>();
-  std::cout << " => a: " << a << " b: " << b << " c: " << c << std::endl;
-}
+#include <experimental/simd>
+#include "typed_array.hpp"
+#include <numeric>
 
 namespace stdx = std::experimental;
 
 int main() {
-  add<std::float16_t>(1.0, 2.0);
-  add<std::bfloat16_t>(1.0, 2.0);
+  const Caster<double>& caster = Caster<double>::lookup(f64);
+  std::vector<int8_t> ints(stdx::simd_size<uint8_t>::value);
+  std::cout << "ints.size(): " << ints.size() << std::endl;
+
+  std::cout << stdx::simd_size<int64_t>::value << std::endl;
+
+  // stdx::native_simd<int8_t> a;
+  // caster.simdStorer(nullptr, 0, stdx::native_simd<double>());
 
   return 0;
 }

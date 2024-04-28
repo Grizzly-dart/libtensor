@@ -5,9 +5,11 @@
 
 #if defined(linux)
 #include <stdio.h>
+
 size_t cacheLineSize() {
-  FILE *p = 0;
+  FILE *p = nullptr;
   for (int i = 0; i < 10; i++) {
+    int err = 0;
     char path[100];
     // Check if it's a L1 cache
     {
@@ -15,10 +17,10 @@ size_t cacheLineSize() {
           path, 100, "/sys/devices/system/cpu/cpu0/cache/index%d/level", i
       );
       p = fopen(path, "r");
-      if (p == NULL)
+      if (p == nullptr)
         return 0;
       int level = 0;
-      fscanf(p, "%d", &level);
+      err = fscanf(p, "%d", &level);
       fclose(p);
 
       if (level != 1)
@@ -32,7 +34,7 @@ size_t cacheLineSize() {
       if (p == NULL)
         continue;
       char type[100];
-      fscanf(p, "%s", type);
+      err = fscanf(p, "%s", type);
       fclose(p);
 
       if (strcmp(type, "Data") != 0)
@@ -46,17 +48,19 @@ size_t cacheLineSize() {
     p = fopen(path, "r");
     unsigned int size = 0;
     if (p) {
-      fscanf(p, "%d", &size);
+      err = fscanf(p, "%d", &size);
       fclose(p);
     }
     return size;
   }
   return 0;
 }
+#pragma clang diagnostic pop
 
 size_t cacheSizeL1d() {
   FILE *p = 0;
   for (int i = 0; i < 10; i++) {
+    int err = 0;
     char path[100];
     // Check if it's a L1 cache
     {
@@ -64,10 +68,10 @@ size_t cacheSizeL1d() {
           path, 100, "/sys/devices/system/cpu/cpu0/cache/index%d/level", i
       );
       p = fopen(path, "r");
-      if (p == NULL)
+      if (p == nullptr)
         return 0;
       int level = 0;
-      fscanf(p, "%d", &level);
+      err = fscanf(p, "%d", &level);
       fclose(p);
 
       if (level != 1)
@@ -81,7 +85,7 @@ size_t cacheSizeL1d() {
       if (p == NULL)
         continue;
       char type[100];
-      fscanf(p, "%s", type);
+      err = fscanf(p, "%s", type);
       fclose(p);
 
       if (strcmp(type, "Data") != 0)
@@ -95,7 +99,7 @@ size_t cacheSizeL1d() {
     p = fopen(path, "r");
     unsigned int size = 0;
     if (p) {
-      fscanf(p, "%d", &size);
+      err = fscanf(p, "%d", &size);
       fclose(p);
     }
     return size;
@@ -104,8 +108,9 @@ size_t cacheSizeL1d() {
 }
 
 size_t cacheSizeL2d() {
-  FILE *p = 0;
+  FILE *p = nullptr;
   for (int i = 0; i < 10; i++) {
+    int err = 0;
     char path[100];
     // Check if it's a L1 cache
     {
@@ -116,7 +121,7 @@ size_t cacheSizeL2d() {
       if (p == NULL)
         return 0;
       int level = 0;
-      fscanf(p, "%d", &level);
+      err = fscanf(p, "%d", &level);
       fclose(p);
 
       if (level != 2)
@@ -130,7 +135,7 @@ size_t cacheSizeL2d() {
       if (p == NULL)
         continue;
       char type[100];
-      fscanf(p, "%s", type);
+      err = fscanf(p, "%s", type);
       fclose(p);
 
       if (strcmp(type, "Data") != 0)
@@ -144,7 +149,7 @@ size_t cacheSizeL2d() {
     p = fopen(path, "r");
     unsigned int size = 0;
     if (p) {
-      fscanf(p, "%d", &size);
+      err = fscanf(p, "%d", &size);
       fclose(p);
     }
     return size;
@@ -152,9 +157,12 @@ size_t cacheSizeL2d() {
   return 0;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-result"
 size_t cacheSizeL3d() {
-  FILE *p = 0;
+  FILE *p = nullptr;
   for (int i = 0; i < 10; i++) {
+    int err = 0;
     char path[100];
     // Check if it's a L1 cache
     {
@@ -165,7 +173,7 @@ size_t cacheSizeL3d() {
       if (p == NULL)
         return 0;
       int level = 0;
-      fscanf(p, "%d", &level);
+      err = fscanf(p, "%d", &level);
       fclose(p);
 
       if (level != 3)
@@ -179,7 +187,7 @@ size_t cacheSizeL3d() {
       if (p == NULL)
         continue;
       char type[100];
-      fscanf(p, "%s", type);
+      err = fscanf(p, "%s", type);
       fclose(p);
 
       if (strcmp(type, "Data") != 0)
@@ -193,13 +201,14 @@ size_t cacheSizeL3d() {
     p = fopen(path, "r");
     unsigned int size = 0;
     if (p) {
-      fscanf(p, "%d", &size);
+      err = fscanf(p, "%d", &size);
       fclose(p);
     }
     return size;
   }
   return 0;
 }
+#pragma clang diagnostic pop
 
 #elif defined(__APPLE__)
 

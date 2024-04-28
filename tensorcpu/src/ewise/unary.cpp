@@ -16,7 +16,7 @@ template <typename O, typename I>
 const char *tcUnary(O *out, I *inp, UnaryOp op, uint64_t nel) {
   size_t width = stdx::native_simd<I>::size();
   printf("width: %zu\n", width);
-  auto i1 = Simd<I>(inp, width, nel);
+  auto i1 = Accessor<I>(inp, width, nel);
 
   Kernel kernel;
   // TODO

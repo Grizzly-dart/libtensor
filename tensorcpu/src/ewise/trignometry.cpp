@@ -9,7 +9,7 @@
 
 template <typename O, typename I>
 static Kernel makeKernel(
-    O *out, I *inp, Simd<I> &i1, uint16_t width, std::function<O(I)> op
+    O *out, I *inp, Accessor<I> &i1, uint16_t width, std::function<O(I)> op
 ) {
   return [&out, &inp, &width, &i1, &op](uint64_t simdI) {
     auto elements = i1.calcRemainingElements(simdI);
@@ -25,7 +25,7 @@ template <typename O, typename I>
 const char *tcFUnary(O *out, I *inp, FUnaryOp op, uint64_t nel) {
   size_t width = stdx::native_simd<I>::size();
   printf("width: %zu\n", width);
-  auto i1 = Simd<I>(inp, width, nel);
+  auto i1 = Accessor<I>(inp, width, nel);
 
   std::function<O(I)> func;
   switch (op) {

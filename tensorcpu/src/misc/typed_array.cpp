@@ -23,21 +23,28 @@ template <typename I> void *castIndexer(void *src, int64_t index) {
 }
 
 template <typename O, typename I>
-void castSimdLoader(void *ptr, uint64_t index, stdx::native_simd<O> &simd) {
-  stdx::fixed_size_simd<I, stdx::simd_size<O>::value> tmp;
-  tmp.copy_from(((I *)ptr) + index, stdx::element_aligned);
-  simd = stdx::static_simd_cast<stdx::native_simd<O>>(tmp);
+void castSimdLoader(
+    void *ptr, uint64_t index, stdx::fixed_size_simd<O, simdSize<O>()> &simd
+) {
+  stdx::fixed_size_simd<I, simdSize<O>()> tmp;
+  tmp.copy_from(((I *)ptr) + index, stdx::vector_aligned);
+  stdx::fixed_size_simd<O, simdSize<O>()> simd1 =
+      stdx::static_simd_cast<stdx::fixed_size_simd<O, simdSize<O>()>>(tmp);
+  simd = simd1;
+  // simd = stdx::static_simd_cast<stdx::native_simd<O>>(tmp);
 }
 
 template <typename O, typename I>
-void castSimdStorer(void *ptr, uint64_t index, stdx::native_simd<O> &simd) {
-  auto tmp = stdx::static_simd_cast<
-      stdx::fixed_size_simd<I, stdx::simd_size<O>::value>>(simd);
-  tmp.copy_to(((I *)ptr) + index, stdx::element_aligned);
+void castSimdStorer(
+    void *ptr, uint64_t index, stdx::fixed_size_simd<O, simdSize<O>()> &simd
+) {
+  auto tmp =
+      stdx::static_simd_cast<stdx::fixed_size_simd<I, simdSize<O>()>>(simd);
+  tmp.copy_to(((I *)ptr) + index, stdx::vector_aligned);
 }
 
 #define CASTER(TNAME, T)                                                       \
-  const Caster<T> TNAME##Casters[10] = {                                        \
+  const Caster<T> TNAME##Casters[10] = {                                       \
       {castLoader<T, int8_t>, castStorer<T, int8_t>, castIndexer<int8_t>,      \
        castSimdLoader<T, int8_t>, castSimdStorer<T, int8_t>},                  \
       {castLoader<T, int16_t>, castStorer<T, int16_t>, castIndexer<int16_t>,   \

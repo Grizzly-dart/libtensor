@@ -14,6 +14,10 @@
 
 namespace stdx = std::experimental;
 
+template <typename T> constexpr size_t simdSize() {
+  return std::experimental::native_simd<T>::size();
+}
+
 template <typename T> constexpr bool isAnyInt() {
   return std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
          std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value ||
@@ -91,18 +95,18 @@ void castStorer(void *ptr, uint64_t index, O value);
 template <typename I> void *castIndexer(void *src, int64_t index);
 
 template <typename O, typename I>
-void castSimdLoader(void *ptr, uint64_t index, stdx::native_simd<O> &simd);
+void castSimdLoader(void *ptr, uint64_t index, stdx::fixed_size_simd<O, simdSize<O>()> &simd);
 
 template <typename O, typename I>
-void castSimdStorer(void *ptr, uint64_t index, stdx::native_simd<O> &simd);
+void castSimdStorer(void *ptr, uint64_t index, stdx::fixed_size_simd<O, simdSize<O>()> &simd);
 
 template <typename O> using CastLoader = O (*)(void *, uint64_t);
 template <typename O> using CastStorer = void (*)(void *, uint64_t, O);
 using CastIndexer = void *(*)(void *src, int64_t offset);
 template <typename O>
-using CastSimdLoader = void (*)(void *, uint64_t, stdx::native_simd<O> &);
+using CastSimdLoader = void (*)(void *, uint64_t, stdx::fixed_size_simd<O, simdSize<O>()> &);
 template <typename O>
-using CastSimdStorer = void (*)(void *, uint64_t, stdx::native_simd<O> &);
+using CastSimdStorer = void (*)(void *, uint64_t, stdx::fixed_size_simd<O, simdSize<O>()> &);
 
 template <typename T> struct Caster {
   CastLoader<T> loader = nullptr;
@@ -129,12 +133,12 @@ template <typename T> struct Caster {
   static const Caster<T> &lookup(DType dtype);
 };
 
-template <typename T> class ISimd {
+template <typename T> class IAccessor {
 public:
   uint16_t width;
   uint64_t length;
 
-  ISimd(uint16_t width, uint64_t length) : width(width), length(length){};
+  IAccessor(uint16_t width, uint64_t length) : width(width), length(length){};
 
   [[nodiscard]] Range countBegin() const { return Range(0); }
 
@@ -142,19 +146,19 @@ public:
     return Range((length + width - 1) / width);
   }
 
-  stdx::native_simd<T> load(uint64_t i) const {
-    stdx::native_simd<T> simd;
+  stdx::fixed_size_simd<T, simdSize<T>()> load(uint64_t i) const {
+    stdx::fixed_size_simd<T, simdSize<T>()> simd;
     return load(i, simd);
   }
 
-  virtual stdx::native_simd<T> &load(uint64_t i, stdx::native_simd<T> &simd)
+  virtual stdx::fixed_size_simd<T, simdSize<T>()> &load(uint64_t i, stdx::fixed_size_simd<T, simdSize<T>()> &simd)
       const = 0;
 
   virtual void load(uint64_t ind, T *p) const = 0;
 
   virtual T get(uint64_t i) const = 0;
 
-  virtual ~ISimd() = default;
+  virtual ~IAccessor() = default;
 
   [[nodiscard]] uint16_t calcRemainingElements(uint64_t ind) const {
     int64_t diff = int64_t(length) - ind * width;
@@ -168,20 +172,20 @@ public:
   }
 };
 
-template <typename T> class Simd : public ISimd<T> {
+template <typename T> class Accessor : public IAccessor<T> {
 public:
   T *ptr;
 
-  using ISimd<T>::width;
-  using ISimd<T>::length;
-  using ISimd<T>::calcRemainingElements;
+  using IAccessor<T>::width;
+  using IAccessor<T>::length;
+  using IAccessor<T>::calcRemainingElements;
 
-  Simd(T *ptr, uint16_t width, int64_t length)
-      : ptr(ptr), ISimd<T>(width, length){};
+  Accessor(T *ptr, uint16_t width, int64_t length)
+      : ptr(ptr), IAccessor<T>(width, length){};
 
-  Simd(const Simd &other) = default;
+  Accessor(const Accessor &other) = default;
 
-  stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
+  stdx::fixed_size_simd<T, simdSize<T>()> &load(uint64_t ind, stdx::fixed_size_simd<T, simdSize<T>()> &simd) const {
     simd.copy_from(ptr + ind * width, stdx::vector_aligned);
     return simd;
   }
@@ -196,7 +200,7 @@ public:
   }
 
   template <typename F>
-  void store(uint64_t ind, const stdx::native_simd<F> &simd) {
+  void store(uint64_t ind, const stdx::fixed_size_simd<F, simdSize<F>()> simd) {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     if (elements == width) {
@@ -213,6 +217,25 @@ public:
     }
   }
 
+  /*
+  template <typename F>
+  void store(uint64_t ind, const stdx::fixed_size_simd<T, simdSize<T>()> simd) {
+    uint16_t elements = calcRemainingElements(ind);
+    uint64_t start = ind * width;
+    if (elements == width) {
+      if constexpr (std::is_same<T, F>::value) {
+        simd.copy_to(ptr + start, stdx::vector_aligned);
+        return;
+      } else if constexpr (!std::is_same<T, F>::value) {
+        stdx::simd_cast<T>(simd).copy_to(ptr + start, stdx::vector_aligned);
+        return;
+      }
+    }
+    for (uint64_t i = 0; i < elements; i++) {
+      ptr[start + i] = static_cast<T>(static_cast<F>(simd[i]));
+    }
+  }*/
+
   template <typename F>
   void store(uint64_t ind, const F *vec, uint64_t elements) {
     uint64_t start = ind * width;
@@ -227,21 +250,21 @@ public:
   void set(uint64_t i, T value) { ptr[i] = value; }
 };
 
-template <typename T> class CastSimd : public ISimd<T> {
+template <typename T> class CastAccessor : public IAccessor<T> {
 public:
   const Caster<T> &caster;
   void *ptr;
 
-  using ISimd<T>::width;
-  using ISimd<T>::length;
-  using ISimd<T>::calcRemainingElements;
+  using IAccessor<T>::width;
+  using IAccessor<T>::length;
+  using IAccessor<T>::calcRemainingElements;
 
-  CastSimd(const Caster<T> &caster, void *ptr, uint16_t width, int64_t length)
-      : caster(caster), ptr(ptr), ISimd<T>(width, length){};
+  CastAccessor(const Caster<T> &caster, void *ptr, uint16_t width, int64_t length)
+      : caster(caster), ptr(ptr), IAccessor<T>(width, length){};
 
-  CastSimd(const CastSimd &other) = default;
+  CastAccessor(const CastAccessor &other) = default;
 
-  stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
+  stdx::fixed_size_simd<T, simdSize<T>()> &load(uint64_t ind, stdx::fixed_size_simd<T, simdSize<T>()> &simd) const {
     caster.simdLoader(ptr, ind * width, simd);
     return simd;
   }
@@ -255,7 +278,7 @@ public:
   }
 
   template <typename F>
-  void store(uint64_t ind, const stdx::native_simd<F> &simd) {
+  void store(uint64_t ind, const stdx::fixed_size_simd<F, simdSize<F>()> &simd) {
     auto elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
@@ -276,21 +299,21 @@ public:
   void set(uint64_t i, T value) { caster.storer(ptr, i, value); }
 };
 
-template <typename T> class RwiseSimd : public ISimd<T> {
+template <typename T> class RwiseAccessor : public IAccessor<T> {
 public:
   T *ptr;
   Dim2 size;
 
-  using ISimd<T>::width;
-  using ISimd<T>::length;
-  using ISimd<T>::calcRemainingElements;
+  using IAccessor<T>::width;
+  using IAccessor<T>::length;
+  using IAccessor<T>::calcRemainingElements;
 
-  RwiseSimd(T *ptr, uint16_t width, uint64_t length, Dim2 size)
-      : ptr(ptr), size(size), ISimd<T>(width, length){};
+  RwiseAccessor(T *ptr, uint16_t width, uint64_t length, Dim2 size)
+      : ptr(ptr), size(size), IAccessor<T>(width, length){};
 
-  RwiseSimd(const RwiseSimd &other) = default;
+  RwiseAccessor(const RwiseAccessor &other) = default;
 
-  stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
+  stdx::fixed_size_simd<T, simdSize<T>()> &load(uint64_t ind, stdx::fixed_size_simd<T, simdSize<T>()> &simd) const {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
@@ -310,25 +333,25 @@ public:
   T get(uint64_t i) const { return ptr[(i / size.c) % size.r]; }
 };
 
-template <typename T> class CastRwiseSimd : public ISimd<T> {
+template <typename T> class CastRwiseAccessor : public IAccessor<T> {
 public:
   const Caster<T> &caster;
   Dim2 size;
   void *ptr;
 
-  using ISimd<T>::width;
-  using ISimd<T>::length;
-  using ISimd<T>::calcRemainingElements;
+  using IAccessor<T>::width;
+  using IAccessor<T>::length;
+  using IAccessor<T>::calcRemainingElements;
 
-  CastRwiseSimd(
+  CastRwiseAccessor(
       const Caster<T> &caster, void *ptr, uint16_t width, uint64_t length,
       Dim2 size
   )
-      : caster(caster), ptr(ptr), size(size), ISimd<T>(width, length){};
+      : caster(caster), ptr(ptr), size(size), IAccessor<T>(width, length){};
 
-  CastRwiseSimd(const CastRwiseSimd &other) = default;
+  CastRwiseAccessor(const CastRwiseAccessor &other) = default;
 
-  stdx::native_simd<T> &load(uint64_t ind, stdx::native_simd<T> &simd) const {
+  stdx::fixed_size_simd<T, simdSize<T>()> &load(uint64_t ind, stdx::fixed_size_simd<T, simdSize<T>()> &simd) const {
     uint16_t elements = calcRemainingElements(ind);
     uint64_t start = ind * width;
     for (uint64_t i = 0; i < elements; i++) {
@@ -348,19 +371,19 @@ public:
   T get(uint64_t i) const { return caster.loader(ptr, (i / size.c) % size.r); }
 };
 
-template <typename T> class SameSimd : public ISimd<T> {
+template <typename T> class SameAccessor : public IAccessor<T> {
 public:
   T value;
 
-  using ISimd<T>::width;
-  using ISimd<T>::length;
+  using IAccessor<T>::width;
+  using IAccessor<T>::length;
 
-  SameSimd(T value, uint16_t width, int64_t length)
-      : value(value), ISimd<T>(width, length){};
+  SameAccessor(T value, uint16_t width, int64_t length)
+      : value(value), IAccessor<T>(width, length){};
 
-  SameSimd(const SameSimd &other) = default;
+  SameAccessor(const SameAccessor &other) = default;
 
-  stdx::native_simd<T> &load(uint64_t, stdx::native_simd<T> &simd) const {
+  stdx::fixed_size_simd<T, simdSize<T>()> &load(uint64_t, stdx::fixed_size_simd<T, simdSize<T>()> &simd) const {
     simd = value;
     return simd;
   }

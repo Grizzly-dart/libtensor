@@ -26,7 +26,7 @@ void mmTile(
     for (uint32_t n = 0; n < tileSize.c; n += laneSize) {
       stdx::fixed_size_simd<T, laneSize> c(0);
       if (!first) {
-        c.copy_from(out + (m * origTileSize) + n, stdx::vector_aligned);
+        c.copy_from(out + (m * origTileSize) + n, stdx::element_aligned);
       }
       for (uint32_t k = 0; k < kTileSize; k++) {
         stdx::fixed_size_simd<T, laneSize> b(
@@ -37,7 +37,7 @@ void mmTile(
       }
       auto rem = tileSize.c - n;
       if (rem >= laneSize) {
-        c.copy_to(out + m * origTileSize + n, stdx::vector_aligned);
+        c.copy_to(out + m * origTileSize + n, stdx::element_aligned);
       } else {
 #pragma GCC ivdep
         for (uint32_t i = 0; i < rem; i++) {

@@ -72,7 +72,7 @@ void loadTileCasted(
     T *out, void *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize,
     uint16_t origTileSize, const Caster<T> &caster
 ) {
-  stdx::native_simd<T> tmp;
+  stdx::fixed_size_simd<T, simdSize<T>()> tmp;
   constexpr uint16_t laneSize = stdx::native_simd<T>::size();
   uint32_t rowStart = tileOffset.r;
   for (uint32_t i = 0; i < tileSize.r; i++) {
@@ -115,7 +115,7 @@ void storeTileCasted(
     uint16_t origTileSize, const Caster<T> &caster
 ) {
   constexpr uint16_t laneSize = stdx::native_simd<T>::size();
-  stdx::native_simd<T> tmp;
+  stdx::fixed_size_simd<T, simdSize<T>()> tmp;
   const T *i1 = inp;
   uint64_t oOffset = tileOffset.r * size.c + tileOffset.c;
   uint32_t maxR = std::min(tileSize.r, size.r - tileOffset.r);

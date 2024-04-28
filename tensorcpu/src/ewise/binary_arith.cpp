@@ -8,116 +8,116 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
-template<typename O, typename I>
+template <typename O, typename I>
 void tcBinaryArith(
-        O *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
-        Dim2 i2broadcaster
+    O *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster
 ) {
-    size_t width = stdx::native_simd<I>::size();
-    printf("width: %zu\n", width);
-    auto i1 = Simd<I>(inp1, width, nel);
-    std::unique_ptr<ISimd<I>> i2;
-    uint64_t snel = i2broadcaster.nel();
-    if (snel == 0) {
-        i2 = std::make_unique<Simd<I>>(inp2, width, nel);
-    } else if (snel == 1) {
-        i2 = std::make_unique<SameSimd<I>>(SameSimd<I>(*inp2, width, nel));
+  constexpr size_t width = simdSize<I>();
+  printf("width: %zu\n", width);
+  auto i1 = Accessor<I>(inp1, width, nel);
+  std::unique_ptr<IAccessor<I>> i2;
+  uint64_t snel = i2broadcaster.nel();
+  if (snel == 0) {
+    i2 = std::make_unique<Accessor<I>>(inp2, width, nel);
+  } else if (snel == 1) {
+    i2 = std::make_unique<SameAccessor<I>>(SameAccessor<I>(*inp2, width, nel));
+  } else {
+    i2 = std::make_unique<RwiseAccessor<I>>(inp2, width, nel, i2broadcaster);
+  }
+  auto o = Accessor<O>(out, width, nel);
+
+  Kernel kernel;
+
+  if (op == BinaryOp::Plus) {
+    kernel = [&i1, &i2, &o](uint64_t i) {
+      stdx::fixed_size_simd<I, width> a, b;
+      o.store(i, i1.load(i, a) + i2->load(i, b));
+    };
+  } else if (op == BinaryOp::Minus) {
+    if (!flip) {
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        stdx::fixed_size_simd<I, width> a, b;
+        o.store(i, i1.load(i, a) - i2->load(i, b));
+      };
     } else {
-        i2 = std::make_unique<RwiseSimd<I>>(inp2, width, nel, i2broadcaster);
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        stdx::fixed_size_simd<I, width> a, b;
+        o.store(i, i2->load(i, b) - i1.load(i, a));
+      };
     }
-    auto o = Simd<O>(out, width, nel);
-
-    Kernel kernel;
-
-    if (op == BinaryOp::Plus) {
-        kernel = [&i1, &i2, &o](uint64_t i) {
-            stdx::native_simd<I> a, b;
-            o.store(i, i1.load(i, a) + i2->load(i, b));
-        };
-    } else if (op == BinaryOp::Minus) {
-        if (!flip) {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                stdx::native_simd<I> a, b;
-                o.store(i, i1.load(i, a) - i2->load(i, b));
-            };
+  } else if (op == BinaryOp::Mul) {
+    kernel = [&i1, &i2, &o](uint64_t i) {
+      stdx::fixed_size_simd<I, width> a, b;
+      o.store(i, i1.load(i, a) * i2->load(i, b));
+    };
+  } else if (op == BinaryOp::Div) {
+    if (!flip) {
+      kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
+        if constexpr (std::is_floating_point<I>::value) {
+          stdx::fixed_size_simd<I, width> a, b;
+          o.store(i, i1.load(i, a) / i2->load(i, b));
         } else {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                stdx::native_simd<I> a, b;
-                o.store(i, i2->load(i, b) - i1.load(i, a));
-            };
-        }
-    } else if (op == BinaryOp::Mul) {
-        kernel = [&i1, &i2, &o](uint64_t i) {
-            stdx::native_simd<I> a, b;
-            o.store(i, i1.load(i, a) * i2->load(i, b));
-        };
-    } else if (op == BinaryOp::Div) {
-        if (!flip) {
-            kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
-                if constexpr (std::is_floating_point<I>::value) {
-                    stdx::native_simd<I> a, b;
-                    o.store(i, i1.load(i, a) / i2->load(i, b));
-                } else {
-                    auto elements = i1.calcRemainingElements(i);
-                    I b[elements];
-                    O *oPtr = out + i * width;
-                    I *i1Ptr = inp1 + i * width;
-                    i2->load(i, b);
+          auto elements = i1.calcRemainingElements(i);
+          I b[elements];
+          O *oPtr = out + i * width;
+          I *i1Ptr = inp1 + i * width;
+          i2->load(i, b);
 #pragma GCC ivdep
-                    for (int j = 0; j < elements; j++) {
-                        oPtr[j] = i1Ptr[j] / b[j];
-                    }
-                }
-            };
+          for (int j = 0; j < elements; j++) {
+            oPtr[j] = i1Ptr[j] / b[j];
+          }
+        }
+      };
+    } else {
+      kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
+        if constexpr (std::is_floating_point<I>::value) {
+          stdx::fixed_size_simd<I, width> a, b;
+          o.store(i, i2->load(i, b) / i1.load(i, a));
         } else {
-            kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
-                if constexpr (std::is_floating_point<I>::value) {
-                    stdx::native_simd<I> a, b;
-                    o.store(i, i2->load(i, b) / i1.load(i, a));
-                } else {
-                    auto elements = i1.calcRemainingElements(i);
-                    I b[elements];
-                    O *oPtr = out + i * width;
-                    I *i1Ptr = inp1 + i * width;
-                    i2->load(i, b);
+          auto elements = i1.calcRemainingElements(i);
+          I b[elements];
+          O *oPtr = out + i * width;
+          I *i1Ptr = inp1 + i * width;
+          i2->load(i, b);
 #pragma GCC ivdep
-                    for (int j = 0; j < elements; j++) {
-                        oPtr[j] = b[j] / i1Ptr[j];
-                    }
-                }
-            };
+          for (int j = 0; j < elements; j++) {
+            oPtr[j] = b[j] / i1Ptr[j];
+          }
         }
-    } else if (op == BinaryOp::Pow) {
-        if (!flip) {
-            kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
-                using std::pow;
-                auto elements = i1.calcRemainingElements(i);
-                I b[elements];
-                O *oPtr = out + i * width;
-                I *i1Ptr = inp1 + i * width;
-                i2->load(i, b);
-#pragma GCC ivdep
-                for (int j = 0; j < elements; j++) {
-                    oPtr[j] = pow(i1Ptr[j], b[j]);
-                }
-            };
-        } else {
-            kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
-                using std::pow;
-                auto elements = i1.calcRemainingElements(i);
-                I b[elements];
-                O *oPtr = out + i * width;
-                I *i1Ptr = inp1 + i * width;
-                i2->load(i, b);
-#pragma GCC ivdep
-                for (int j = 0; j < elements; j++) {
-                    oPtr[j] = pow(b[j], i1Ptr[j]);
-                }
-            };
-        }
+      };
     }
+  } else if (op == BinaryOp::Pow) {
+    if (!flip) {
+      kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
+        using std::pow;
+        auto elements = i1.calcRemainingElements(i);
+        I b[elements];
+        O *oPtr = out + i * width;
+        I *i1Ptr = inp1 + i * width;
+        i2->load(i, b);
+#pragma GCC ivdep
+        for (int j = 0; j < elements; j++) {
+          oPtr[j] = pow(i1Ptr[j], b[j]);
+        }
+      };
+    } else {
+      kernel = [&i1, &i2, &o, &out, &inp1, &width](uint64_t i) {
+        using std::pow;
+        auto elements = i1.calcRemainingElements(i);
+        I b[elements];
+        O *oPtr = out + i * width;
+        I *i1Ptr = inp1 + i * width;
+        i2->load(i, b);
+#pragma GCC ivdep
+        for (int j = 0; j < elements; j++) {
+          oPtr[j] = pow(b[j], i1Ptr[j]);
+        }
+      };
+    }
+  }
 
-    std::for_each(std::execution::par, i1.countBegin(), i1.countEnd(), kernel);
+  std::for_each(std::execution::par, i1.countBegin(), i1.countEnd(), kernel);
 }
 
 #define BINARYARITH(O, I)                                                      \
@@ -126,125 +126,126 @@ void tcBinaryArith(
       Dim2 i2broadcaster                                                       \
   );
 
-template<typename O, typename I>
+template <typename O, typename I>
 void tcBinaryArithCasted(
-        void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
-        Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+    void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
-    size_t width = stdx::native_simd<I>::size();
-    DType outType = dtypes[outTID];
-    DType inp1Type = dtypes[i1TID];
-    DType inp2Type = dtypes[i2TID];
-    auto i1 = CastSimd<I>(Caster<I>::lookup(inp1Type), inp1, width, nel);
-    auto o = CastSimd<O>(Caster<O>::lookup(outType), out, width, nel);
-    std::unique_ptr<ISimd<I>> i2;
-    uint64_t snel = i2broadcaster.nel();
-    const Caster<I> &i2Caster = Caster<I>::lookup(inp2Type);
-    if (snel == 0) {
-        i2 = std::make_unique<CastSimd<I>>(i2Caster, inp2, width, nel);
-    } else if (snel == 1) {
-        i2 = std::make_unique<SameSimd<I>>(i2Caster.loader(inp2, 0), width, nel);
+  constexpr size_t width = simdSize<I>();
+  DType outType = dtypes[outTID];
+  DType inp1Type = dtypes[i1TID];
+  DType inp2Type = dtypes[i2TID];
+  auto i1 = CastAccessor<I>(Caster<I>::lookup(inp1Type), inp1, width, nel);
+  auto o = CastAccessor<O>(Caster<O>::lookup(outType), out, width, nel);
+  std::unique_ptr<IAccessor<I>> i2;
+  uint64_t snel = i2broadcaster.nel();
+  const Caster<I> &i2Caster = Caster<I>::lookup(inp2Type);
+  if (snel == 0) {
+    i2 = std::make_unique<CastAccessor<I>>(i2Caster, inp2, width, nel);
+  } else if (snel == 1) {
+    i2 =
+        std::make_unique<SameAccessor<I>>(i2Caster.loader(inp2, 0), width, nel);
+  } else {
+    i2 = std::make_unique<CastRwiseAccessor<I>>(
+        i2Caster, inp2, width, nel, i2broadcaster
+    );
+  }
+
+  Kernel kernel;
+  if (op == BinaryOp::Plus) {
+    kernel = [&i1, &i2, &o](uint64_t i) {
+      stdx::fixed_size_simd<I, width> a, b;
+      o.store(i, i1.load(i, a) + i2->load(i, b));
+    };
+  } else if (op == BinaryOp::Minus) {
+    if (!flip) {
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        stdx::fixed_size_simd<I, width> a, b;
+        o.store(i, i1.load(i, a) - i2->load(i, b));
+      };
     } else {
-        i2 = std::make_unique<CastRwiseSimd<I>>(
-                i2Caster, inp2, width, nel, i2broadcaster
-        );
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        stdx::fixed_size_simd<I, width> a, b;
+        o.store(i, i2->load(i, b) - i1.load(i, a));
+      };
     }
-
-    Kernel kernel;
-    if (op == BinaryOp::Plus) {
-        kernel = [&i1, &i2, &o](uint64_t i) {
-            stdx::native_simd<I> a, b;
-            o.store(i, i1.load(i, a) + i2->load(i, b));
-        };
-    } else if (op == BinaryOp::Minus) {
-        if (!flip) {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                stdx::native_simd<I> a, b;
-                o.store(i, i1.load(i, a) - i2->load(i, b));
-            };
+  } else if (op == BinaryOp::Mul) {
+    kernel = [&i1, &i2, &o](uint64_t i) {
+      stdx::fixed_size_simd<I, width> a, b;
+      o.store(i, i1.load(i, a) * i2->load(i, b));
+    };
+  } else if (op == BinaryOp::Div) {
+    if (!flip) {
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        // WORKAROUND: SIMD integer division not working for some reason
+        if constexpr (std::is_floating_point<I>::value) {
+          stdx::fixed_size_simd<I, width> a, b;
+          o.store(i, i1.load(i, a) / i2->load(i, b));
         } else {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                stdx::native_simd<I> a, b;
-                o.store(i, i2->load(i, b) - i1.load(i, a));
-            };
-        }
-    } else if (op == BinaryOp::Mul) {
-        kernel = [&i1, &i2, &o](uint64_t i) {
-            stdx::native_simd<I> a, b;
-            o.store(i, i1.load(i, a) * i2->load(i, b));
-        };
-    } else if (op == BinaryOp::Div) {
-        if (!flip) {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                // WORKAROUND: SIMD integer division not working for some reason
-                if constexpr (std::is_floating_point<I>::value) {
-                    stdx::native_simd<I> a, b;
-                    o.store(i, i1.load(i, a) / i2->load(i, b));
-                } else {
-                    auto elements = i1.calcRemainingElements(i);
-                    I a[elements], b[elements];
-                    i1.load(i, a);
-                    i2->load(i, b);
-                    O res[elements];
+          auto elements = i1.calcRemainingElements(i);
+          I a[elements], b[elements];
+          i1.load(i, a);
+          i2->load(i, b);
+          O res[elements];
 #pragma GCC ivdep
-                    for (int j = 0; j < elements; j++) {
-                        res[j] = a[j] / b[j];
-                    }
-                    o.store(i, res, elements);
-                }
-            };
+          for (int j = 0; j < elements; j++) {
+            res[j] = a[j] / b[j];
+          }
+          o.store(i, res, elements);
+        }
+      };
+    } else {
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        if constexpr (std::is_floating_point<I>::value) {
+          stdx::fixed_size_simd<I, width> a, b;
+          o.store(i, i2->load(i, b) / i1.load(i, a));
         } else {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                if constexpr (std::is_floating_point<I>::value) {
-                    stdx::native_simd<I> a, b;
-                    o.store(i, i2->load(i, b) / i1.load(i, a));
-                } else {
-                    auto elements = i1.calcRemainingElements(i);
-                    I a[elements], b[elements];
-                    i1.load(i, a);
-                    i2->load(i, b);
-                    O res[elements];
+          auto elements = i1.calcRemainingElements(i);
+          I a[elements], b[elements];
+          i1.load(i, a);
+          i2->load(i, b);
+          O res[elements];
 #pragma GCC ivdep
-                    for (int j = 0; j < elements; j++) {
-                        res[j] = b[j] / a[j];
-                    }
-                    o.store(i, res, elements);
-                }
-            };
+          for (int j = 0; j < elements; j++) {
+            res[j] = b[j] / a[j];
+          }
+          o.store(i, res, elements);
         }
-    } else if (op == BinaryOp::Pow) {
-        if (!flip) {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                using std::pow;
-                auto elements = i1.calcRemainingElements(i);
-                I a[elements], b[elements];
-                i1.load(i, a);
-                i2->load(i, b);
-                O res[elements];
-#pragma GCC ivdep
-                for (int j = 0; j < elements; j++) {
-                    res[j] = pow(a[j], b[j]);
-                }
-                o.store(i, res, elements);
-            };
-        } else {
-            kernel = [&i1, &i2, &o](uint64_t i) {
-                using std::pow;
-                auto elements = i1.calcRemainingElements(i);
-                I a[elements], b[elements];
-                i1.load(i, a);
-                i2->load(i, b);
-                O res[elements];
-#pragma GCC ivdep
-                for (int j = 0; j < elements; j++) {
-                    res[j] = pow(b[j], a[j]);
-                }
-                o.store(i, res, elements);
-            };
-        }
+      };
     }
+  } else if (op == BinaryOp::Pow) {
+    if (!flip) {
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        using std::pow;
+        auto elements = i1.calcRemainingElements(i);
+        I a[elements], b[elements];
+        i1.load(i, a);
+        i2->load(i, b);
+        O res[elements];
+#pragma GCC ivdep
+        for (int j = 0; j < elements; j++) {
+          res[j] = pow(a[j], b[j]);
+        }
+        o.store(i, res, elements);
+      };
+    } else {
+      kernel = [&i1, &i2, &o](uint64_t i) {
+        using std::pow;
+        auto elements = i1.calcRemainingElements(i);
+        I a[elements], b[elements];
+        i1.load(i, a);
+        i2->load(i, b);
+        O res[elements];
+#pragma GCC ivdep
+        for (int j = 0; j < elements; j++) {
+          res[j] = pow(b[j], a[j]);
+        }
+        o.store(i, res, elements);
+      };
+    }
+  }
 
-    std::for_each(std::execution::par, i1.countBegin(), i1.countEnd(), kernel);
+  std::for_each(std::execution::par, i1.countBegin(), i1.countEnd(), kernel);
 }
 
 #define BINARYARITH_CASTED(O, I)                                               \
@@ -254,79 +255,79 @@ void tcBinaryArithCasted(
       uint8_t i2TID                                                            \
   );
 
-template<typename O, typename I1, typename I2>
+template <typename O, typename I1, typename I2>
 void tcBinaryArithCastedPlain(
-        void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
-        Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+    void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
-    DType outType = dtypes[outTID];
-    DType inp1Type = dtypes[i1TID];
-    DType inp2Type = dtypes[i2TID];
-    const Caster<I1> &i1Caster = Caster<I1>::lookup(inp1Type);
-    const Caster<O> &oCaster = Caster<O>::lookup(outType);
-    std::unique_ptr<ISimd<I2>> i2;
-    uint64_t snel = i2broadcaster.nel();
-    const Caster<I2> &i2Caster = Caster<I2>::lookup(inp2Type);
-    if (snel == 0) {
-        i2 = std::make_unique<CastSimd<I2>>(i2Caster, inp2, 1, nel);
-    } else if (snel == 1) {
-        i2 = std::make_unique<SameSimd<I2>>(i2Caster.loader(inp2, 0), 1, nel);
+  DType outType = dtypes[outTID];
+  DType inp1Type = dtypes[i1TID];
+  DType inp2Type = dtypes[i2TID];
+  const Caster<I1> &i1Caster = Caster<I1>::lookup(inp1Type);
+  const Caster<O> &oCaster = Caster<O>::lookup(outType);
+  std::unique_ptr<IAccessor<I2>> i2;
+  uint64_t snel = i2broadcaster.nel();
+  const Caster<I2> &i2Caster = Caster<I2>::lookup(inp2Type);
+  if (snel == 0) {
+    i2 = std::make_unique<CastAccessor<I2>>(i2Caster, inp2, 1, nel);
+  } else if (snel == 1) {
+    i2 = std::make_unique<SameAccessor<I2>>(i2Caster.loader(inp2, 0), 1, nel);
+  } else {
+    i2 = std::make_unique<CastRwiseAccessor<I2>>(
+        i2Caster, inp2, 1, nel, i2broadcaster
+    );
+  }
+
+  Kernel kernel;
+  if (op == BinaryOp::Plus) {
+    kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
+      oCaster.storer(out, i, i1Caster.loader(inp1, i) + i2->get(i));
+    };
+  } else if (op == BinaryOp::Minus) {
+    if (!flip) {
+      kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
+        oCaster.storer(out, i, i1Caster.loader(inp1, i) - i2->get(i));
+      };
     } else {
-        i2 = std::make_unique<CastRwiseSimd<I2>>(
-                i2Caster, inp2, 1, nel, i2broadcaster
-        );
+      kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
+        oCaster.storer(out, i, i2->get(i) - i1Caster.loader(inp1, i));
+      };
     }
-
-    Kernel kernel;
-    if (op == BinaryOp::Plus) {
-        kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
-            oCaster.storer(out, i, i1Caster.loader(inp1, i) + i2->get(i));
-        };
-    } else if (op == BinaryOp::Minus) {
-        if (!flip) {
-            kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
-                oCaster.storer(out, i, i1Caster.loader(inp1, i) - i2->get(i));
-            };
-        } else {
-            kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
-                oCaster.storer(out, i, i2->get(i) - i1Caster.loader(inp1, i));
-            };
-        }
-    } else if (op == BinaryOp::Mul) {
-        kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
-            oCaster.storer(out, i, i1Caster.loader(inp1, i) * i2->get(i));
-        };
-    } else if (op == BinaryOp::Div) {
-        if (!flip) {
-            kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
-                oCaster.storer(out, i, i1Caster.loader(inp1, i) / i2->get(i));
-            };
-        } else {
-            kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
-                oCaster.storer(out, i, i2->get(i) / i1Caster.loader(inp1, i));
-            };
-        }
-    } else if (op == BinaryOp::Pow) {
-        if (!flip) {
-            kernel = [&inp1, &i2, &out, &i1Caster, &oCaster, flip](uint64_t i) {
-                using std::pow;
-                I1 a = i1Caster.loader(inp1, i);
-                I2 b = i2->get(i);
-                O res = pow(a, b);
-                oCaster.storer(out, i, res);
-            };
-        } else {
-            kernel = [&inp1, &i2, &out, &i1Caster, &oCaster, flip](uint64_t i) {
-                using std::pow;
-                I1 a = i1Caster.loader(inp1, i);
-                I2 b = i2->get(i);
-                O res = pow(b, a);
-                oCaster.storer(out, i, res);
-            };
-        }
+  } else if (op == BinaryOp::Mul) {
+    kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
+      oCaster.storer(out, i, i1Caster.loader(inp1, i) * i2->get(i));
+    };
+  } else if (op == BinaryOp::Div) {
+    if (!flip) {
+      kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
+        oCaster.storer(out, i, i1Caster.loader(inp1, i) / i2->get(i));
+      };
+    } else {
+      kernel = [&inp1, &i2, &out, &i1Caster, &oCaster](uint64_t i) {
+        oCaster.storer(out, i, i2->get(i) / i1Caster.loader(inp1, i));
+      };
     }
+  } else if (op == BinaryOp::Pow) {
+    if (!flip) {
+      kernel = [&inp1, &i2, &out, &i1Caster, &oCaster, flip](uint64_t i) {
+        using std::pow;
+        I1 a = i1Caster.loader(inp1, i);
+        I2 b = i2->get(i);
+        O res = pow(a, b);
+        oCaster.storer(out, i, res);
+      };
+    } else {
+      kernel = [&inp1, &i2, &out, &i1Caster, &oCaster, flip](uint64_t i) {
+        using std::pow;
+        I1 a = i1Caster.loader(inp1, i);
+        I2 b = i2->get(i);
+        O res = pow(b, a);
+        oCaster.storer(out, i, res);
+      };
+    }
+  }
 
-    std::for_each(std::execution::par, Range(0), Range(nel), kernel);
+  std::for_each(std::execution::par, Range(0), Range(nel), kernel);
 }
 
 #define BINARYARITH_CASTED_PLAIN(O, I1, I2)                                    \
