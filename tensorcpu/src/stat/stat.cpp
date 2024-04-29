@@ -14,10 +14,10 @@ template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
   typedef I ISimd __attribute__((vector_size(laneSize * sizeof(I))));
   typedef O OSimd __attribute__((vector_size(laneSize * sizeof(O))));
 
-  std::vector<OSimd> sums;
-  parallelSimdFold(
+  OSimd finalSum = {0};
+  parallelSimdFold<OSimd>(
       nel, laneSize,
-      [inp, laneSize](uint64_t start, uint64_t end) -> OSimd {
+      [inp](uint64_t start, uint64_t end) {
         OSimd ret = {0};
         ISimd a;
         for (uint64_t i = start; i < end; i += laneSize) {
@@ -26,25 +26,17 @@ template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
         }
         return ret;
       },
-      sums
+      finalSum, [](OSimd &a, OSimd b) { a += b; }
   );
-
-  OSimd finalSum = {0};
-  for (auto &sum : sums) {
-    finalSum += sum;
-  }
-
   O ret = 0;
-  uint64_t tail = nel % laneSize;
   for (uint64_t i = 0; i < laneSize; i++) {
     ret += finalSum[i];
   }
+  uint64_t tail = nel % laneSize;
+  for (uint64_t i = nel - tail; i < nel; i++) {
+    ret += inp[i];
+  }
   *out = ret;
-
-  /**out = std::reduce(
-      std::execution::par_unseq, inp, inp + nel, O(0),
-      [](O a, I b) { return a + b; }
-  );*/
 }
 
 #define TCSUM(O, I) template void tcSum<O, I>(O * out, I * inp, uint64_t nel);
@@ -55,26 +47,23 @@ template <typename O, typename I> void tcMean(O *out, I *inp, uint64_t nel) {
   uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
   using ISimd = typename MeanSimd<O, I>::ISimdType;
 
-  std::vector<MeanSimd<O, I>> means;
   std::function<MeanSimd<O, I>(uint64_t, uint64_t)> kernel =
-      [laneSize, inp](uint64_t start, uint64_t end) -> MeanSimd<O, I> {
-    MeanSimd<O, I> mean;
-    ISimd i1;
-    for (uint64_t lane = start; lane < end; lane += laneSize) {
-      memcpy(&i1, inp + lane, laneSize * sizeof(I));
-      mean.consumeSimd(i1);
-    }
-    return mean;
-  };
-  parallelSimdFold(nel, laneSize, kernel, means);
+      [laneSize, inp](uint64_t start, uint64_t end) {
+        MeanSimd<O, I> ret;
+        ISimd i1;
+        for (uint64_t lane = start; lane < end; lane += laneSize) {
+          memcpy(&i1, inp + lane, laneSize * sizeof(I));
+          ret.consumeSimd(i1);
+        }
+        return ret;
+      };
+  MeanSimd<O, I> foldedMean;
+  parallelSimdFold<MeanSimd<O, I>>(
+      nel, laneSize, kernel, foldedMean,
+      [](MeanSimd<O, I> &a, MeanSimd<O, I> b) { a.merge(b); }
+  );
 
-  MeanSimd<O, I> finalMean;
-  for (auto &mean : means) {
-    finalMean.merge(mean);
-  }
-
-  Mean<O, I> mean = finalMean.mean();
-
+  Mean<O, I> mean = foldedMean.materialize();
   uint64_t tail = nel % laneSize;
   for (uint64_t i = nel - tail; i < nel; i++) {
     mean.consume(inp[i]);
@@ -86,3 +75,40 @@ template <typename O, typename I> void tcMean(O *out, I *inp, uint64_t nel) {
 #define TCMEAN(O, I) template void tcMean<O, I>(O * out, I * inp, uint64_t nel);
 
 TCMEAN(float, float)
+
+template <typename O, typename I>
+void tcVariance(O *out, I *inp, uint64_t nel, uint64_t correction) {
+  uint64_t laneSize = VarianceSimd<O, I>::sizeSimd;
+  using ISimd = typename VarianceSimd<O, I>::ISimdType;
+
+  std::function<VarianceSimd<O, I>(uint64_t, uint64_t)> kernel =
+      [laneSize, inp](uint64_t start, uint64_t end) {
+        VarianceSimd<O, I> ret;
+        ISimd i1;
+        for (uint64_t lane = start; lane < end; lane += laneSize) {
+          memcpy(&i1, inp + lane, laneSize * sizeof(I));
+          ret.consumeSimd(i1);
+        }
+        return ret;
+      };
+  VarianceSimd<O, I> foldedMean;
+  parallelSimdFold<VarianceSimd<O, I>>(
+      nel, laneSize, kernel, foldedMean,
+      [](VarianceSimd<O, I> &a, VarianceSimd<O, I> b) { a.merge(b); }
+  );
+
+  Variance<O, I> reducer = foldedMean.materialize();
+  uint64_t tail = nel % laneSize;
+  for (uint64_t i = nel - tail; i < nel; i++) {
+    reducer.consume(inp[i]);
+  }
+
+  *out = reducer.m2 / (reducer.n - correction);
+}
+
+#define TCVARIANCE(O, I)                                                       \
+  template void tcVariance<O, I>(                                              \
+      O * out, I * inp, uint64_t nel, uint64_t correction                      \
+  );
+
+TCVARIANCE(float, float)
