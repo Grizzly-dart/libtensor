@@ -1,0 +1,5 @@
+torch
+notebook
+diffusers
+timm
+transformers

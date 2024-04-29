@@ -97,7 +97,7 @@ public:
 template<typename F>
 void parallelSimdFold(
     uint64_t nel, uint64_t laneSize,
-    const std::function<F(uint64_t, uint64_t)> &kernel, std::vector<F> &results
+    const std::function<void(uint64_t, uint64_t, F&)> &kernel, std::vector<F> &results
 ) {
   uint64_t totalLanes = nel / laneSize;
   uint64_t concurrency = std::thread::hardware_concurrency();
