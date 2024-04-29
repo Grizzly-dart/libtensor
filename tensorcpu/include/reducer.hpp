@@ -208,4 +208,8 @@ void parallelSimdFold(
   }
 }
 
+extern void parallelFold2d(
+    uint64_t rows, const std::function<void(uint64_t, uint64_t)> &kernel
+);
+
 #endif // TENSORC_REDUCER_HPP
