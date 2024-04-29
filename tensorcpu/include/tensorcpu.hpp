@@ -69,6 +69,12 @@ extern void tcMemcpy(void *dst, void *src, uint64_t size);
 template <typename O, typename I>
 extern const char *tcCast(O *out, const I *inp, uint64_t nel);
 
+template <typename I>
+extern const char *tcAbs(I *out, const I *inp, uint64_t nel);
+
+template <typename O, typename I>
+const char *tcNeg(O *out, const I *inp, uint64_t nel);
+
 template <typename O, typename I>
 extern void tcBinaryArith(
     O *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
@@ -92,9 +98,6 @@ extern const char *tcFUnary(O *out, I *inp, FUnaryOp op, uint64_t nel);
 
 template <typename O, typename I>
 extern const char *tcFUnaryPlain(O *out, I *inp, FUnaryOp op, uint64_t nel);
-
-template <typename O, typename I>
-extern const char *tcCast(O *out, const I *inp, uint64_t nel);
 
 template <typename T>
 extern const char *mm(

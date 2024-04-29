@@ -38,10 +38,10 @@ build/libtensorcpu.so: $(SOURCES) $(HEADERS)
 	${CPP} ${CXXFLAGS} --shared -fPIC -o build/libtensorcpu.so ${SOURCES} ${LDFLAGS}
 	ls -lh build/libtensorcpu.so
 
-build/binary_arith_test: test/binary_arith_test.cpp build/libtensorcpu.so
+build/binary_arith_test: test/ewise/binary_arith_test.cpp build/libtensorcpu.so
 	${CPP} ${CXXFLAGS} -o $@ test/binary_arith_test.cpp -ltensorcpu ${LDFLAGS}
 
-build/gemm_test: test/mm_test.cpp build/libtensorcpu.so
+build/gemm_test: test/matrix/mm_test.cpp build/libtensorcpu.so
 	${CPP} ${CXXFLAGS} -save-temps -o $@ test/gemm_test.cpp -ltensorcpu ${LDFLAGS}
 
 build/dummy: test/dummy.cpp build/libtensorcpu.so

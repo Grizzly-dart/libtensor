@@ -35,6 +35,7 @@ const char *tcCastSlow(O *out, I *inp, uint64_t nel) {
     futures[threadNum] = std::async(
         std::launch::async,
         [threadNum, lanesPerThread, iAccessor, oAccessor]() {
+          // TODO replace with GCC SIMD intrinsics
           stdx::fixed_size_simd<I, laneSize> a;
           uint64_t last = (threadNum + 1) * lanesPerThread;
           for (uint64_t lane = threadNum * lanesPerThread; lane < last;
@@ -76,7 +77,7 @@ int main() {
   }
 
   int64_t timeSum = 0;
-  const uint64_t iterations = 10;
+  const uint64_t iterations = 100;
   for (uint8_t i = 0; i < iterations; i++) {
     memset(out, 0, size * sizeof(O));
     steady_clock::time_point begin = steady_clock::now();
@@ -102,6 +103,7 @@ int main() {
         << "us" << std::endl;
     check(out, inp, size);
     timeSum += timeA - timeB;
+    std::cout << "---------" << std::endl;
   }
   std::cout << "Time diff: " << timeSum/iterations << "us" << std::endl;
 

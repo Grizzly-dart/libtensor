@@ -5,42 +5,9 @@
 #include <limits>
 #include <stdfloat>
 
+#include "macro_unwind.hpp"
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
-#include "macro_unwind.hpp"
-
-enum UnaryOp : uint8_t {
-  Neg,
-  Abs,
-};
-
-template <typename O, typename I>
-const char *tcUnary(O *out, I *inp, UnaryOp op, uint64_t nel) {
-  size_t width = stdx::native_simd<I>::size();
-  printf("width: %zu\n", width);
-  auto i1 = Accessor<I>(inp, width, nel);
-
-  Kernel kernel;
-  switch (op) {
-  case Neg:
-    kernel = makeKernel(out, inp, i1, width, [](I a) { return -a; });
-    break;
-  case Abs:
-    kernel = makeKernel(out, inp, i1, width, [](I a) {
-      if (a == std::numeric_limits<I>::min()) {
-        return std::numeric_limits<I>::max();
-      } else {
-        return a >= 0 ? a : -a;
-      }
-    });
-    break;
-  }
-
-  std::for_each(
-      std::execution::par_unseq, i1.countBegin(), i1.countEnd(), kernel
-  );
-  return nullptr;
-}
 
 template <typename O, typename I>
 const char *tcCast(O *out, const I *inp, uint64_t nel) {
@@ -50,12 +17,23 @@ const char *tcCast(O *out, const I *inp, uint64_t nel) {
   return nullptr;
 }
 
-#define TCCAST(O, I) \
+#define TCCAST(O, I)                                                           \
   template const char *tcCast(O *out, const I *inp, uint64_t nel);
 
-// UNWIND2_ALL_TYPES(TCCAST)
+// TODO use bigger intermediate type to decrease library size
+UNWIND2_ALL_TYPES(TCCAST)
 
-/*
+template <typename I> const char *tcAbs(I *out, const I *inp, uint64_t nel) {
+  std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
+    return a >= 0 ? a : -a;
+  });
+  return nullptr;
+}
+
+#define TCABS(I) template const char *tcAbs(I *out, const I *inp, uint64_t nel);
+
+UNWIND1_SIGNED(TCABS)
+
 template <typename O, typename I>
 const char *tcNeg(O *out, const I *inp, uint64_t nel) {
   std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
@@ -64,15 +42,7 @@ const char *tcNeg(O *out, const I *inp, uint64_t nel) {
   return nullptr;
 }
 
-template <typename T>
-const char *tcAbs(T *out, const T *inp, uint64_t nel) {
-  std::transform(std::execution::par_unseq, inp, inp + nel, out, [](T a) {
-    if (a == std::numeric_limits<T>::min()) {
-      return std::numeric_limits<T>::max();
-    } else {
-      return a >= 0 ? a : -a;
-    }
-  });
-  return nullptr;
-}
- */
+#define TCNEG(O, I)                                                            \
+  template const char *tcNeg(O *out, const I *inp, uint64_t nel);
+
+UNWIND2_SIGNED(TCNEG)

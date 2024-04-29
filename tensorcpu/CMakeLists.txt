@@ -46,16 +46,22 @@ add_library(tensorcpu SHARED
 target_link_libraries(tensorcpu pthread m)
 
 ###### binary_arith_test
-add_executable(binary_arith_test test/binary_arith_test.cpp)
+add_executable(binary_arith_test test/ewise/binary_arith_test.cpp)
 
 ###### mm_test
-add_executable(mm_test test/mm_test.cpp)
+add_executable(mm_test test/matrix/mm_test.cpp)
 
 ###### mmBt_test
-add_executable(mmBt_test test/mmBt_test.cpp)
+add_executable(mmBt_test test/matrix/mmBt_test.cpp)
 
 ###### cast_test
-add_executable(cast_test test/cast_test.cpp)
+add_executable(cast_test test/ewise/cast_test.cpp)
+
+###### abs_test
+add_executable(abs_test test/ewise/abs_test.cpp)
+
+###### neg_test
+add_executable(neg_test test/ewise/neg_test.cpp)
 
 ###### dummy_test
 add_executable(dummy_test test/dummy.cpp)
@@ -64,7 +70,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPENBLAS REQUIRED openblas)
 pkg_check_modules(TBB REQUIRED tbb)
 
-foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test dummy_test)
+foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test abs_test neg_test dummy_test)
     target_link_directories(${target} PUBLIC ./build)
     if (NOT ${target} STREQUAL "tensorcpu")
         target_link_libraries(${target} tensorcpu)
