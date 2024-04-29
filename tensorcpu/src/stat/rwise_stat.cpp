@@ -51,3 +51,35 @@ const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
   );
 
 TCSUM2D(float, float)
+
+template <typename O, typename I>
+const char *tcMean2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
+  constexpr uint64_t laneSize = simdSize<I>();
+  typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
+  typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
+  uint64_t laneEnd = (cols / laneSize) * laneSize;
+  uint64_t tail = cols - laneEnd;
+
+  parallelFold2d(
+      rows,
+      [laneEnd, inp, cols, tail, out](uint64_t start, uint64_t last) {
+        // TODO
+      }
+  );
+}
+
+template <typename O, typename I>
+const char *tcVariance2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
+  constexpr uint64_t laneSize = simdSize<I>();
+  typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
+  typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
+  uint64_t laneEnd = (cols / laneSize) * laneSize;
+  uint64_t tail = cols - laneEnd;
+
+  parallelFold2d(
+      rows,
+      [laneEnd, inp, cols, tail, out](uint64_t start, uint64_t last) {
+        // TODO
+      }
+  );
+}
