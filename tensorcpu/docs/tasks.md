@@ -1,4 +1,5 @@
 + Use std::common_type
-+ Fast Binary arithmetic
-+ Slow binary arithmetic
 + Variance
+
++ Performance comparison against pytorch
++ For smaller input sizes, do not hand vectorize

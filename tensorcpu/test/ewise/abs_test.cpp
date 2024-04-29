@@ -46,11 +46,9 @@ const char *tcAbsSlow(I *out, const I *inp, uint64_t nel) {
           typedef I V __attribute__((vector_size(laneSize * sizeof(I))));
           V v;
           for (uint64_t lane = start; lane < last; lane += laneSize) {
-            // memcpy(&v, inp + lane, laneSize * sizeof(I));
-            v = *(V *)(inp + lane * laneSize);
+            memcpy(&v, inp + lane, laneSize * sizeof(I));
             v = v >= 0 ? v : -v;
-            // memcpy(out + lane, &v, laneSize * sizeof(I));
-            *(V *)(out + lane * laneSize) = v;
+            memcpy(out + lane, &v, laneSize * sizeof(I));
           }
         }
     );
@@ -58,10 +56,6 @@ const char *tcAbsSlow(I *out, const I *inp, uint64_t nel) {
 
   for (uint16_t i = 0; i < concurrency; i++) {
     futures[i].get();
-  }
-
-  for (uint64_t i = 0; i < nel; i++) {
-    out[i] = inp[i] >= 0 ? inp[i] : -inp[i];
   }
   return nullptr;
 }
@@ -71,7 +65,7 @@ void check(const O *out, const I *inp, uint64_t nel) {
   for (uint64_t i = 0; i < nel; i++) {
     O res = static_cast<O>(inp[i]);
     O diff = std::abs(res - out[i]);
-    if (diff > res * 1e-3) {
+    if (diff > 1e-3) {
       std::cout << "Mismatch at " << i << " => " << res << " != " << out[i]
                 << "; " << diff << std::endl;
       break;
@@ -90,7 +84,7 @@ int main() {
   }
 
   int64_t timeSum = 0;
-  const uint64_t iterations = 10;
+  const int64_t iterations = 10;
   for (uint8_t i = 0; i < iterations; i++) {
     memset(out, 0, size * sizeof(I));
     steady_clock::time_point begin = steady_clock::now();

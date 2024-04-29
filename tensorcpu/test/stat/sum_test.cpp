@@ -19,14 +19,17 @@ namespace stdx = std::experimental;
 namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
-template <typename I>
-const char *tcNegNaive(I *out, const I *inp, uint64_t nel) {
+template <typename O, typename I>
+const char *tcSumNaive(O *out, const I *inp, uint64_t nel) {
+  O ret = 0;
   for (uint64_t i = 0; i < nel; i++) {
-    out[i] = -inp[i];
+    ret += inp[i];
   }
+  *out = ret;
   return nullptr;
 }
 
+/*
 template <typename I>
 const char *tcNegSlow(I *out, const I *inp, uint64_t nel) {
   constexpr size_t laneSize = simdSize<I>();
@@ -60,36 +63,39 @@ const char *tcNegSlow(I *out, const I *inp, uint64_t nel) {
 
   return nullptr;
 }
+ */
 
 template <typename O, typename I>
-void check(const O *out, const I *inp, uint64_t nel) {
-  for (uint64_t i = 0; i < nel; i++) {
-    O res = -inp[i];
-    O diff = std::abs(res - out[i]);
-    if (diff > 1e-5) {
-      std::cout << "Mismatch at " << i << " " << inp[i] << " => " << res
-                << " != " << out[i] << "; " << diff << std::endl;
-      break;
-    }
+void check(O out, const I *inp, uint64_t nel) {
+  O res;
+  tcSumNaive(&res, inp, nel);
+  O diff = std::abs(res - out);
+  if (diff > nel * 1e-5) {
+    std::cout << "Mismatch => " << res << " != " << out << "; " << diff
+              << std::endl;
   }
 }
 
 int main() {
   using I = float;
+  using O = float;
   const uint64_t size = 2048 * 10000;
   I *inp = new (std::align_val_t(128)) I[size];
-  I *out = new (std::align_val_t(128)) I[size];
+  O out;
 
   for (uint64_t i = 0; i < size; i++) {
-    inp[i] = -(I)(i);
+    if constexpr (std::is_floating_point<I>::value)
+      inp[i] = drand48();
+    else
+      inp[i] = static_cast<I>(i);
   }
 
   int64_t timeSum = 0;
   const int64_t iterations = 10;
   for (uint8_t i = 0; i < iterations; i++) {
-    memset(out, 0, size * sizeof(I));
+    out = 0;
     steady_clock::time_point begin = steady_clock::now();
-    tcNegSlow<I>(out, inp, size);
+    tcSumNaive<O, I>(&out, inp, size);
     steady_clock::time_point end = steady_clock::now();
     std::cout
         << "Naive:   "
@@ -99,9 +105,9 @@ int main() {
         chrono::duration_cast<chrono::microseconds>(end - begin).count();
     check(out, inp, size);
 
-    memset(out, 0, size * sizeof(I));
+    out = 0;
     begin = steady_clock::now();
-    tcNeg<I, I>(out, inp, size);
+    tcSum<O, I>(&out, inp, size);
     end = steady_clock::now();
     std::cout
         << "AutoVec: "
@@ -116,7 +122,6 @@ int main() {
   std::cout << "Time diff: " << timeSum / iterations << "us" << std::endl;
 
   delete[] inp;
-  delete[] out;
 
   return 0;
 }

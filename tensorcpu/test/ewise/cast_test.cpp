@@ -57,7 +57,7 @@ void check(const O *out, const I *inp, uint64_t nel) {
   for (uint64_t i = 0; i < nel; i++) {
     O res = static_cast<O>(inp[i]);
     O diff = std::abs(res - out[i]);
-    if (diff > res * 1e-3) {
+    if (diff > 1e-3) {
       std::cout << "Mismatch at " << i << " => " << res << " != " << out[i]
                 << "; " << diff << std::endl;
       break;

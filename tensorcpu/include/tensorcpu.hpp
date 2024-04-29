@@ -99,6 +99,12 @@ extern const char *tcFUnary(O *out, I *inp, FUnaryOp op, uint64_t nel);
 template <typename O, typename I>
 extern const char *tcFUnaryPlain(O *out, I *inp, FUnaryOp op, uint64_t nel);
 
+template <typename O, typename I>
+extern void tcSum(O *out, I *inp, uint64_t nel);
+
+template <typename O, typename I>
+extern void tcMean(O *out, I *inp, uint64_t nel);
+
 template <typename T>
 extern const char *mm(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,

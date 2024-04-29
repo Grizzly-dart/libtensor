@@ -10,7 +10,6 @@ cmake_print_variables(OS ARCH)
 set(CMAKE_CXX_COMPILER g++-13)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ftree-vectorize -ffast-math")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-vec-missed -fopt-info-loop-optimized -ftree-vectorizer-verbose=2")
 
 if (OS STREQUAL "Darwin")
@@ -24,6 +23,7 @@ endif ()
 
 if (ARCH MATCHES "^x86")
     # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")    # TODO implement build flavors
 endif ()
 if (ARCH MATCHES "^arm")
 endif ()
@@ -63,6 +63,12 @@ add_executable(abs_test test/ewise/abs_test.cpp)
 ###### neg_test
 add_executable(neg_test test/ewise/neg_test.cpp)
 
+###### sum_test
+add_executable(sum_test test/stat/sum_test.cpp)
+
+###### mean_test
+add_executable(mean_test test/stat/mean_test.cpp)
+
 ###### dummy_test
 add_executable(dummy_test test/dummy.cpp)
 
@@ -70,7 +76,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPENBLAS REQUIRED openblas)
 pkg_check_modules(TBB REQUIRED tbb)
 
-foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test abs_test neg_test dummy_test)
+foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test abs_test neg_test sum_test mean_test dummy_test)
     target_link_directories(${target} PUBLIC ./build)
     if (NOT ${target} STREQUAL "tensorcpu")
         target_link_libraries(${target} tensorcpu)

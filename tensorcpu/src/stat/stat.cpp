@@ -4,67 +4,55 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "macro_unwind.hpp"
+#include "reducer.hpp"
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
-template <typename T>
-class Mean {
-public:
-  T mean = 0;
-  uint32_t n = 0;
-
-  void consume(T sample)  {
-    n++;
-    auto delta = sample - mean;
-    mean += delta / n;
-  }
-
-  void ConsumeSimd(stdx::native_simd<T> &simd, uint16_t width) {
-    n += width;
-    auto delta = simd - mean;
-    mean += delta / n;
-  }
-
-  void merge(const Mean<T>& other) {
-    if (other.n == 0) {
-      return;
-    }
-    if (n == 0) {
-      mean = other.mean;
-      n = other.n;
-      return;
-    }
-
-    n = n + other.n;
-    auto delta = other.mean - mean;
-    mean += delta * other.n / n;
-  }
-};
-
 template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
-  size_t width =
-      std::min(stdx::native_simd<O>::size(), stdx::native_simd<I>::size());
-  std::unique_ptr<IAccessor<I>> inpIt =
-      std::make_unique<Accessor<I>>(inp, width, nel);
-
-  auto red = std::reduce(
-      std::execution::par, (*inpIt).countBegin(), (*inpIt).countEnd(),
-      stdx::native_simd<O>(0),
-      [&inpIt](uint64_t a, uint64_t b) { return a + inpIt->load(b); }
+  // TODO use parallelFold
+  *out = std::reduce(
+      std::execution::par_unseq, inp, inp + nel, O(0),
+      [](O a, I b) { return a + b; }
   );
-
-  O redScalar = 0;
-  for (size_t i = 0; i < width; i++) {
-    redScalar += static_cast<O>(red[i]);
-  }
-  *out = redScalar;
 }
+
+#define TCSUM(O, I) template void tcSum<O, I>(O * out, I * inp, uint64_t nel);
+
+UNWIND2_SAME_ALL_TYPES(TCSUM)
 
 template <typename O, typename I> void tcMean(O *out, I *inp, uint64_t nel) {
-  size_t width =
-      std::min(stdx::native_simd<O>::size(), stdx::native_simd<I>::size());
-  std::unique_ptr<IAccessor<I>> inpIt =
-      std::make_unique<Accessor<I>>(inp, width, nel);
+  uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
+  using ISimd = typename MeanSimd<O, I>::ISimdType;
 
-  // TODO
+  std::vector<MeanSimd<O, I>> means;
+  std::function<MeanSimd<O, I>(uint64_t, uint64_t)> kernel =
+      [laneSize, inp](uint64_t start, uint64_t end) -> MeanSimd<O, I> {
+    MeanSimd<O, I> mean;
+    ISimd i1;
+    for (uint64_t lane = start; lane < end; lane += laneSize) {
+      memcpy(&i1, inp + lane, laneSize * sizeof(I));
+      mean.consumeSimd(i1);
+    }
+    return mean;
+  };
+  parallelSimdFold(nel, laneSize, kernel, means);
+
+  MeanSimd<O, I> finalMean;
+  for (auto &mean : means) {
+    finalMean.merge(mean);
+  }
+
+  Mean<O, I> mean = finalMean.mean();
+
+  uint64_t tail = nel % laneSize;
+  for (uint64_t i = nel - tail; i < nel; i++) {
+    mean.consume(inp[i]);
+  }
+
+  *out = mean.mean;
 }
+
+#define TCMEAN(O, I) template void tcMean<O, I>(O * out, I * inp, uint64_t nel);
+
+TCMEAN(float, float)
