@@ -75,6 +75,12 @@ add_executable(variance_test test/stat/variance_test.cpp)
 ###### sum2d_test
 add_executable(sum2d_test test/stat/sum2d_test.cpp)
 
+###### mean2d_test
+add_executable(mean2d_test test/stat/mean2d_test.cpp)
+
+###### variance2d_test
+add_executable(variance2d_test test/stat/variance2d_test.cpp)
+
 ###### dummy_test
 add_executable(dummy_test test/dummy.cpp)
 
@@ -82,7 +88,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPENBLAS REQUIRED openblas)
 pkg_check_modules(TBB REQUIRED tbb)
 
-foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test abs_test neg_test sum_test mean_test variance_test sum2d_test dummy_test)
+foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test abs_test neg_test sum_test mean_test variance_test sum2d_test mean2d_test variance2d_test dummy_test)
     target_link_directories(${target} PUBLIC ./build)
     if (NOT ${target} STREQUAL "tensorcpu")
         target_link_libraries(${target} tensorcpu)

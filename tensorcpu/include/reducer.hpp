@@ -85,7 +85,7 @@ public:
     for (uint32_t i = 0; i < sizeSimd; i++) {
       count += n;
       auto delta = O(runningMean[i]) - mean;
-      mean += delta / count;
+      mean += delta * n / count;
     }
     return {mean, count};
   }

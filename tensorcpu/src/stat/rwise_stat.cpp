@@ -9,7 +9,7 @@
 
 template <typename O, typename I>
 const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
-  constexpr uint64_t laneSize = simdSize<I>();
+  constexpr uint64_t laneSize = simdSize<O>();
   typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
   typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
   uint64_t laneEnd = (cols / laneSize) * laneSize;
@@ -18,13 +18,13 @@ const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
   parallelFold2d(
       rows,
       [laneEnd, inp, cols, tail, out](uint64_t startRow, uint64_t endRow) {
-        ISimdType a;
-        OSimdType sum = {0};
         const I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
+          OSimdType sum = {0};
+          ISimdType a = {0};
           for (uint64_t i = 0; i < laneEnd; i += laneSize) {
             memcpy(&a, in, sizeof(ISimdType));
-            sum += a;
+            sum += __builtin_convertvector(a, OSimdType);
             in += laneSize;
           }
 
@@ -37,7 +37,6 @@ const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
           }
           in += tail;
           out[row] = res;
-          memset(&sum, 0, sizeof(OSimdType));
         }
       }
   );
@@ -50,11 +49,11 @@ const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
       O *out, const I *inp, uint64_t rows, uint64_t cols                       \
   );
 
-TCSUM2D(float, float)
+TCSUM2D(float, uint16_t)
 
 template <typename O, typename I>
 const char *tcMean2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
-  constexpr uint64_t laneSize = simdSize<I>();
+  constexpr uint64_t laneSize = simdSize<O>();
   typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
   typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
   uint64_t laneEnd = (cols / laneSize) * laneSize;
@@ -67,7 +66,7 @@ const char *tcMean2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
         for (uint64_t row = startRow; row < endRow; row++) {
           MeanSimd<O, I> folder;
           for (uint64_t i = 0; i < laneEnd; i += laneSize) {
-            ISimdType a;
+            ISimdType a = {0};
             memcpy(&a, in, sizeof(ISimdType));
             folder.consumeSimd(a);
             in += laneSize;
@@ -110,7 +109,7 @@ const char *tcVariance2d(
         for (uint64_t row = startRow; row < endRow; row++) {
           VarianceSimd<O, I> folder;
           for (uint64_t i = 0; i < laneEnd; i += laneSize) {
-            ISimdType a;
+            ISimdType a = {0};
             memcpy(&a, in, sizeof(ISimdType));
             folder.consumeSimd(a);
             in += laneSize;
