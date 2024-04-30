@@ -109,7 +109,17 @@ template <typename O, typename I>
 extern void tcVariance(O *out, I *inp, uint64_t nel, uint64_t correction);
 
 template <typename O, typename I>
-extern const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols);
+extern const char *tcSum2d(
+    O *startRow, const I *endRow, uint64_t rows, uint64_t cols
+);
+
+template <typename O, typename I>
+extern const char *tcMean2d(O *out, const I *inp, uint64_t rows, uint64_t cols);
+
+template <typename O, typename I>
+extern const char *tcVariance2d(
+    O *out, const I *inp, uint64_t rows, uint64_t cols, uint64_t correction
+);
 
 template <typename T>
 extern const char *mm(

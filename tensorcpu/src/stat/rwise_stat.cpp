@@ -17,11 +17,11 @@ const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
 
   parallelFold2d(
       rows,
-      [laneEnd, inp, cols, tail, out](uint64_t start, uint64_t last) {
+      [laneEnd, inp, cols, tail, out](uint64_t startRow, uint64_t endRow) {
         ISimdType a;
         OSimdType sum = {0};
-        const I *in = inp + start * cols;
-        for (uint64_t row = start; row < last; row++) {
+        const I *in = inp + startRow * cols;
+        for (uint64_t row = startRow; row < endRow; row++) {
           for (uint64_t i = 0; i < laneEnd; i += laneSize) {
             memcpy(&a, in, sizeof(ISimdType));
             sum += a;
@@ -62,14 +62,40 @@ const char *tcMean2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
 
   parallelFold2d(
       rows,
-      [laneEnd, inp, cols, tail, out](uint64_t start, uint64_t last) {
-        // TODO
+      [laneEnd, inp, cols, tail, out](uint64_t startRow, uint64_t endRow) {
+        const I *in = inp + startRow * cols;
+        for (uint64_t row = startRow; row < endRow; row++) {
+          MeanSimd<O, I> folder;
+          for (uint64_t i = 0; i < laneEnd; i += laneSize) {
+            ISimdType a;
+            memcpy(&a, in, sizeof(ISimdType));
+            folder.consumeSimd(a);
+            in += laneSize;
+          }
+
+          Mean<O, I> reducer = folder.materialize();
+          for (uint64_t i = 0; i < tail; i++) {
+            reducer.consume(in[i]);
+          }
+          out[row] = reducer.mean;
+          in += tail;
+        }
       }
   );
+  return nullptr;
 }
 
+#define TCMEAN2D(O, I)                                                         \
+  template const char *tcMean2d(                                               \
+      O *out, const I *inp, uint64_t rows, uint64_t cols                       \
+  );
+
+TCMEAN2D(float, float)
+
 template <typename O, typename I>
-const char *tcVariance2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
+const char *tcVariance2d(
+    O *out, const I *inp, uint64_t rows, uint64_t cols, uint64_t correction
+) {
   constexpr uint64_t laneSize = simdSize<I>();
   typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
   typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
@@ -78,8 +104,33 @@ const char *tcVariance2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
 
   parallelFold2d(
       rows,
-      [laneEnd, inp, cols, tail, out](uint64_t start, uint64_t last) {
-        // TODO
+      [laneEnd, inp, cols, tail, out,
+       correction](uint64_t startRow, uint64_t endRow) {
+        const I *in = inp + startRow * cols;
+        for (uint64_t row = startRow; row < endRow; row++) {
+          VarianceSimd<O, I> folder;
+          for (uint64_t i = 0; i < laneEnd; i += laneSize) {
+            ISimdType a;
+            memcpy(&a, in, sizeof(ISimdType));
+            folder.consumeSimd(a);
+            in += laneSize;
+          }
+
+          Variance<O, I> reducer = folder.materialize();
+          for (uint64_t i = 0; i < tail; i++) {
+            reducer.consume(in[i]);
+          }
+          out[row] = reducer.m2 / (cols - correction);
+          in += tail;
+        }
       }
   );
+  return nullptr;
 }
+
+#define TCVARIANCE2D(O, I)                                                     \
+  template const char *tcVariance2d(                                           \
+      O *out, const I *inp, uint64_t rows, uint64_t cols, uint64_t correction  \
+  );
+
+TCVARIANCE2D(float, float)
