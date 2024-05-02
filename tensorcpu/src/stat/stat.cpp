@@ -9,34 +9,78 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
-template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
+template <typename O, typename I>
+void sum_noparnosimd(O *out, const I *inp, uint64_t nel) {
+  O ret = O(0);
+#pragma GCC ivdep
+  for (uint64_t i = 0; i < nel; i++) {
+    ret += inp[i];
+  }
+  *out = ret;
+}
+
+#define TCSUMNOPARNOSIMD(O, I)                                                 \
+  template void sum_noparnosimd(O *out, const I *inp, uint64_t nel);
+
+UNWIND2_ALL_TYPES(TCSUMNOPARNOSIMD)
+
+template <typename O, typename I>
+void sum_parsimd(O *out, I *inp, uint64_t nel) {
   constexpr uint64_t laneSize = simdSize<O>();
   typedef I ISimd __attribute__((vector_size(laneSize * sizeof(I))));
   typedef O OSimd __attribute__((vector_size(laneSize * sizeof(O))));
 
-  OSimd finalSum = {0};
-  parallelSimdFold<OSimd>(
+  std::vector<O> partialSums;
+  parallelSimdFold<O>(
       nel, laneSize,
-      [inp](uint64_t start, uint64_t end) {
+      [inp, &partialSums](uint16_t threadId, uint64_t start, uint64_t end) {
         OSimd ret = {0};
         ISimd a;
         for (uint64_t i = start; i < end; i += laneSize) {
           memcpy(&a, inp + i, laneSize * sizeof(I));
-          ret += a;
+          if constexpr (std::is_same<O, I>::value) {
+            ret += a;
+          } else {
+            ret += __builtin_convertvector(a, OSimd);
+          }
         }
-        return ret;
+
+        O res = 0;
+        for (uint64_t i = 0; i < laneSize; i++) {
+          res += ret[i];
+        }
+
+        partialSums[threadId] = res;
       },
-      finalSum, [](OSimd &a, OSimd b) { a += b; }
+      partialSums
   );
   O ret = 0;
-  for (uint64_t i = 0; i < laneSize; i++) {
-    ret += finalSum[i];
+#pragma GCC ivdep
+  for (O sum : partialSums) {
+    ret += sum;
   }
   uint64_t tail = nel % laneSize;
-  for (uint64_t i = nel - tail; i < nel; i++) {
+  inp += nel - tail;
+#pragma GCC ivdep
+  for (uint64_t i = 0; i < tail; i++) {
     ret += inp[i];
   }
   *out = ret;
+}
+
+#define TCSUMPARSIMD(O, I)                                                     \
+  template void sum_parsimd<O, I>(O * out, I * inp, uint64_t nel);
+
+UNWIND2_SAME_ALL_TYPES(TCSUMPARSIMD)
+TCSUMPARSIMD(double, float)
+
+template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
+  if (nel <= 204800) {
+    sum_noparnosimd(out, inp, nel);
+    return;
+  }
+
+  sum_parsimd<O, I>(out, inp, nel);
 }
 
 #define TCSUM(O, I) template void tcSum<O, I>(O * out, I * inp, uint64_t nel);
@@ -58,10 +102,12 @@ template <typename O, typename I> void tcMean(O *out, I *inp, uint64_t nel) {
         return ret;
       };
   MeanSimd<O, I> foldedMean;
+  /* TODO
   parallelSimdFold<MeanSimd<O, I>>(
       nel, laneSize, kernel, foldedMean,
       [](MeanSimd<O, I> &a, MeanSimd<O, I> b) { a.merge(b); }
   );
+   */
 
   Mean<O, I> mean = foldedMean.materialize();
   uint64_t tail = nel % laneSize;
@@ -92,10 +138,12 @@ void tcVariance(O *out, I *inp, uint64_t nel, uint64_t correction) {
         return ret;
       };
   VarianceSimd<O, I> foldedMean;
+  /*
   parallelSimdFold<VarianceSimd<O, I>>(
       nel, laneSize, kernel, foldedMean,
       [](VarianceSimd<O, I> &a, VarianceSimd<O, I> b) { a.merge(b); }
   );
+   */
 
   Variance<O, I> reducer = foldedMean.materialize();
   uint64_t tail = nel % laneSize;

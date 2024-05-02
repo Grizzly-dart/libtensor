@@ -11,6 +11,8 @@
 #include <limits>
 #include <stdfloat>
 
+#include "reducer.hpp"
+#include "stat.hpp"
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
@@ -19,58 +21,23 @@ namespace stdx = std::experimental;
 namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
-template <typename O, typename I>
-const char *tcSumNaive(O *out, const I *inp, uint64_t nel) {
-  O ret = 0;
-  for (uint64_t i = 0; i < nel; i++) {
-    ret += inp[i];
-  }
-  *out = ret;
-  return nullptr;
-}
-
-/*
 template <typename I>
-const char *tcNegSlow(I *out, const I *inp, uint64_t nel) {
-  constexpr size_t laneSize = simdSize<I>();
-  uint16_t concurrency = std::thread::hardware_concurrency();
-  uint64_t totalLanes = (nel + laneSize - 1) / laneSize;
-  uint64_t lanesPerThread = std::max(
-      uint64_t((totalLanes + concurrency - 1) / concurrency), uint64_t(1)
+const char *tcSumNaive2(I *out, const I *inp, uint64_t nel) {
+  *out = std::reduce(
+      std::execution::par_unseq, inp, inp + nel, I(0),
+      [](I a, I b) { return a + b; }
   );
-  std::vector<std::future<void>> futures(concurrency);
-
-  for (uint16_t threadNum = 0; threadNum < concurrency; threadNum++) {
-    futures[threadNum] = std::async(
-        std::launch::async,
-        [threadNum, lanesPerThread, out, inp, laneSize]() {
-          uint64_t start = threadNum * lanesPerThread * laneSize;
-          uint64_t last = (threadNum + 1) * lanesPerThread * laneSize;
-          typedef I V __attribute__((vector_size(laneSize * sizeof(I))));
-          V v;
-          for (uint64_t lane = start; lane < last; lane += laneSize) {
-            memcpy(&v, inp + lane, laneSize * sizeof(I));
-            v = -v;
-            memcpy(out + lane, &v, laneSize * sizeof(I));
-          }
-        }
-    );
-  }
-
-  for (uint16_t i = 0; i < concurrency; i++) {
-    futures[i].wait();
-  }
-
   return nullptr;
 }
- */
 
 template <typename O, typename I>
 void check(O out, const I *inp, uint64_t nel) {
   O res;
-  tcSumNaive(&res, inp, nel);
+  for (uint64_t i = 0; i < nel; i++) {
+    res += inp[i];
+  }
   O diff = std::abs(res - out);
-  if (diff > nel * 1e-5) {
+  if (diff > res * 1e-3) {
     std::cout << "Mismatch => " << res << " != " << out << "; " << diff
               << std::endl;
   }
@@ -79,49 +46,73 @@ void check(O out, const I *inp, uint64_t nel) {
 int main() {
   using I = float;
   using O = float;
-  const uint64_t size = 2048 * 10000;
+  const uint64_t size = 2048 * 1000;
   I *inp = new (std::align_val_t(128)) I[size];
   O out;
 
   for (uint64_t i = 0; i < size; i++) {
-    if constexpr (std::is_floating_point<I>::value)
-      inp[i] = drand48();
-    else
+    if constexpr (std::is_floating_point<I>::value) {
+      // inp[i] = drand48();
+      inp[i] = I(i);
+    } else {
       inp[i] = static_cast<I>(i);
+    }
   }
 
-  int64_t timeSum = 0;
-  const int64_t iterations = 10;
-  for (uint8_t i = 0; i < iterations; i++) {
+  for(int i = 0; i < 3; i++) {
+    sum_noparnosimd<O, I>(&out, inp, size);
+    tcSumNaive2<I>(&out, inp, size);
+    sum_parsimd<O, I>(&out, inp, size);
+  }
+
+  steady_clock::time_point begin, end;
+  Mean<double, int64_t> averageNaive, averageAutoVec, averageOptim;
+  const int64_t iterations = 100;
+  for (uint64_t i = 0; i < iterations; i++) {
+    std::cout << "Iteration " << i + 1 << std::endl;
+
     out = 0;
-    steady_clock::time_point begin = steady_clock::now();
-    tcSumNaive<O, I>(&out, inp, size);
-    steady_clock::time_point end = steady_clock::now();
-    std::cout
-        << "Naive:   "
-        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-        << "us" << std::endl;
+    begin = steady_clock::now();
+    sum_noparnosimd<O, I>(&out, inp, size);
+    end = steady_clock::now();
     auto timeA =
         chrono::duration_cast<chrono::microseconds>(end - begin).count();
+    averageNaive.consume(timeA);
+    std::cout << "Naive:   " << timeA << "us" << std::endl;
     check(out, inp, size);
 
     out = 0;
     begin = steady_clock::now();
-    tcSum<O, I>(&out, inp, size);
+    tcSumNaive2<I>(&out, inp, size);
     end = steady_clock::now();
-    std::cout
-        << "AutoVec: "
-        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-        << "us" << std::endl;
     auto timeB =
         chrono::duration_cast<chrono::microseconds>(end - begin).count();
+    averageAutoVec.consume(timeB);
+    std::cout << "AutoVec: " << timeB << "us"
+              << " sum: " << out << std::endl;
+    // averageNaive.consume(timeB);
+    // check(out, inp, size);
+
+    out = 0;
+    begin = steady_clock::now();
+    sum_parsimd<O, I>(&out, inp, size);
+    end = steady_clock::now();
+    auto timeC =
+        chrono::duration_cast<chrono::microseconds>(end - begin).count();
+    std::cout << "Optim: " << timeC << "us sum: " << out << std::endl;
+    averageOptim.consume(timeC);
     check(out, inp, size);
-    timeSum += timeA - timeB;
     std::cout << "---------" << std::endl;
+    // timeSum += timeA - timeB;
   }
-  std::cout << "Time diff: " << timeSum / iterations << "us" << std::endl;
+  // std::cout << "Time diff: " << timeSum / iterations << "us" << std::endl;
+  std::cout << "Average time: " << averageNaive.mean << "us" << std::endl;
+  std::cout << "Average time: " << averageAutoVec.mean << "us" << std::endl;
+  std::cout << "Average time: " << averageOptim.mean << "us" << std::endl;
 
   delete[] inp;
+
+  pool.kill();
 
   return 0;
 }

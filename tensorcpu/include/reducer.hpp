@@ -5,6 +5,7 @@
 #ifndef TENSORC_REDUCER_HPP
 #define TENSORC_REDUCER_HPP
 
+#include "thread_pool.hpp"
 #include "typed_array.hpp"
 #include <cstdint>
 #include <future>
@@ -175,37 +176,43 @@ public:
 template <typename O>
 void parallelSimdFold(
     uint64_t nel, uint64_t laneSize,
-    const std::function<O(uint64_t, uint64_t)> &kernel, O &result,
-    std::function<void(O &, O)> merge
+    const std::function<void(uint16_t, uint64_t, uint64_t)> &kernel,
+    std::vector<O> &results
 ) {
   uint64_t totalLanes = nel / laneSize;
-  uint64_t concurrency = std::thread::hardware_concurrency();
+  uint64_t numThreads = std::thread::hardware_concurrency();
   uint64_t lanesPerThread;
-  if (concurrency > totalLanes) {
-    concurrency = totalLanes;
+  uint64_t remaining = 0;
+  if (numThreads > totalLanes) {
+    numThreads = totalLanes;
     lanesPerThread = 1;
   } else {
-    lanesPerThread = (totalLanes + concurrency - 1) / concurrency;
+    lanesPerThread = totalLanes / numThreads;
+    remaining = totalLanes % numThreads;
   }
-  std::vector<std::future<O>> futures(concurrency);
 
-  for (uint64_t threadNum = 0; threadNum < concurrency; threadNum++) {
-    uint64_t start = threadNum * lanesPerThread * laneSize;
-    uint64_t last = (threadNum + 1) * lanesPerThread;
-    if (last > totalLanes) {
-      last = totalLanes;
+  results.resize(numThreads);
+  std::latch latch(numThreads);
+  for (uint64_t threadNum = 0; threadNum < numThreads; threadNum++) {
+    uint64_t start = threadNum * lanesPerThread;
+    uint64_t last;
+    if (threadNum < remaining) {
+      start += threadNum;
+      last = start + lanesPerThread + 1;
+    } else {
+      start += remaining;
+      last = start + lanesPerThread;
     }
-    last *= laneSize;
 
-    futures[threadNum] =
-        std::async(std::launch::async, [start, last, kernel]() {
-          return kernel(start, last);
-        });
+    pool.runTask(
+        threadNum,
+        [threadNum, start, last, kernel, laneSize, &latch]() {
+          kernel(threadNum, start * laneSize, last * laneSize);
+          latch.count_down();
+        }
+    );
   }
-
-  for (uint64_t i = 0; i < concurrency; i++) {
-    merge(result, futures[i].get());
-  }
+  latch.wait();
 }
 
 extern void parallelFold2d(
