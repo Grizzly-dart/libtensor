@@ -17,108 +17,123 @@
 #include <thread>
 #include <vector>
 
+int setHighestThreadPriority(pthread_t thId);
+
 class ThreadPool;
 
-void threadFunc(ThreadPool& pool);
-
-/*
-class ThreadPool {
-  pthread_t *threads;
-  std::mutex mutex;
-  std::condition_variable notifier;
-
-public:
-  ThreadPool() {
-    threads = new pthread_t[std::thread::hardware_concurrency()];
-    for (uint16_t i = 0; i < std::thread::hardware_concurrency(); i++) {
-      pthread_create(&threads[i], nullptr, reinterpret_cast<void *(*)(void *)>(threadFunc), this);
-    }
-  }
-
-  void runTasks(std::function<void()> tasks) {
-    // TODO
-  }
-
-  friend void threadFunc(ThreadPool& pool) {
-    std::unique_lock<std::mutex> lock(pool.mutex);
-    while (true) {
-      pool.notifier.wait(lock);
-      // TODO
-    }
-  }
+struct WorkerArgs {
+  ThreadPool *pool;
+  uint16_t threadNum;
 };
- */
 
-class Thread {
+void *workerFunc(WorkerArgs *arg);
+
+class ThreadPool {
+  std::vector<std::mutex> mutex;
+  std::vector<std::condition_variable> notifier;
+  std::vector<pthread_t> threads;
+  std::atomic<int16_t> jobId = -1;
+  std::atomic<std::latch *> latch = nullptr;
+  std::function<void(uint64_t)> work = nullptr;
+  std::atomic<bool> killed = false;
+  std::vector<std::chrono::steady_clock::time_point> threadBegins;
+  std::vector<std::chrono::steady_clock::time_point> threadEnds;
+
 public:
-  std::thread thread;
-  std::mutex mutex;
-  std::condition_variable notifier;
-  std::function<void(void)> task = nullptr;
-  bool killed = false;
-  std::chrono::steady_clock::time_point begin;
-  uint16_t threadNum = 0;
-
-  Thread() {
-    thread = std::thread([this]() {
-      std::unique_lock<std::mutex> lock(mutex);
-      while (true) {
-        notifier.wait(lock);
-        if (killed) {
-          return;
-        }
-        if (task == nullptr) {
-          continue;
-        }
-        try {
-          task();
-        } catch (std::exception &e) {
-        }
+  ThreadPool()
+      : mutex(std::thread::hardware_concurrency() - 1),
+        notifier(std::thread::hardware_concurrency() - 1),
+        threads(std::thread::hardware_concurrency() - 1),
+        threadBegins(std::thread::hardware_concurrency() - 1),
+        threadEnds(std::thread::hardware_concurrency() - 1) {
+    for (uint16_t threadNum = 0;
+         threadNum < std::thread::hardware_concurrency() - 1; threadNum++) {
+      WorkerArgs *args = new WorkerArgs{this, threadNum};
+      pthread_create(
+          &threads[threadNum], nullptr,
+          reinterpret_cast<void *(*)(void *)>(workerFunc), args
+      );
+      pthread_detach(threads[threadNum]);
+      int err = setHighestThreadPriority(threads[threadNum]);
+      if (err != 0) {
+        throw std::runtime_error("Failed to set thread priority");
       }
-    });
-    thread.detach();
-  };
+      threads.push_back(threads[threadNum]);
+    }
+  }
 
-  void queueTask(
-      std::chrono::steady_clock::time_point beg,
-      const std::function<void(void)>& task
-  ) {
-    begin = beg; // std::chrono::steady_clock::now();
-    // mutex.lock();
-    this->task = task;
-    // mutex.unlock();
-    notifier.notify_one();
+  void runTask(const std::function<void(uint64_t)> &task) {
+    work = task;
+    latch = new std::latch(std::thread::hardware_concurrency() - 1);
+    auto begin = std::chrono::steady_clock::now();
+    jobId++;
+    for (uint16_t threadNum = 0;
+         threadNum < std::thread::hardware_concurrency() - 1; threadNum++) {
+      notifier[threadNum].notify_one();
+    }
+
+    task(std::thread::hardware_concurrency() - 1);
+
+    (*latch).wait();
+    latch = nullptr;
+    work = nullptr;
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "Time taken: "
+              << std::chrono::duration_cast<std::chrono::microseconds>(
+                     end - begin
+                 )
+                     .count()
+              << "us" << std::endl;
+    for (uint16_t threadNum = 0;
+         threadNum < std::thread::hardware_concurrency() - 1; threadNum++) {
+      std::cout << "Thread " << threadNum << " started after "
+                << std::chrono::duration_cast<std::chrono::microseconds>(
+                       threadBegins[threadNum] - begin
+                   )
+                       .count()
+                << "us" << std::endl;
+      std::cout << "Thread " << threadNum << " took "
+                << std::chrono::duration_cast<std::chrono::microseconds>(
+                       threadEnds[threadNum] - threadBegins[threadNum]
+                   )
+                       .count()
+                << "us" << std::endl;
+    }
   }
 
   void kill() {
     killed = true;
-    begin = std::chrono::steady_clock::now();
-    notifier.notify_one();
-  }
-};
-
-class ThreadPool {
-  std::vector<Thread> threads;
-
-public:
-  ThreadPool() : threads(std::thread::hardware_concurrency()) {
-    for (uint64_t i = 0; i < threads.size(); i++) {
-      threads[i].threadNum = i;
+    for (uint16_t threadNum = 0;
+         threadNum < std::thread::hardware_concurrency() - 1; threadNum++) {
+      notifier[threadNum].notify_one();
     }
   }
 
-  void runTask(uint16_t threadNum, const std::function<void()>& task) {
-    if(threadNum >= threads.size()) {
-      throw std::runtime_error("Invalid exceeds maximum concurrency");
-    }
+  friend void *workerFunc(WorkerArgs *arg) {
+    ThreadPool *pool = arg->pool;
+    uint16_t threadNum = arg->threadNum;
+    delete arg;
 
-    threads[threadNum].queueTask(std::chrono::steady_clock::now(), task);
-  }
+    int16_t jobId = 0;
+    while (!pool->killed) {
+      std::unique_lock<std::mutex> lock(pool->mutex[threadNum]);
+      pool->notifier[threadNum].wait(lock, [&]() {
+        return jobId == pool->jobId || pool->killed;
+      });
+      if (pool->killed) continue;
+      if (pool->work == nullptr) continue;
+      pool->threadBegins[threadNum] = std::chrono::steady_clock::now();
+      jobId++;
 
-  void kill() {
-    for (auto &thread : threads) {
-      thread.kill();
+      try {
+        pool->work(threadNum);
+      } catch (std::exception &e) {
+      }
+
+      (*pool->latch).count_down();
+      pool->threadEnds[threadNum] = std::chrono::steady_clock::now();
     }
+    return nullptr;
   }
 };
 

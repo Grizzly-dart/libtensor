@@ -192,8 +192,8 @@ void parallelSimdFold(
   }
 
   results.resize(numThreads);
-  std::latch latch(numThreads);
-  for (uint64_t threadNum = 0; threadNum < numThreads; threadNum++) {
+
+  pool.runTask([lanesPerThread, remaining, kernel, laneSize](uint64_t threadNum) {
     uint64_t start = threadNum * lanesPerThread;
     uint64_t last;
     if (threadNum < remaining) {
@@ -204,15 +204,8 @@ void parallelSimdFold(
       last = start + lanesPerThread;
     }
 
-    pool.runTask(
-        threadNum,
-        [threadNum, start, last, kernel, laneSize, &latch]() {
-          kernel(threadNum, start * laneSize, last * laneSize);
-          latch.count_down();
-        }
-    );
-  }
-  latch.wait();
+    kernel(threadNum, start * laneSize, last * laneSize);
+  });
 }
 
 extern void parallelFold2d(

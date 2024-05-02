@@ -16,15 +16,15 @@ def print_interval(start: float, end: float):
 size: int = 2048 * 1000
 a = torch.tensor([x for x in range(size)], dtype=torch.float32, device='cpu').cpu()
 
-for i in range(3):
+for i in range(10):
     c = a.sum()
 
 average = 0.0
-iterations: int = 100
+iterations: int = 1000
 for i in range(iterations):
     print(f'Iteration {i + 1}')
     start = time.perf_counter()
-    c = a.sum(dtype=torch.float64)
+    c = a.sum()
     end = time.perf_counter()
     interval = to_us(end - start)
     print(f"took {interval}us; sum: {c}")
