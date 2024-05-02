@@ -18,6 +18,7 @@ constexpr int iterations = 1000;
 std::chrono::steady_clock::time_point schedBegins[iterations];
 std::chrono::steady_clock::time_point schedEnds[iterations];
 std::chrono::steady_clock::time_point threadBegins[32][iterations];
+std::chrono::steady_clock::time_point threadEnds[32][iterations];
 std::atomic<int16_t> jobId = -1;
 std::atomic<uint16_t> total = 0;
 
@@ -35,22 +36,30 @@ std::latch *latch = nullptr;
     std::unique_lock<std::mutex> lock(mutex[threadNum]);
     notifier[threadNum].wait(lock, [&]() { return jobId != prevJobId; });
     prevJobId = jobId;
+    threadBegins[threadNum][prevJobId] = std::chrono::steady_clock::now();
+    if (threadNum %4 == 0) {
+      for(uint16_t i = 1; i <= 3; i++) {
+        notifier[threadNum + i]
+            .notify_one();
+      }
+    }
     /*std::osyncstream(std::cout)
         << "Job " << prevJobId << " thread " << threadNum << std::endl;*/
-    threadBegins[threadNum][jobId] = std::chrono::steady_clock::now();
+    // threadBegins[threadNum][jobId] = std::chrono::steady_clock::now();
     total++;
     latch->count_down();
     /*std::cout << "Job " << prevJobId << " thread " << threadNum << " done"
               << std::endl;*/
+    threadEnds[threadNum][prevJobId] = std::chrono::steady_clock::now();
   }
 }
 
 int main() {
-  int err = setHighestThreadPriority(pthread_self());
+  /*int err = setHighestThreadPriority(pthread_self());
   if (err) {
     std::cerr << "Failed to set highest thread priority" << std::endl;
     exit(1);
-  }
+  }*/
 
   mutex = new std::mutex[std::thread::hardware_concurrency()];
   notifier = new std::condition_variable[std::thread::hardware_concurrency()];
@@ -65,11 +74,11 @@ int main() {
     pthread_create(
         &th[i], nullptr, reinterpret_cast<void *(*)(void *)>(thfunc), &is[i]
     );
-    err = setHighestThreadPriority(th[i]);
+    /*err = setHighestThreadPriority(th[i]);
     if (err) {
       std::cerr << "Failed to set highest child thread priority" << std::endl;
       exit(1);
-    }
+    }*/
   }
   std::this_thread::sleep_for(std::chrono::seconds(1));
   for (int iteration = 0; iteration < iterations; iteration++) {
@@ -78,9 +87,9 @@ int main() {
     latch = new std::latch(std::thread::hardware_concurrency() - 1);
     jobId = iteration;
     schedBegins[iteration] = std::chrono::steady_clock::now();
-    for (int threadNum = 0; threadNum < std::thread::hardware_concurrency() - 1;
+    for (int threadNum = 0; threadNum < std::thread::hardware_concurrency() / 4;
          threadNum++) {
-      notifier[threadNum].notify_one();
+      notifier[threadNum * 4].notify_one();
     }
     latch->wait();
     schedEnds[iteration] = std::chrono::steady_clock::now();
@@ -95,15 +104,21 @@ int main() {
                  )
                      .count()
               << "us" << std::endl;
-    for (int jobNum = 0; jobNum < std::thread::hardware_concurrency() - 1;
-         jobNum++) {
+    for (int threadId = 0; threadId < std::thread::hardware_concurrency() - 1;
+         threadId++) {
       average += std::chrono::duration_cast<std::chrono::microseconds>(
-                     threadBegins[jobNum][iteration] - schedBegins[iteration]
+                     threadBegins[threadId][iteration] - schedBegins[iteration]
       )
                      .count();
-      std::cout << "Thread " << jobNum << " took "
+      std::cout << "Thread " << threadId << " started after "
                 << std::chrono::duration_cast<std::chrono::microseconds>(
-                       threadBegins[jobNum][iteration] - schedBegins[iteration]
+                       threadBegins[threadId][iteration] -
+                       schedBegins[iteration]
+                   )
+                << " took "
+                << std::chrono::duration_cast<std::chrono::microseconds>(
+                       threadEnds[threadId][iteration] -
+                       threadBegins[threadId][iteration]
                    )
                        .count()
                 << "us" << std::endl;

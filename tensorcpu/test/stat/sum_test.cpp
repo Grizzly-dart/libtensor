@@ -44,10 +44,10 @@ void check(O out, const I *inp, uint64_t nel) {
 }
 
 int main() {
-  int err = setHighestThreadPriority(pthread_self());
+  /*int err = setHighestThreadPriority(pthread_self());
   if (err) {
     throw std::runtime_error("Failed to set thread priority");
-  }
+  }*/
 
   using I = float;
   using O = float;
@@ -64,7 +64,7 @@ int main() {
     }
   }
 
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 10; i++) {
     sum_noparnosimd<O, I>(&out, inp, size);
     tcSumNaive2<I>(&out, inp, size);
     sum_parsimd<O, I>(&out, inp, size);

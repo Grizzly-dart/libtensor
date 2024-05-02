@@ -6,6 +6,7 @@
 #define TENSORCPU_THREAD_POOL_HPP
 
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
@@ -38,14 +39,17 @@ class ThreadPool {
   std::atomic<bool> killed = false;
   std::vector<std::chrono::steady_clock::time_point> threadBegins;
   std::vector<std::chrono::steady_clock::time_point> threadEnds;
+  uint16_t siblingCount = 0;
 
 public:
   ThreadPool()
-      : mutex(std::thread::hardware_concurrency() - 1),
-        notifier(std::thread::hardware_concurrency() - 1),
+      : mutex(std::thread::hardware_concurrency()),
+        notifier(std::thread::hardware_concurrency()),
         threads(std::thread::hardware_concurrency() - 1),
         threadBegins(std::thread::hardware_concurrency() - 1),
         threadEnds(std::thread::hardware_concurrency() - 1) {
+    siblingCount =
+        std::ceil(std::sqrt(std::thread::hardware_concurrency() - 1));
     for (uint16_t threadNum = 0;
          threadNum < std::thread::hardware_concurrency() - 1; threadNum++) {
       WorkerArgs *args = new WorkerArgs{this, threadNum};
@@ -54,10 +58,10 @@ public:
           reinterpret_cast<void *(*)(void *)>(workerFunc), args
       );
       pthread_detach(threads[threadNum]);
-      int err = setHighestThreadPriority(threads[threadNum]);
+      /*int err = setHighestThreadPriority(threads[threadNum]);
       if (err != 0) {
         throw std::runtime_error("Failed to set thread priority");
-      }
+      }*/
       threads.push_back(threads[threadNum]);
     }
   }
@@ -67,8 +71,7 @@ public:
     latch = new std::latch(std::thread::hardware_concurrency() - 1);
     auto begin = std::chrono::steady_clock::now();
     jobId++;
-    for (uint16_t threadNum = 0;
-         threadNum < std::thread::hardware_concurrency() - 1; threadNum++) {
+    for (uint16_t threadNum = 0; threadNum < siblingCount; threadNum++) {
       notifier[threadNum].notify_one();
     }
 
@@ -77,24 +80,12 @@ public:
     (*latch).wait();
     latch = nullptr;
     work = nullptr;
-    auto end = std::chrono::steady_clock::now();
-    std::cout << "Time taken: "
-              << std::chrono::duration_cast<std::chrono::microseconds>(
-                     end - begin
-                 )
-                     .count()
-              << "us" << std::endl;
+
     for (uint16_t threadNum = 0;
          threadNum < std::thread::hardware_concurrency() - 1; threadNum++) {
       std::cout << "Thread " << threadNum << " started after "
                 << std::chrono::duration_cast<std::chrono::microseconds>(
                        threadBegins[threadNum] - begin
-                   )
-                       .count()
-                << "us" << std::endl;
-      std::cout << "Thread " << threadNum << " took "
-                << std::chrono::duration_cast<std::chrono::microseconds>(
-                       threadEnds[threadNum] - threadBegins[threadNum]
                    )
                        .count()
                 << "us" << std::endl;
@@ -120,9 +111,16 @@ public:
       pool->notifier[threadNum].wait(lock, [&]() {
         return jobId == pool->jobId || pool->killed;
       });
-      if (pool->killed) continue;
-      if (pool->work == nullptr) continue;
+      if (pool->killed)
+        continue;
+      if (pool->work == nullptr)
+        continue;
       pool->threadBegins[threadNum] = std::chrono::steady_clock::now();
+      if (threadNum < pool->siblingCount) {
+        for (uint16_t i = 1; i < pool->siblingCount; i++) {
+          pool->notifier[threadNum + i * pool->siblingCount].notify_one();
+        }
+      }
       jobId++;
 
       try {
@@ -131,7 +129,6 @@ public:
       }
 
       (*pool->latch).count_down();
-      pool->threadEnds[threadNum] = std::chrono::steady_clock::now();
     }
     return nullptr;
   }
