@@ -44,11 +44,6 @@ void check(O out, const I *inp, uint64_t nel) {
 }
 
 int main() {
-  /*int err = setHighestThreadPriority(pthread_self());
-  if (err) {
-    throw std::runtime_error("Failed to set thread priority");
-  }*/
-
   using I = float;
   using O = float;
   const uint64_t size = 2048 * 1000;
@@ -106,6 +101,7 @@ int main() {
     std::cout << "Optim: " << timeC << "us sum: " << out << std::endl;
     averageOptim.consume(timeC);
     check(out, inp, size);
+    pool.printInfo();
     std::cout << "---------" << std::endl;
     // timeSum += timeA - timeB;
   }

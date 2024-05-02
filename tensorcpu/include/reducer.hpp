@@ -180,7 +180,7 @@ void parallelSimdFold(
     std::vector<O> &results
 ) {
   uint64_t totalLanes = nel / laneSize;
-  uint64_t numThreads = std::thread::hardware_concurrency();
+  uint64_t numThreads = pool.getConcurrency();
   uint64_t lanesPerThread;
   uint64_t remaining = 0;
   if (numThreads > totalLanes) {
