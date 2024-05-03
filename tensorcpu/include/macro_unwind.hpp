@@ -39,7 +39,7 @@
   UNWIND2_SAME(float, OP)                                                      \
   UNWIND2_SAME(double, OP)
 
-#define UNWIND2_ALL_2ND(T, OP)                                                 \
+#define UNWIND2_ALL_2ND(OP, T)                                                 \
   OP(T, int8_t)                                                                \
   OP(T, int16_t)                                                               \
   OP(T, int32_t)                                                               \
@@ -52,16 +52,16 @@
   OP(T, double)
 
 #define UNWIND2_ALL_TYPES(OP)                                                  \
-  UNWIND2_ALL_2ND(int8_t, OP)                                                  \
-  UNWIND2_ALL_2ND(int16_t, OP)                                                 \
-  UNWIND2_ALL_2ND(int32_t, OP)                                                 \
-  UNWIND2_ALL_2ND(int64_t, OP)                                                 \
-  UNWIND2_ALL_2ND(uint8_t, OP)                                                 \
-  UNWIND2_ALL_2ND(uint16_t, OP)                                                \
-  UNWIND2_ALL_2ND(uint32_t, OP)                                                \
-  UNWIND2_ALL_2ND(uint64_t, OP)                                                \
-  UNWIND2_ALL_2ND(float, OP)                                                   \
-  UNWIND2_ALL_2ND(double, OP)
+  UNWIND2_ALL_2ND(OP, int8_t)                                                  \
+  UNWIND2_ALL_2ND(OP, int16_t)                                                 \
+  UNWIND2_ALL_2ND(OP, int32_t)                                                 \
+  UNWIND2_ALL_2ND(OP, int64_t)                                                 \
+  UNWIND2_ALL_2ND(OP, uint8_t)                                                 \
+  UNWIND2_ALL_2ND(OP, uint16_t)                                                \
+  UNWIND2_ALL_2ND(OP, uint32_t)                                                \
+  UNWIND2_ALL_2ND(OP, uint64_t)                                                \
+  UNWIND2_ALL_2ND(OP, float)                                                   \
+  UNWIND2_ALL_2ND(OP, double)
 
 #define UNWIND2_SIGNED(OP)                                                     \
   OP(int8_t, int8_t)                                                           \

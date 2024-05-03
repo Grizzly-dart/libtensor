@@ -11,8 +11,10 @@
 #include <limits>
 #include <stdfloat>
 
+#include "reducer.hpp"
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
+#include "stat.hpp"
 
 namespace stdx = std::experimental;
 
@@ -20,7 +22,7 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 template <typename O, typename I>
-const char *tcMeanNaive(O *out, const I *inp, uint64_t nel) {
+const char *mean_naive(O *out, const I *inp, uint64_t nel) {
   O ret = 0;
   for (uint64_t i = 0; i < nel; i++) {
     ret += inp[i];
@@ -32,7 +34,7 @@ const char *tcMeanNaive(O *out, const I *inp, uint64_t nel) {
 template <typename O, typename I>
 void check(O out, const I *inp, uint64_t nel) {
   O res;
-  tcMeanNaive(&res, inp, nel);
+  mean_naive(&res, inp, nel);
   O diff = std::abs(res - out);
   if (diff > nel * 1e-5) {
     std::cout << "Mismatch => " << res << " != " << out << "; " << diff
@@ -43,7 +45,7 @@ void check(O out, const I *inp, uint64_t nel) {
 int main() {
   using I = float;
   using O = float;
-  const uint64_t size = 2048 * 10000;
+  const uint64_t size = 2048 * 100;
   I *inp = new (std::align_val_t(128)) I[size];
   O out;
 
@@ -54,36 +56,32 @@ int main() {
       inp[i] = static_cast<I>(i);
   }
 
+  steady_clock::time_point begin, end;
+  Mean<double, int64_t> averageNaive, averageAutoVec, averageOptim;
+  int64_t dur;
   int64_t timeSum = 0;
   const int64_t iterations = 10;
   for (uint8_t i = 0; i < iterations; i++) {
-    out = 0;
-    steady_clock::time_point begin = steady_clock::now();
-    tcMeanNaive(&out, inp, size);
-    steady_clock::time_point end = steady_clock::now();
-    std::cout
-        << "Naive:   "
-        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-        << "us" << std::endl;
-    auto timeA =
-        chrono::duration_cast<chrono::microseconds>(end - begin).count();
-    check(out, inp, size);
+    {
+      out = 0;
+      begin = steady_clock::now();
+      mean_naive(&out, inp, size);
+      end = steady_clock::now();
+      dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
+      std::cout << "Naive:     " << dur << "us" << std::endl;
+      check(out, inp, size);
+    }
 
-    out = 0;
-    begin = steady_clock::now();
-    tcMean<O, I>(&out, inp, size);
-    end = steady_clock::now();
-    std::cout
-        << "AutoVec: "
-        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-        << "us" << std::endl;
-    auto timeB =
-        chrono::duration_cast<chrono::microseconds>(end - begin).count();
-    check(out, inp, size);
-    timeSum += timeA - timeB;
-    std::cout << "---------" << std::endl;
+    {
+      out = 0;
+      begin = steady_clock::now();
+      mean_1thread(&out, inp, size);
+      end = steady_clock::now();
+      dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
+      std::cout << "1thread:   " << dur << "us" << std::endl;
+      check(out, inp, size);
+    }
   }
-  std::cout << "Time diff: " << timeSum / iterations << "us" << std::endl;
 
   delete[] inp;
 

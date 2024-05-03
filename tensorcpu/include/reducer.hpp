@@ -17,7 +17,7 @@ public:
 
   Mean() = default;
 
-  Mean(I mean, uint64_t n) : mean(mean), n(n) {}
+  Mean(O mean, uint64_t n) : mean(mean), n(n) {}
 
   void consume(I sample) {
     n++;
@@ -45,7 +45,7 @@ template <typename O, typename I> class MeanSimd {
 public:
   static constexpr uint32_t sizeSimd = std::min(simdSize<I>(), simdSize<O>());
   typedef I ISimdType __attribute__((vector_size(sizeof(I) * sizeSimd)));
-  typedef O OSimdType __attribute__((vector_size(sizeof(I) * sizeSimd)));
+  typedef O OSimdType __attribute__((vector_size(sizeof(O) * sizeSimd)));
 
   OSimdType runningMean = {0};
   uint64_t n = 0;
@@ -132,7 +132,7 @@ template <typename O, typename I> class VarianceSimd {
 public:
   static constexpr uint32_t sizeSimd = std::min(simdSize<I>(), simdSize<O>());
   typedef I ISimdType __attribute__((vector_size(sizeof(I) * sizeSimd)));
-  typedef O OSimdType __attribute__((vector_size(sizeof(I) * sizeSimd)));
+  typedef O OSimdType __attribute__((vector_size(sizeof(O) * sizeSimd)));
 
   OSimdType runningMean = {0};
   uint64_t n = 0;

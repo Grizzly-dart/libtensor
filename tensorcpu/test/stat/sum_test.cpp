@@ -22,7 +22,7 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 template <typename I>
-const char *tcSumNaive2(I *out, const I *inp, uint64_t nel) {
+const char *sum_stdalgo(I *out, const I *inp, uint64_t nel) {
   *out = std::reduce(
       std::execution::par_unseq, inp, inp + nel, I(0),
       [](I a, I b) { return a + b; }
@@ -46,7 +46,7 @@ void check(O out, const I *inp, uint64_t nel) {
 int main() {
   using I = float;
   using O = float;
-  const uint64_t size = 2048 * 10;
+  const uint64_t size = 2048 * 1000;
   I *inp = new (std::align_val_t(128)) I[size];
   O out;
 
@@ -100,7 +100,7 @@ int main() {
 
     out = 0;
     begin = steady_clock::now();
-    tcSumNaive2<I>(&out, inp, size);
+    sum_stdalgo<I>(&out, inp, size);
     end = steady_clock::now();
     auto timeB =
         chrono::duration_cast<chrono::microseconds>(end - begin).count();
