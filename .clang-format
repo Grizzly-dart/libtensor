@@ -2,3 +2,4 @@ BasedOnStyle: LLVM
 IndentWidth: 2
 AlignAfterOpenBracket: BlockIndent
 PenaltyReturnTypeOnItsOwnLine: 9999999
+AllowShortIfStatementsOnASingleLine: true

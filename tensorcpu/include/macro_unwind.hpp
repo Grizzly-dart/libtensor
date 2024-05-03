@@ -75,4 +75,29 @@
   OP(float, float)                                                             \
   OP(double, double)
 
+#define UNWIND2_UP(OP)                                                         \
+  OP(int8_t, int8_t)                                                           \
+  OP(int16_t, int8_t)                                                          \
+  OP(int32_t, int8_t)                                                          \
+  OP(int64_t, int8_t)                                                          \
+  OP(int16_t, int16_t)                                                         \
+  OP(int32_t, int16_t)                                                         \
+  OP(int64_t, int16_t)                                                         \
+  OP(int32_t, int32_t)                                                         \
+  OP(int64_t, int32_t)                                                         \
+  OP(int64_t, int64_t)                                                         \
+  OP(uint8_t, uint8_t)                                                         \
+  OP(uint16_t, uint8_t)                                                        \
+  OP(uint32_t, uint8_t)                                                        \
+  OP(uint64_t, uint8_t)                                                        \
+  OP(uint16_t, uint16_t)                                                       \
+  OP(uint32_t, uint16_t)                                                       \
+  OP(uint64_t, uint16_t)                                                       \
+  OP(uint32_t, uint32_t)                                                       \
+  OP(uint64_t, uint32_t)                                                       \
+  OP(uint64_t, uint64_t)                                                       \
+  OP(float, float)                                                             \
+  OP(double, float)                                                            \
+  OP(double, double)
+
 #endif // TENSORCPU_MACRO_UNWIND_HPP

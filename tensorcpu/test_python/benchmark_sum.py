@@ -13,7 +13,7 @@ def print_interval(start: float, end: float):
     diff *= 1e6
     print(f"took {int(diff)}us")
 
-size: int = 2048 * 1000
+size: int = 2048 * 100
 a = torch.tensor([x for x in range(size)], dtype=torch.float32, device='cpu').cpu()
 
 for i in range(10):
@@ -29,7 +29,7 @@ for i in range(iterations):
     interval = to_us(end - start)
     print(f"took {interval}us; sum: {c}")
     average += end - start
-    time.sleep(1)
+    # time.sleep(0.5)
 
 print(f"average: {to_us(average / iterations)}us")
 

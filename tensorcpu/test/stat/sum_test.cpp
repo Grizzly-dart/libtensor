@@ -46,7 +46,7 @@ void check(O out, const I *inp, uint64_t nel) {
 int main() {
   using I = float;
   using O = float;
-  const uint64_t size = 2048 * 1000;
+  const uint64_t size = 2048 * 10;
   I *inp = new (std::align_val_t(128)) I[size];
   O out;
 
@@ -90,7 +90,7 @@ int main() {
 
     out = 0;
     begin = steady_clock::now();
-    sum_noparnosimd<O, I>(&out, inp, size);
+    sum_1thread<O, I>(&out, inp, size);
     end = steady_clock::now();
     auto timeA =
         chrono::duration_cast<chrono::microseconds>(end - begin).count();

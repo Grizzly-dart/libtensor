@@ -8,7 +8,7 @@
 #include <cstdint>
 
 template <typename O, typename I>
-extern void sum_noparnosimd(O *out, const I *inp, uint64_t nel);
+extern void sum_1thread(O *out, const I *inp, uint64_t nel);
 
 template <typename O, typename I>
 extern void sum_parsimd(O *out, I *inp, uint64_t nel);
