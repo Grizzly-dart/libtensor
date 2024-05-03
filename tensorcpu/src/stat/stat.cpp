@@ -30,14 +30,15 @@ void sum_parsimd(O *out, I *inp, uint64_t nel) {
   typedef I ISimd __attribute__((vector_size(laneSize * sizeof(I))));
   typedef O OSimd __attribute__((vector_size(laneSize * sizeof(O))));
 
-  std::vector<O> partialSums;
-  parallelSimdFold<O>(
+  OSimd simdSums[std::thread::hardware_concurrency()];
+  uint16_t numThreads = 0;
+  parallelSimdFold(
       nel, laneSize,
-      [inp, &partialSums](uint16_t threadId, uint64_t start, uint64_t end) {
+      [inp, &simdSums](uint16_t threadId, uint64_t start, uint64_t end) {
         OSimd ret = {0};
         ISimd a;
         for (uint64_t i = start; i < end; i += laneSize) {
-          memcpy(&a, inp + i, laneSize * sizeof(I));
+          memcpy(&a, inp + i, sizeof(ISimd));
           if constexpr (std::is_same<O, I>::value) {
             ret += a;
           } else {
@@ -45,19 +46,16 @@ void sum_parsimd(O *out, I *inp, uint64_t nel) {
           }
         }
 
-        O res = 0;
-        for (uint64_t i = 0; i < laneSize; i++) {
-          res += ret[i];
-        }
-
-        partialSums[threadId] = res;
+        simdSums[threadId] = ret;
       },
-      partialSums
+      numThreads
   );
+  for (uint16_t i = 1; i < numThreads; i++) {
+    simdSums[0] += simdSums[i];
+  }
   O ret = 0;
-#pragma GCC ivdep
-  for (O sum : partialSums) {
-    ret += sum;
+  for (uint64_t i = 0; i < laneSize; i++) {
+    ret += simdSums[0][i];
   }
   uint64_t tail = nel % laneSize;
   inp += nel - tail;

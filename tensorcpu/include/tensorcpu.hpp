@@ -127,4 +127,8 @@ extern const char *mm(
     uint32_t batchSize, uint8_t bT
 );
 
+extern bool kDebug;
+
+extern uint8_t kDebugLevel;
+
 #endif // TENSORC_H

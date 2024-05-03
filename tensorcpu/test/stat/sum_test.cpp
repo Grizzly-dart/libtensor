@@ -59,15 +59,32 @@ int main() {
     }
   }
 
-  for (int i = 0; i < 10; i++) {
-    sum_noparnosimd<O, I>(&out, inp, size);
-    tcSumNaive2<I>(&out, inp, size);
+  /*for (uint64_t i = 0; i < 3; i++) {
     sum_parsimd<O, I>(&out, inp, size);
-  }
+  }*/
 
   steady_clock::time_point begin, end;
   Mean<double, int64_t> averageNaive, averageAutoVec, averageOptim;
   const int64_t iterations = 100;
+  for(uint64_t i = 0; i < iterations; i++) {
+    out = 0;
+    begin = steady_clock::now();
+    sum_parsimd<O, I>(&out, inp, size);
+    end = steady_clock::now();
+    auto timeC =
+        chrono::duration_cast<chrono::microseconds>(end - begin).count();
+    std::cout << "Iteration: " << i << " Optim: " << timeC << "us sum: " << out << std::endl;
+    averageOptim.consume(timeC);
+    // check(out, inp, size);
+    pool.printInfo();
+    std::cout << "---------" << std::endl;
+  }
+  std::cout << "====================" << std::endl;
+  std::cout << "Average time: " << averageOptim.mean << "us" << std::endl;
+
+  averageNaive = Mean<double, int64_t>();
+  averageAutoVec = Mean<double, int64_t>();
+  averageOptim = Mean<double, int64_t>();
   for (uint64_t i = 0; i < iterations; i++) {
     std::cout << "Iteration " << i + 1 << std::endl;
 

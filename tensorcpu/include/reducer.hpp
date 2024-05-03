@@ -173,40 +173,11 @@ public:
   }
 };
 
-template <typename O>
 void parallelSimdFold(
-    uint64_t nel, uint64_t laneSize,
+    uint64_t threadId, uint64_t laneSize,
     const std::function<void(uint16_t, uint64_t, uint64_t)> &kernel,
-    std::vector<O> &results
-) {
-  uint64_t totalLanes = nel / laneSize;
-  uint64_t numThreads = pool.getConcurrency();
-  uint64_t lanesPerThread;
-  uint64_t remaining = 0;
-  if (numThreads > totalLanes) {
-    numThreads = totalLanes;
-    lanesPerThread = 1;
-  } else {
-    lanesPerThread = totalLanes / numThreads;
-    remaining = totalLanes % numThreads;
-  }
-
-  results.resize(numThreads);
-
-  pool.runTask([lanesPerThread, remaining, kernel, laneSize](uint64_t threadNum) {
-    uint64_t start = threadNum * lanesPerThread;
-    uint64_t last;
-    if (threadNum < remaining) {
-      start += threadNum;
-      last = start + lanesPerThread + 1;
-    } else {
-      start += remaining;
-      last = start + lanesPerThread;
-    }
-
-    kernel(threadNum, start * laneSize, last * laneSize);
-  });
-}
+    uint16_t& numThreads
+);
 
 extern void parallelFold2d(
     uint64_t rows, const std::function<void(uint64_t, uint64_t)> &kernel

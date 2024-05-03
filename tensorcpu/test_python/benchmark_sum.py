@@ -29,6 +29,7 @@ for i in range(iterations):
     interval = to_us(end - start)
     print(f"took {interval}us; sum: {c}")
     average += end - start
+    time.sleep(1)
 
 print(f"average: {to_us(average / iterations)}us")
 
