@@ -41,7 +41,8 @@ void parallelSimdFold(
 }
 
 void parallelFold2d(
-    uint64_t rows, const std::function<void(uint64_t, uint64_t)> &kernel
+    uint64_t rows,
+    const std::function<void(uint16_t threadId, uint64_t, uint64_t)> &kernel
 ) {
   uint64_t numThreads = std::thread::hardware_concurrency();
   uint64_t rowsPerThread = 1;

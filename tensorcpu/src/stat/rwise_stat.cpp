@@ -7,49 +7,7 @@
 
 #include "reducer.hpp"
 
-template <typename O, typename I>
-const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
-  constexpr uint64_t laneSize = simdSize<O>();
-  typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
-  typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
-  uint64_t laneEnd = (cols / laneSize) * laneSize;
-  uint64_t tail = cols - laneEnd;
 
-  parallelFold2d(
-      rows,
-      [laneEnd, inp, cols, tail, out](uint64_t startRow, uint64_t endRow) {
-        const I *in = inp + startRow * cols;
-        for (uint64_t row = startRow; row < endRow; row++) {
-          OSimdType sum = {0};
-          ISimdType a = {0};
-          for (uint64_t i = 0; i < laneEnd; i += laneSize) {
-            memcpy(&a, in, sizeof(ISimdType));
-            sum += __builtin_convertvector(a, OSimdType);
-            in += laneSize;
-          }
-
-          O res = 0;
-          for (uint64_t i = 0; i < laneSize; i++) {
-            res += sum[i];
-          }
-          for (uint64_t i = 0; i < tail; i++) {
-            res += in[i];
-          }
-          in += tail;
-          out[row] = res;
-        }
-      }
-  );
-
-  return nullptr;
-}
-
-#define TCSUM2D(O, I)                                                          \
-  template const char *tcSum2d(                                                \
-      O *out, const I *inp, uint64_t rows, uint64_t cols                       \
-  );
-
-TCSUM2D(float, uint16_t)
 
 template <typename O, typename I>
 const char *tcMean2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {

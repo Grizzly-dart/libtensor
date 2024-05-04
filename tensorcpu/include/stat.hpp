@@ -19,4 +19,10 @@ extern void mean_1thread(O *out, I *inp, uint64_t nel);
 template <typename O, typename I>
 extern void mean_parallel(O *out, I *inp, uint64_t nel);
 
+template <typename O, typename I>
+extern void variance_1thread(O *out, I *inp, uint64_t nel, uint64_t correction);
+
+template <typename O, typename I>
+void variance_parallel(O *out, I *inp, uint64_t nel, uint64_t correction);
+
 #endif // TENSORCPU_STAT_HPP

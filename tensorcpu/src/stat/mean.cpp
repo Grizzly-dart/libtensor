@@ -76,6 +76,7 @@ void mean_parallel(O *out, I *inp, uint64_t nel) {
   template void mean_parallel<O, I>(O * out, I * inp, uint64_t nel);
 
 UNWIND2_ALL_2ND(TCMEANPARALLEL, float)
+UNWIND2_ALL_2ND(TCMEANPARALLEL, double)
 
 template <typename O, typename I> void tcMean(O *out, I *inp, uint64_t nel) {
   if (nel <= 20480) {
@@ -88,3 +89,4 @@ template <typename O, typename I> void tcMean(O *out, I *inp, uint64_t nel) {
 #define TCMEAN(O, I) template void tcMean<O, I>(O * out, I * inp, uint64_t nel);
 
 UNWIND2_ALL_2ND(TCMEAN, float)
+UNWIND2_ALL_2ND(TCMEAN, double)
