@@ -45,7 +45,7 @@ void check(O out, const I *inp, uint64_t nel) {
 int main() {
   using I = float;
   using O = float;
-  const uint64_t size = 2048 * 100;
+  const uint64_t size = 2048 * 1000;
   I *inp = new (std::align_val_t(128)) I[size];
   O out;
 
@@ -79,6 +79,16 @@ int main() {
       end = steady_clock::now();
       dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
       std::cout << "1thread:   " << dur << "us" << std::endl;
+      check(out, inp, size);
+    }
+
+    {
+      out = 0;
+      begin = steady_clock::now();
+      mean_parallel(&out, inp, size);
+      end = steady_clock::now();
+      dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
+      std::cout << "parallel:   " << dur << "us" << std::endl;
       check(out, inp, size);
     }
   }
