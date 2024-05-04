@@ -15,8 +15,8 @@ void variance_1thread(O *out, I *inp, uint64_t nel, uint64_t correction) {
   using ISimd = typename VarianceSimd<O, I>::ISimdType;
 
   VarianceSimd<O, I> ret;
-  ISimd i1;
   for (uint64_t lane = 0; lane < nel; lane += laneSize) {
+    ISimd i1;
     memcpy(&i1, inp + lane, sizeof(ISimd));
     ret.consumeSimd(i1);
   }

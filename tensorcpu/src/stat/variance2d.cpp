@@ -15,10 +15,10 @@
 
 template <typename O, typename I>
 void variance2d_1thread(
-    O *out, const I *inp, uint64_t rows, uint64_t cols, uint64_t correction
+    O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction
 ) {
   using ISimd = VarianceSimd<O, I>::ISimdType;
-  constexpr uint64_t laneSize = VarianceSimd<O, I>::laneSize;
+  constexpr uint64_t laneSize = VarianceSimd<O, I>::sizeSimd;
 
   for (uint64_t row = 0; row < rows; row++) {
     VarianceSimd<O, I> folder;
@@ -39,43 +39,72 @@ void variance2d_1thread(
   }
 }
 
+#define TCVARIANCE2D1THREAD(O, I)                                              \
+  template void variance2d_1thread(                                            \
+      O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction  \
+  );
+
+UNWIND2_ALL_2ND(TCVARIANCE2D1THREAD, float)
+UNWIND2_ALL_2ND(TCVARIANCE2D1THREAD, double)
+
 template <typename O, typename I>
-const char *tcVariance2d(
-    O *out, const I *inp, uint64_t rows, uint64_t cols, uint64_t correction
+void variance2d_parsimd(
+    O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction
 ) {
-  constexpr uint64_t laneSize = simdSize<I>();
-  typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
-  typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
-  uint64_t laneEnd = (cols / laneSize) * laneSize;
-  uint64_t tail = cols - laneEnd;
+  using ISimd = VarianceSimd<O, I>::ISimdType;
+  constexpr uint64_t laneSize = VarianceSimd<O, I>::sizeSimd;
 
   parallelFold2d(
       rows,
-      [laneEnd, inp, cols, tail, out,
-       correction](uint64_t startRow, uint64_t endRow) {
-        const I *in = inp + startRow * cols;
+      [inp, cols, out,
+       correction](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
+        I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
           VarianceSimd<O, I> folder;
-          for (uint64_t i = 0; i < laneEnd; i += laneSize) {
-            ISimdType a = {0};
-            memcpy(&a, in, sizeof(ISimdType));
+          for (uint64_t col = 0; col < cols; col += laneSize) {
+            ISimd a;
+            memcpy(&a, in, sizeof(ISimd));
             folder.consumeSimd(a);
             in += laneSize;
           }
 
           Variance<O, I> reducer = folder.materialize();
-          for (uint64_t i = 0; i < tail; i++) {
-            reducer.consume(in[i]);
+          uint64_t tail = cols % laneSize;
+          for (uint64_t col = 0; col < tail; col++) {
+            reducer.consume(in[col]);
           }
-          out[row] = reducer.m2 / (cols - correction);
           in += tail;
+          out[row] = reducer.m2 / (cols - correction);
         }
       }
   );
-  return nullptr;
+}
+
+#define TCVARIANCE2DPARSIMD(O, I)                                              \
+  template void variance2d_parsimd(                                            \
+      O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction        \
+  );
+
+UNWIND2_ALL_2ND(TCVARIANCE2DPARSIMD, float)
+UNWIND2_ALL_2ND(TCVARIANCE2DPARSIMD, double)
+
+template <typename O, typename I>
+void tcVariance2d(
+    O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction
+) {
+  if (cols * rows < 1000) {
+    variance2d_1thread(out, inp, rows, cols, correction);
+    return;
+  } else {
+    variance2d_parsimd(out, inp, rows, cols, correction);
+    return;
+  }
 }
 
 #define TCVARIANCE2D(O, I)                                                     \
-  template const char *tcVariance2d(                                           \
-      O *out, const I *inp, uint64_t rows, uint64_t cols, uint64_t correction  \
+  template void tcVariance2d(                                                  \
+      O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction  \
   );
+
+UNWIND2_ALL_2ND(TCVARIANCE2D, float)
+UNWIND2_ALL_2ND(TCVARIANCE2D, double)

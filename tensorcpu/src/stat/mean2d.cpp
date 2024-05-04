@@ -14,9 +14,9 @@
 #include "typed_array.hpp"
 
 template <typename O, typename I>
-void mean2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols) {
+void mean2d_1thread(O *out, I *inp, uint64_t rows, uint64_t cols) {
   using ISimd = MeanSimd<O, I>::ISimdType;
-  constexpr uint64_t laneSize = MeanSimd<O, I>::laneSize;
+  constexpr uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
 
   for (uint64_t row = 0; row < rows; row++) {
     MeanSimd<O, I> folder;
@@ -29,7 +29,7 @@ void mean2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols) {
 
     Mean<O, I> reducer = folder.materialize();
     uint64_t tail = cols % laneSize;
-    for(uint64_t col = 0; col < tail; col++) {
+    for (uint64_t col = 0; col < tail; col++) {
       reducer.consume(inp[col]);
     }
     inp += tail;
@@ -37,40 +37,63 @@ void mean2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols) {
   }
 }
 
+#define TCMEAN2D1THREAD(O, I)                                                  \
+  template void mean2d_1thread(                                                \
+      O *out, I *inp, uint64_t rows, uint64_t cols                       \
+  );
+
+UNWIND2_ALL_2ND(TCMEAN2D1THREAD, float)
+UNWIND2_ALL_2ND(TCMEAN2D1THREAD, double)
+
 template <typename O, typename I>
-const char *tcMean2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
-  constexpr uint64_t laneSize = simdSize<O>();
-  typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
-  typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
-  uint64_t laneEnd = (cols / laneSize) * laneSize;
-  uint64_t tail = cols - laneEnd;
+void mean2d_parsimd(O *out, I *inp, uint64_t rows, uint64_t cols) {
+  constexpr uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
+  using ISimd = typename MeanSimd<O, I>::ISimdType;
 
   parallelFold2d(
       rows,
-      [laneEnd, inp, cols, tail, out](uint64_t startRow, uint64_t endRow) {
-        const I *in = inp + startRow * cols;
+      [inp, cols, out](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
+        I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
           MeanSimd<O, I> folder;
-          for (uint64_t i = 0; i < laneEnd; i += laneSize) {
-            ISimdType a = {0};
-            memcpy(&a, in, sizeof(ISimdType));
+          for (uint64_t col = 0; col < cols; col += laneSize) {
+            ISimd a;
+            memcpy(&a, in, sizeof(ISimd));
             folder.consumeSimd(a);
             in += laneSize;
           }
 
           Mean<O, I> reducer = folder.materialize();
-          for (uint64_t i = 0; i < tail; i++) {
-            reducer.consume(in[i]);
+          uint64_t tail = cols % laneSize;
+          for (uint64_t col = 0; col < tail; col++) {
+            reducer.consume(in[col]);
           }
-          out[row] = reducer.mean;
           in += tail;
+          out[row] = reducer.mean;
         }
       }
   );
-  return nullptr;
+}
+
+#define TCMEANPARSIMD(O, I)                                                    \
+  template void mean2d_parsimd<O, I>(                                          \
+      O * out, I * inp, uint64_t rows, uint64_t cols                           \
+  );
+
+UNWIND2_ALL_2ND(TCMEANPARSIMD, float)
+UNWIND2_ALL_2ND(TCMEANPARSIMD, double)
+
+template <typename O, typename I>
+void tcMean2d(O *out, I *inp, uint64_t rows, uint64_t cols) {
+  if (cols * rows < 1000) {
+    mean2d_1thread(out, inp, rows, cols);
+  } else {
+    mean2d_parsimd(out, inp, rows, cols);
+  }
 }
 
 #define TCMEAN2D(O, I)                                                         \
-  template const char *tcMean2d(                                               \
-      O *out, const I *inp, uint64_t rows, uint64_t cols                       \
-  );
+  template void tcMean2d(O *out, I *inp, uint64_t rows, uint64_t cols);
+
+UNWIND2_ALL_2ND(TCMEAN2D, float)
+UNWIND2_ALL_2ND(TCMEAN2D, double)

@@ -14,7 +14,7 @@
 #include "typed_array.hpp"
 
 template <typename O, typename I>
-void sum_1thread(O *out, const I *inp, uint64_t nel) {
+void sum_1thread(O *out, I *inp, uint64_t nel) {
   O ret = O(0);
 #pragma GCC ivdep
   for (uint64_t i = 0; i < nel; i++) {
@@ -24,7 +24,7 @@ void sum_1thread(O *out, const I *inp, uint64_t nel) {
 }
 
 #define TCSUM1THREAD(O, I)                                                 \
-  template void sum_1thread(O *out, const I *inp, uint64_t nel);
+  template void sum_1thread(O *out, I *inp, uint64_t nel);
 
 UNWIND2_UP(TCSUM1THREAD)
 
@@ -40,8 +40,8 @@ void sum_parsimd(O *out, I *inp, uint64_t nel) {
       nel, laneSize,
       [inp, &simdSums](uint16_t threadId, uint64_t start, uint64_t end) {
         OSimd ret = {0};
-        ISimd a;
         for (uint64_t i = start; i < end; i += laneSize) {
+          ISimd a;
           memcpy(&a, inp + i, sizeof(ISimd));
           if constexpr (std::is_same<O, I>::value) {
             ret += a;

@@ -14,7 +14,7 @@
 #include "typed_array.hpp"
 
 template <typename O, typename I>
-void sum2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols) {
+void sum2d_1thread(O *out, I *inp, uint64_t rows, uint64_t cols) {
   for (uint64_t row = 0; row < rows; row++) {
     O ret = O(0);
 #pragma GCC ivdep
@@ -26,9 +26,7 @@ void sum2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols) {
 }
 
 #define TCSUM2D1THREAD(O, I)                                                   \
-  template void sum2d_1thread(                                                 \
-      O *out, const I *inp, uint64_t rows, uint64_t cols                       \
-  );
+  template void sum2d_1thread(O *out, I *inp, uint64_t rows, uint64_t cols);
 
 UNWIND2_UP(TCSUM2D1THREAD)
 
@@ -41,7 +39,7 @@ void sum2d_parsimd(O *out, I *inp, uint64_t rows, uint64_t cols) {
   parallelFold2d(
       rows,
       [inp, cols, out](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
-        const I *in = inp + startRow * cols;
+        I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
           OSimdType sum = {0};
           for (uint64_t i = 0; i < cols; i += laneSize) {
@@ -69,16 +67,23 @@ void sum2d_parsimd(O *out, I *inp, uint64_t rows, uint64_t cols) {
   );
 }
 
+#define TCSUM2DPARSIMD(O, I)                                                   \
+  template void sum2d_parsimd(O *out, I *inp, uint64_t rows, uint64_t cols);
+
+UNWIND2_UP(TCSUM2DPARSIMD)
+
 template <typename O, typename I>
-void tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
+void tcSum2d(O *out, I *inp, uint64_t rows, uint64_t cols) {
   if (cols * rows < 1000) {
     sum2d_1thread(out, inp, rows, cols);
+    return;
   } else {
     sum2d_parsimd(out, inp, rows, cols);
+    return;
   }
 }
 
 #define TCSUM2D(O, I)                                                          \
-  template void tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols);
+  template void tcSum2d(O *out, I *inp, uint64_t rows, uint64_t cols);
 
 UNWIND2_UP(TCSUM2D)

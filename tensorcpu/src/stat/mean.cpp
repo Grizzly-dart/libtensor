@@ -43,7 +43,6 @@ template <typename O, typename I>
 void mean_parallel(O *out, I *inp, uint64_t nel) {
   uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
   using ISimd = typename MeanSimd<O, I>::ISimdType;
-  using OSimd = typename MeanSimd<O, I>::OSimdType;
 
   uint16_t numThreads = 0;
   Mean<O, I> means[std::thread::hardware_concurrency()];
@@ -51,9 +50,9 @@ void mean_parallel(O *out, I *inp, uint64_t nel) {
       nel, laneSize,
       [inp, &means](uint16_t threadId, uint64_t start, uint64_t end) {
         MeanSimd<O, I> ret;
-        ISimd i1;
         for (uint64_t lane = start; lane < end;
              lane += MeanSimd<O, I>::sizeSimd) {
+          ISimd i1;
           memcpy(&i1, inp + lane, sizeof(ISimd));
           ret.consumeSimd(i1);
         }
