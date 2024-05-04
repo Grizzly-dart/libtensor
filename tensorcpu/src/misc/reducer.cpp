@@ -13,19 +13,17 @@ void parallelSimdFold(
 ) {
   uint64_t totalLanes = nel / laneSize;
   numThreads = pool.getConcurrency();
-  uint64_t lanesPerThread;
+  uint64_t lanesPerThread = 1;
   uint64_t remaining = 0;
   if (numThreads > totalLanes) {
     numThreads = totalLanes;
-    lanesPerThread = 1;
   } else {
     lanesPerThread = totalLanes / numThreads;
     remaining = totalLanes % numThreads;
   }
 
-  std::chrono::steady_clock::time_point timeStart, timeEnd;
-  pool.runTask([lanesPerThread, remaining, kernel, laneSize, &timeStart,
-                &timeEnd](uint64_t threadId) {
+  pool.runTask([lanesPerThread, remaining, kernel,
+                laneSize](uint64_t threadId) {
     uint64_t start = threadId * lanesPerThread;
     uint64_t last;
     if (threadId < remaining) {
@@ -42,9 +40,10 @@ void parallelSimdFold(
 
 void parallelFold2d(
     uint64_t rows,
-    const std::function<void(uint16_t threadId, uint64_t, uint64_t)> &kernel
+    const std::function<
+        void(uint16_t threadId, uint64_t startRow, uint64_t endRow)> &kernel
 ) {
-  uint64_t numThreads = std::thread::hardware_concurrency();
+  uint16_t numThreads = std::thread::hardware_concurrency();
   uint64_t rowsPerThread = 1;
   uint64_t remainder = 0;
   if (numThreads > rows) {
@@ -53,23 +52,17 @@ void parallelFold2d(
     rowsPerThread = rows / numThreads;
     remainder = rows % numThreads;
   }
-  std::vector<std::future<void>> futures(numThreads);
 
-  uint64_t start = 0;
-  for (uint64_t threadNum = 0; threadNum < numThreads; threadNum++) {
-    uint64_t last = start + rowsPerThread;
-    if (threadNum < remainder) {
-      last++;
+  pool.runTask([rowsPerThread, remainder, kernel](uint64_t threadId) {
+    uint64_t startRow = threadId * rowsPerThread;
+    uint64_t endRow;
+    if (threadId < remainder) {
+      startRow += threadId;
+      endRow = startRow + rowsPerThread + 1;
+    } else {
+      startRow += remainder;
+      endRow = startRow + rowsPerThread;
     }
-
-    futures[threadNum] =
-        std::async(std::launch::async, [start, last, kernel]() {
-          kernel(start, last);
-        });
-    start = last;
-  }
-
-  for (uint64_t i = 0; i < numThreads; i++) {
-    futures[i].wait();
-  }
+    kernel(threadId, startRow, endRow);
+  });
 }

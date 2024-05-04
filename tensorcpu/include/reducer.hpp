@@ -50,7 +50,7 @@ public:
   OSimdType runningMean = {0};
   uint64_t n = 0;
 
-  void consumeSimd(ISimdType &input) {
+  void consumeSimd(const ISimdType &input) {
     n++;
     auto delta = __builtin_convertvector(input, OSimdType) - runningMean;
     runningMean += delta / O(n);
@@ -138,7 +138,7 @@ public:
   uint64_t n = 0;
   OSimdType m2 = {0};
 
-  void consumeSimd(ISimdType &input) {
+  void consumeSimd(const ISimdType &input) {
     n++;
     OSimdType convInput = __builtin_convertvector(input, OSimdType);
     auto delta = convInput - runningMean;
@@ -173,14 +173,16 @@ public:
   }
 };
 
-void parallelSimdFold(
+extern void parallelSimdFold(
     uint64_t threadId, uint64_t laneSize,
     const std::function<void(uint16_t, uint64_t, uint64_t)> &kernel,
     uint16_t& numThreads
 );
 
 extern void parallelFold2d(
-    uint64_t rows, const std::function<void(uint64_t, uint64_t)> &kernel
+    uint64_t rows,
+    const std::function<
+        void(uint16_t threadId, uint64_t startRow, uint64_t endRow)> &kernel
 );
 
 #endif // TENSORC_REDUCER_HPP

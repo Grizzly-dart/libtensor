@@ -17,6 +17,7 @@ template <typename O, typename I>
 void sum2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols) {
   for (uint64_t row = 0; row < rows; row++) {
     O ret = O(0);
+#pragma GCC ivdep
     for (uint64_t col = 0; col < cols; col++) {
       ret += inp[row * cols + col];
     }
@@ -24,8 +25,10 @@ void sum2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols) {
   }
 }
 
-#define TCSUM2D1THREAD(O, I)                                                 \
-  template void sum2d_1thread(O *out, const I *inp, uint64_t rows, uint64_t cols);
+#define TCSUM2D1THREAD(O, I)                                                   \
+  template void sum2d_1thread(                                                 \
+      O *out, const I *inp, uint64_t rows, uint64_t cols                       \
+  );
 
 UNWIND2_UP(TCSUM2D1THREAD)
 
@@ -35,27 +38,20 @@ void sum2d_parsimd(O *out, I *inp, uint64_t rows, uint64_t cols) {
   typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
   typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
 
-  // TODO
-}
-
-template <typename O, typename I>
-const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
-  constexpr uint64_t laneSize = simdSize<O>();
-  typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
-  typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
-  uint64_t laneEnd = (cols / laneSize) * laneSize;
-  uint64_t tail = cols - laneEnd;
-
   parallelFold2d(
       rows,
-      [laneEnd, inp, cols, tail, out](uint64_t startRow, uint64_t endRow) {
+      [inp, cols, out](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
         const I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
           OSimdType sum = {0};
-          ISimdType a = {0};
-          for (uint64_t i = 0; i < laneEnd; i += laneSize) {
+          for (uint64_t i = 0; i < cols; i += laneSize) {
+            ISimdType a;
             memcpy(&a, in, sizeof(ISimdType));
-            sum += __builtin_convertvector(a, OSimdType);
+            if constexpr (std::is_same<O, I>::value) {
+              sum += a;
+            } else {
+              sum += __builtin_convertvector(a, OSimdType);
+            }
             in += laneSize;
           }
 
@@ -63,21 +59,26 @@ const char *tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
           for (uint64_t i = 0; i < laneSize; i++) {
             res += sum[i];
           }
-          for (uint64_t i = 0; i < tail; i++) {
+          for (uint64_t i = (cols - (cols % laneSize)); i < cols; i++) {
             res += in[i];
           }
-          in += tail;
+          in += cols % laneSize;
           out[row] = res;
         }
       }
   );
+}
 
-  return nullptr;
+template <typename O, typename I>
+void tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols) {
+  if (cols * rows < 1000) {
+    sum2d_1thread(out, inp, rows, cols);
+  } else {
+    sum2d_parsimd(out, inp, rows, cols);
+  }
 }
 
 #define TCSUM2D(O, I)                                                          \
-  template const char *tcSum2d(                                                \
-      O *out, const I *inp, uint64_t rows, uint64_t cols                       \
-  );
+  template void tcSum2d(O *out, const I *inp, uint64_t rows, uint64_t cols);
 
-TCSUM2D(float, uint16_t)
+UNWIND2_UP(TCSUM2D)
