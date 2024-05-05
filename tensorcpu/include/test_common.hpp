@@ -25,7 +25,7 @@ template <typename T> void fillSeq(T *inp, uint64_t size) {
   }
 }
 
-void makeSizes1d(std::vector<uint64_t> &sizes, uint64_t laneSize) {
+void make1dTestSizes(std::vector<uint64_t> &sizes, uint64_t laneSize) {
   sizes.resize(0);
   for (uint64_t i = 1; i < laneSize * 3; i++) {
     sizes.push_back(i);
@@ -56,8 +56,15 @@ void makeSizes1d(std::vector<uint64_t> &sizes, uint64_t laneSize) {
   }
 }
 
-void makeSizes2d(std::vector<Dim2> sizes, uint64_t laneSize) {
+void make2dTestSizes(std::vector<Dim2> sizes, uint64_t laneSize) {
+  uint64_t concurrency = std::thread::hardware_concurrency();
+
   sizes.resize(0);
+  for (uint64_t col = 1; col < laneSize * 3; col++) {
+    for(uint64_t row = 1; row < concurrency * 3; row++) {
+      sizes.push_back(Dim2(row, col));
+    }
+  }
   // TODO
 }
 

@@ -62,7 +62,7 @@ int main() {
   using O = float;
 
   std::vector<Dim2> sizes;
-  makeSizes2d(sizes, std::min(simdSize<O>(), simdSize<I>()));
+  make2dTestSizes(sizes, std::min(simdSize<O>(), simdSize<I>()));
 
   const int64_t iterations = 100;
   for (Dim2& size : sizes) {

@@ -62,7 +62,7 @@ int main() {
   uint64_t correction = 1;
 
   std::vector<uint64_t> sizes;
-  makeSizes1d(sizes, std::min(simdSize<O>(), simdSize<I>()));
+  make1dTestSizes(sizes, std::min(simdSize<O>(), simdSize<I>()));
 
   const int64_t iterations = 100;
   for (uint64_t size : sizes) {
