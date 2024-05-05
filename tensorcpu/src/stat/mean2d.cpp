@@ -85,7 +85,7 @@ UNWIND2_ALL_2ND(TCMEANPARALLEL, double)
 
 template <typename O, typename I>
 void tcMean2d(O *out, I *inp, uint64_t rows, uint64_t cols) {
-  if (cols * rows < 1000) {
+  if (cols * rows < 1000 || rows == 1) {
     mean2d_1thread(out, inp, rows, cols);
   } else {
     mean2d_parallel(out, inp, rows, cols);

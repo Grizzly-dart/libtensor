@@ -94,7 +94,7 @@ template <typename O, typename I>
 void tcVariance2d(
     O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction
 ) {
-  if (cols * rows < 1000) {
+  if (cols * rows < 1000 || rows == 1) {
     variance2d_1thread(out, inp, rows, cols, correction);
     return;
   } else {

@@ -76,7 +76,7 @@ UNWIND2_UP(TCSUM2DPARALLEL)
 
 template <typename O, typename I>
 void tcSum2d(O *out, I *inp, uint64_t rows, uint64_t cols) {
-  if (cols * rows < 1000) {
+  if (cols * rows < 1000 || rows == 1) {
     sum2d_1thread(out, inp, rows, cols);
     return;
   } else {
