@@ -15,7 +15,7 @@ def print_interval(start: float, end: float):
     print(f"took {int(diff)}us")
 
 iterations: int = 100
-resp = {"tech": "pytorch", "op": "sum", "iterations": iterations}
+resp = {"op": "mean", "iterations": iterations}
 for withSleep in [True, False]:
     for size in [2048, 2048 * 10, 2048 * 100, 2048 * 1000]:
         a = torch.tensor([x for x in range(size)], dtype=torch.float32, device='cpu').cpu()
@@ -24,7 +24,7 @@ for withSleep in [True, False]:
         for i in range(iterations):
             # print(f'Iteration {i + 1}')
             start = time.perf_counter()
-            c = a.sum()
+            c = a.mean()
             end = time.perf_counter()
             interval = to_us(end - start)
             # print(f"took {interval}us; sum: {c}")

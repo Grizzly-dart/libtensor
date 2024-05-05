@@ -57,17 +57,18 @@ int main() {
   }
 
   steady_clock::time_point begin, end;
-  Mean<double, int64_t> averageNaive, averageAutoVec, averageOptim;
+  Mean<double, int64_t> averageNaive, average1Thread, averageOptim;
   int64_t dur;
-  int64_t timeSum = 0;
-  const int64_t iterations = 10;
-  for (uint8_t i = 0; i < iterations; i++) {
+  const uint64_t iterations = 100;
+  for (uint64_t i = 0; i < iterations; i++) {
+    std::cout << "Iteration: " << i << std::endl;
     {
       out = 0;
       begin = steady_clock::now();
       mean_naive(&out, inp, size);
       end = steady_clock::now();
       dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
+      averageNaive.consume(dur);
       std::cout << "Naive:     " << dur << "us" << std::endl;
       check(out, inp, size);
     }
@@ -78,6 +79,7 @@ int main() {
       mean_1thread(&out, inp, size);
       end = steady_clock::now();
       dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
+      average1Thread.consume(dur);
       std::cout << "1thread:   " << dur << "us" << std::endl;
       check(out, inp, size);
     }
@@ -88,10 +90,15 @@ int main() {
       mean_parallel(&out, inp, size);
       end = steady_clock::now();
       dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
+      averageOptim.consume(dur);
       std::cout << "parallel:   " << dur << "us" << std::endl;
       check(out, inp, size);
     }
+    std::cout << "---------" << std::endl;
   }
+  std::cout << "Average time: " << averageNaive.mean << "us" << std::endl;
+  std::cout << "Average time: " << average1Thread.mean << "us" << std::endl;
+  std::cout << "Average time: " << averageOptim.mean << "us" << std::endl;
 
   delete[] inp;
 

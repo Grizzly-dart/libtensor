@@ -47,48 +47,63 @@ target_link_libraries(tensorcpu pthread m)
 
 ###### binary_arith_test
 add_executable(binary_arith_test test/ewise/binary_arith_test.cpp)
+list(APPEND Test binary_arith_test)
 
 ###### mm_test
 add_executable(mm_test test/matrix/mm_test.cpp)
+list(APPEND Test mm_test)
 
 ###### mmBt_test
 add_executable(mmBt_test test/matrix/mmBt_test.cpp)
+list(APPEND Test mmBt_test)
 
 ###### cast_test
 add_executable(cast_test test/ewise/cast_test.cpp)
+list(APPEND Test cast_test)
 
 ###### abs_test
 add_executable(abs_test test/ewise/abs_test.cpp)
+list(APPEND Test abs_test)
 
 ###### neg_test
 add_executable(neg_test test/ewise/neg_test.cpp)
+list(APPEND Test neg_test)
 
 ###### sum_test
 add_executable(sum_test test/stat/sum_test.cpp)
+list(APPEND Test sum_test)
+add_executable(sum_bench test_bench/stat/sum_test.cpp)
+list(APPEND Bench sum_bench)
 
 ###### mean_test
 add_executable(mean_test test/stat/mean_test.cpp)
+list(APPEND Test mean_test)
 
 ###### variance_test
 add_executable(variance_test test/stat/variance_test.cpp)
+list(APPEND Test variance_test)
 
 ###### sum2d_test
 add_executable(sum2d_test test/stat/sum2d_test.cpp)
+list(APPEND Test sum2d_test)
 
 ###### mean2d_test
 add_executable(mean2d_test test/stat/mean2d_test.cpp)
+list(APPEND Test mean2d_test)
 
 ###### variance2d_test
 add_executable(variance2d_test test/stat/variance2d_test.cpp)
+list(APPEND Test variance2d_test)
 
 ###### dummy_test
 add_executable(dummy_test test/dummy.cpp)
+list(APPEND Test dummy_test)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPENBLAS REQUIRED openblas)
 pkg_check_modules(TBB REQUIRED tbb)
 
-foreach (target IN ITEMS tensorcpu binary_arith_test mm_test mmBt_test cast_test abs_test neg_test sum_test mean_test variance_test sum2d_test mean2d_test variance2d_test dummy_test)
+foreach (target IN LISTS Test Bench ITEMS tensorcpu)
     target_link_directories(${target} PUBLIC ./build)
     if (NOT ${target} STREQUAL "tensorcpu")
         target_link_libraries(${target} tensorcpu)

@@ -28,13 +28,13 @@ void variance_1thread(O *out, I *inp, uint64_t nel, uint64_t correction) {
   *out = reducer.m2 / (reducer.n - correction);
 }
 
-#define TCVARIANCE(O, I)                                                       \
+#define VARIANCE1THREAD(O, I)                                                       \
   template void variance_1thread<O, I>(                                        \
       O * out, I * inp, uint64_t nel, uint64_t correction                      \
   );
 
-UNWIND2_ALL_2ND(TCVARIANCE, float)
-UNWIND2_ALL_2ND(TCVARIANCE, double)
+UNWIND2_ALL_2ND(VARIANCE1THREAD, float)
+UNWIND2_ALL_2ND(VARIANCE1THREAD, double)
 
 template <typename O, typename I>
 void variance_parallel(O *out, I *inp, uint64_t nel, uint64_t correction) {
@@ -70,13 +70,13 @@ void variance_parallel(O *out, I *inp, uint64_t nel, uint64_t correction) {
   *out = reducer.m2 / (reducer.n - correction);
 }
 
-#define TCVARIANCE(O, I)                                                       \
+#define VARIANCEPARALLEL(O, I)                                                       \
   template void variance_parallel<O, I>(                                       \
       O * out, I * inp, uint64_t nel, uint64_t correction                      \
   );
 
-UNWIND2_ALL_2ND(TCVARIANCE, float)
-UNWIND2_ALL_2ND(TCVARIANCE, double)
+UNWIND2_ALL_2ND(VARIANCEPARALLEL, float)
+UNWIND2_ALL_2ND(VARIANCEPARALLEL, double)
 
 template <typename O, typename I>
 void tcVariance(O *out, I *inp, uint64_t nel, uint64_t correction) {

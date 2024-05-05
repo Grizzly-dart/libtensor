@@ -21,7 +21,7 @@ void mean_1thread(O *out, I *inp, uint64_t nel) {
   MeanSimd<O, I> mean;
   for (uint64_t i = 0; i < nel; i += MeanSimd<O, I>::sizeSimd) {
     ISimd i1;
-    memcpy(&i1, inp + i, MeanSimd<O, I>::sizeSimd * sizeof(I));
+    memcpy(&i1, inp + i, sizeof(ISimd));
     mean.consumeSimd(i1);
   }
 

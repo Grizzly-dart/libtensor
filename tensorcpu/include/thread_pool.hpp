@@ -168,7 +168,7 @@ public:
     while (!pool->killed) {
       int16_t curJob;
       for (uint64_t waitCycles1 = 0; waitCycles1 < 100; waitCycles1++) {
-        for (uint64_t waitCycles2 = 0; waitCycles2 < 1000; waitCycles2++) {
+        for (uint64_t waitCycles2 = 0; waitCycles2 < 100; waitCycles2++) {
           curJob = pool->jobId.load(std::memory_order_relaxed);
           if (curJob != jobNum - 1 || pool->killed) {
             goto here;
