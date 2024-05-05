@@ -17,10 +17,12 @@ template <typename O, typename I>
 void mean2d_1thread(O *out, I *inp, uint64_t rows, uint64_t cols) {
   using ISimd = MeanSimd<O, I>::ISimdType;
   constexpr uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
+  uint64_t tail = cols % laneSize;
+  uint64_t endCol = cols - tail;
 
   for (uint64_t row = 0; row < rows; row++) {
     MeanSimd<O, I> folder;
-    for (uint64_t col = 0; col < cols; col += laneSize) {
+    for (uint64_t col = 0; col < endCol; col += laneSize) {
       ISimd a;
       memcpy(&a, inp, sizeof(ISimd));
       folder.consumeSimd(a);
@@ -28,7 +30,6 @@ void mean2d_1thread(O *out, I *inp, uint64_t rows, uint64_t cols) {
     }
 
     Mean<O, I> reducer = folder.materialize();
-    uint64_t tail = cols % laneSize;
     for (uint64_t col = 0; col < tail; col++) {
       reducer.consume(inp[col]);
     }
@@ -47,14 +48,16 @@ template <typename O, typename I>
 void mean2d_parallel(O *out, I *inp, uint64_t rows, uint64_t cols) {
   constexpr uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
   using ISimd = typename MeanSimd<O, I>::ISimdType;
+  uint64_t tail = cols % laneSize;
+  uint64_t endCol = cols - tail;
 
   parallelFold2d(
       rows,
-      [inp, cols, out](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
+      [inp, cols, out, tail, endCol](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
         I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
           MeanSimd<O, I> folder;
-          for (uint64_t col = 0; col < cols; col += laneSize) {
+          for (uint64_t col = 0; col < endCol; col += laneSize) {
             ISimd a;
             memcpy(&a, in, sizeof(ISimd));
             folder.consumeSimd(a);
@@ -62,7 +65,6 @@ void mean2d_parallel(O *out, I *inp, uint64_t rows, uint64_t cols) {
           }
 
           Mean<O, I> reducer = folder.materialize();
-          uint64_t tail = cols % laneSize;
           for (uint64_t col = 0; col < tail; col++) {
             reducer.consume(in[col]);
           }

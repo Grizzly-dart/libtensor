@@ -35,14 +35,16 @@ void sum2d_parallel(O *out, I *inp, uint64_t rows, uint64_t cols) {
   constexpr uint64_t laneSize = simdSize<O>();
   typedef I ISimdType __attribute__((vector_size(sizeof(I) * laneSize)));
   typedef O OSimdType __attribute__((vector_size(sizeof(O) * laneSize)));
+  uint64_t tail = cols % laneSize;
+  uint64_t endCol = cols - tail;
 
   parallelFold2d(
       rows,
-      [inp, cols, out](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
+      [inp, cols, out, tail, endCol](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
         I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
           OSimdType sum = {0};
-          for (uint64_t i = 0; i < cols; i += laneSize) {
+          for (uint64_t i = 0; i < endCol; i += laneSize) {
             ISimdType a;
             memcpy(&a, in, sizeof(ISimdType));
             if constexpr (std::is_same<O, I>::value) {
@@ -55,12 +57,12 @@ void sum2d_parallel(O *out, I *inp, uint64_t rows, uint64_t cols) {
 
           O res = 0;
           for (uint64_t i = 0; i < laneSize; i++) {
-            res += sum[i];
+            res += O(sum[i]);
           }
-          for (uint64_t i = (cols - (cols % laneSize)); i < cols; i++) {
+          for (uint64_t i = 0; i < tail; i++) {
             res += in[i];
           }
-          in += cols % laneSize;
+          in += tail;
           out[row] = res;
         }
       }

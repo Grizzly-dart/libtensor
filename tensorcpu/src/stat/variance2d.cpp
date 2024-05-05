@@ -19,10 +19,12 @@ void variance2d_1thread(
 ) {
   using ISimd = VarianceSimd<O, I>::ISimdType;
   constexpr uint64_t laneSize = VarianceSimd<O, I>::sizeSimd;
+  uint64_t tail = cols % laneSize;
+  uint64_t endCol = cols - tail;
 
   for (uint64_t row = 0; row < rows; row++) {
     VarianceSimd<O, I> folder;
-    for (uint64_t col = 0; col < cols; col += laneSize) {
+    for (uint64_t col = 0; col < endCol; col += laneSize) {
       ISimd a;
       memcpy(&a, inp, sizeof(ISimd));
       folder.consumeSimd(a);
@@ -30,7 +32,6 @@ void variance2d_1thread(
     }
 
     Variance<O, I> reducer = folder.materialize();
-    uint64_t tail = cols % laneSize;
     for (uint64_t col = 0; col < tail; col++) {
       reducer.consume(inp[col]);
     }
@@ -41,7 +42,7 @@ void variance2d_1thread(
 
 #define TCVARIANCE2D1THREAD(O, I)                                              \
   template void variance2d_1thread(                                            \
-      O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction  \
+      O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction        \
   );
 
 UNWIND2_ALL_2ND(TCVARIANCE2D1THREAD, float)
@@ -53,15 +54,17 @@ void variance2d_parallel(
 ) {
   using ISimd = VarianceSimd<O, I>::ISimdType;
   constexpr uint64_t laneSize = VarianceSimd<O, I>::sizeSimd;
+  uint64_t tail = cols % laneSize;
+  uint64_t endCol = cols - tail;
 
   parallelFold2d(
       rows,
-      [inp, cols, out,
-       correction](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
+      [inp, cols, out, correction, tail,
+       endCol](uint16_t threadId, uint64_t startRow, uint64_t endRow) {
         I *in = inp + startRow * cols;
         for (uint64_t row = startRow; row < endRow; row++) {
           VarianceSimd<O, I> folder;
-          for (uint64_t col = 0; col < cols; col += laneSize) {
+          for (uint64_t col = 0; col < endCol; col += laneSize) {
             ISimd a;
             memcpy(&a, in, sizeof(ISimd));
             folder.consumeSimd(a);
@@ -69,7 +72,6 @@ void variance2d_parallel(
           }
 
           Variance<O, I> reducer = folder.materialize();
-          uint64_t tail = cols % laneSize;
           for (uint64_t col = 0; col < tail; col++) {
             reducer.consume(in[col]);
           }
@@ -80,8 +82,8 @@ void variance2d_parallel(
   );
 }
 
-#define TCVARIANCE2DPARALLEL(O, I)                                              \
-  template void variance2d_parallel(                                            \
+#define TCVARIANCE2DPARALLEL(O, I)                                             \
+  template void variance2d_parallel(                                           \
       O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction        \
   );
 
@@ -103,7 +105,7 @@ void tcVariance2d(
 
 #define TCVARIANCE2D(O, I)                                                     \
   template void tcVariance2d(                                                  \
-      O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction  \
+      O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction        \
   );
 
 UNWIND2_ALL_2ND(TCVARIANCE2D, float)

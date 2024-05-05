@@ -56,7 +56,7 @@ void make1dTestSizes(std::vector<uint64_t> &sizes, uint64_t laneSize) {
   }
 }
 
-void make2dTestSizes(std::vector<Dim2> sizes, uint64_t laneSize) {
+void make2dTestSizes(std::vector<Dim2>& sizes, uint64_t laneSize) {
   uint64_t concurrency = std::thread::hardware_concurrency();
 
   sizes.resize(0);

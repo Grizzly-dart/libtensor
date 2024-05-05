@@ -59,6 +59,9 @@ void parallelFold2d(
     remainder = rows % numThreads;
   }
 
+  if (numThreads == 0) {
+    return;
+  }
   pool.runTask([rowsPerThread, remainder, kernel](uint64_t threadId) {
     uint64_t startRow = threadId * rowsPerThread;
     uint64_t endRow;
