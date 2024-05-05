@@ -12,6 +12,12 @@ void parallelSimdFold(
     uint16_t &numThreads
 ) {
   uint64_t totalLanes = nel / laneSize;
+
+  if (totalLanes == 0) {
+    numThreads = 0;
+    return;
+  }
+
   numThreads = pool.getConcurrency();
   uint64_t lanesPerThread = 1;
   uint64_t remaining = 0;

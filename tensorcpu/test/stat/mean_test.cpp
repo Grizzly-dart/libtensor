@@ -12,9 +12,10 @@
 #include <stdfloat>
 
 #include "reducer.hpp"
-#include "tensorcpu.hpp"
-#include "typed_array.hpp"
 #include "stat.hpp"
+#include "tensorcpu.hpp"
+#include "test_common.hpp"
+#include "typed_array.hpp"
 
 namespace stdx = std::experimental;
 
@@ -32,75 +33,59 @@ const char *mean_naive(O *out, const I *inp, uint64_t nel) {
 }
 
 template <typename O, typename I>
-void check(O out, const I *inp, uint64_t nel) {
+void check(
+    O out, const I *inp, uint64_t nel, const char *name, uint64_t iteration
+) {
   O res;
   mean_naive(&res, inp, nel);
   O diff = std::abs(res - out);
   if (diff > nel * 1e-5) {
-    std::cout << "Mismatch => " << res << " != " << out << "; " << diff
-              << std::endl;
+    std::cerr << "In " << name << "; size = " << nel
+              << "; Iteration: " << iteration << "; Mismatch => " << res
+              << " != " << out << "; " << diff << std::endl;
+    exit(1);
   }
 }
 
 int main() {
   using I = float;
   using O = float;
-  const uint64_t size = 2048 * 1000;
-  I *inp = new (std::align_val_t(128)) I[size];
-  O out;
 
-  for (uint64_t i = 0; i < size; i++) {
-    if constexpr (std::is_floating_point<I>::value)
-      inp[i] = drand48();
-    else
-      inp[i] = static_cast<I>(i);
+  {
+    uint64_t size = 9;
+    I *inp = new (std::align_val_t(128)) I[size];
+    fillRand(inp, size);
+    O out = 0;
+    mean_1thread<O, I>(&out, inp, size);
+    check(out, inp, size, "mean_1thread", 0);
   }
 
-  steady_clock::time_point begin, end;
-  Mean<double, int64_t> averageNaive, average1Thread, averageOptim;
-  int64_t dur;
-  const uint64_t iterations = 100;
-  for (uint64_t i = 0; i < iterations; i++) {
-    std::cout << "Iteration: " << i << std::endl;
-    {
-      out = 0;
-      begin = steady_clock::now();
-      mean_naive(&out, inp, size);
-      end = steady_clock::now();
-      dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
-      averageNaive.consume(dur);
-      std::cout << "Naive:     " << dur << "us" << std::endl;
-      check(out, inp, size);
-    }
+  std::vector<uint64_t> sizes;
+  makeSizes1d(sizes, std::min(simdSize<O>(), simdSize<I>()));
 
-    {
-      out = 0;
-      begin = steady_clock::now();
-      mean_1thread(&out, inp, size);
-      end = steady_clock::now();
-      dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
-      average1Thread.consume(dur);
-      std::cout << "1thread:   " << dur << "us" << std::endl;
-      check(out, inp, size);
+  const int64_t iterations = 100;
+  for (uint64_t size : sizes) {
+    I *inp = new (std::align_val_t(128)) I[size];
+    fillRand(inp, size);
+    for (uint64_t i = 0; i < iterations; i++) {
+      O out = 0;
+      mean_parallel<O, I>(&out, inp, size);
+      check(out, inp, size, "mean_parallel", i);
     }
-
-    {
-      out = 0;
-      begin = steady_clock::now();
-      mean_parallel(&out, inp, size);
-      end = steady_clock::now();
-      dur = chrono::duration_cast<chrono::microseconds>(end - begin).count();
-      averageOptim.consume(dur);
-      std::cout << "parallel:   " << dur << "us" << std::endl;
-      check(out, inp, size);
+    for (uint64_t i = 0; i < iterations; i++) {
+      O out = 0;
+      mean_1thread<O, I>(&out, inp, size);
+      check(out, inp, size, "mean_1thread", i);
     }
-    std::cout << "---------" << std::endl;
+    for (uint64_t i = 0; i < iterations; i++) {
+      O out = 0;
+      tcMean<O, I>(&out, inp, size);
+      check(out, inp, size, "tcMean", i);
+    }
+    delete[] inp;
   }
-  std::cout << "Average time: " << averageNaive.mean << "us" << std::endl;
-  std::cout << "Average time: " << average1Thread.mean << "us" << std::endl;
-  std::cout << "Average time: " << averageOptim.mean << "us" << std::endl;
 
-  delete[] inp;
+  pool.kill();
 
   return 0;
 }

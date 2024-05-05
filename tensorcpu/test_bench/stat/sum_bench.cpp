@@ -69,7 +69,7 @@ int main() {
   for(uint64_t i = 0; i < iterations; i++) {
     out = 0;
     begin = steady_clock::now();
-    sum_parsimd<O, I>(&out, inp, size);
+    sum_parallel<O, I>(&out, inp, size);
     end = steady_clock::now();
     auto timeC =
         chrono::duration_cast<chrono::microseconds>(end - begin).count();
@@ -111,7 +111,7 @@ int main() {
 
     out = 0;
     begin = steady_clock::now();
-    sum_parsimd<O, I>(&out, inp, size);
+    sum_parallel<O, I>(&out, inp, size);
     end = steady_clock::now();
     auto timeC =
         chrono::duration_cast<chrono::microseconds>(end - begin).count();

@@ -13,6 +13,9 @@
 
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
+#include "test_common.hpp"
+#include "stat.hpp"
+#include "thread_pool.hpp"
 
 namespace stdx = std::experimental;
 
@@ -38,71 +41,52 @@ const char *tcVarianceNaive(
 }
 
 template <typename O, typename I>
-void check(O out, const I *inp, uint64_t nel, uint64_t correction) {
+void check(
+    O out, const I *inp, uint64_t nel, uint64_t correction, const char *name,
+    uint64_t iteration
+) {
   O res;
   tcVarianceNaive(&res, inp, nel, correction);
   O diff = std::abs(res - out);
   if (diff > nel * 1e-6) {
-    std::cout << "Mismatch => " << res << " != " << out << "; " << diff
-              << std::endl;
-  } else {
-    std::cout << "Match => " << res << " == " << out << "; " << diff
-              << std::endl;
-  }
-}
-
-template <typename T>
-void fill(T *arr, uint64_t size) {
-  for (uint64_t i = 0; i < size; i++) {
-    if constexpr (std::is_floating_point<T>::value)
-      arr[i] = drand48();
-    else
-      arr[i] = static_cast<T>(i);
+    std::cerr << "In " << name << "; size = " << nel
+              << "; Iteration: " << iteration << "; Mismatch => " << res
+              << " != " << out << "; " << diff << std::endl;
+    exit(1);
   }
 }
 
 int main() {
   using I = float;
   using O = float;
-  const uint64_t size = 2048 * 10000;
-  uint64_t correction = 0;
-  I *inp = new (std::align_val_t(128)) I[size];
-  O out;
+  uint64_t correction = 1;
 
-  int64_t timeSum = 0;
-  const int64_t iterations = 10;
-  for (uint8_t i = 0; i < iterations; i++) {
-    fill(inp, size);
+  std::vector<uint64_t> sizes;
+  makeSizes1d(sizes, std::min(simdSize<O>(), simdSize<I>()));
 
-    out = 0;
-    steady_clock::time_point begin = steady_clock::now();
-    tcVarianceNaive(&out, inp, size, correction);
-    steady_clock::time_point end = steady_clock::now();
-    std::cout
-        << "Naive:   "
-        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-        << "us" << std::endl;
-    auto timeA =
-        chrono::duration_cast<chrono::microseconds>(end - begin).count();
-    check(out, inp, size, correction);
-
-    out = 0;
-    begin = steady_clock::now();
-    tcVariance<O, I>(&out, inp, size, correction);
-    end = steady_clock::now();
-    std::cout
-        << "AutoVec: "
-        << chrono::duration_cast<chrono::microseconds>(end - begin).count()
-        << "us" << std::endl;
-    auto timeB =
-        chrono::duration_cast<chrono::microseconds>(end - begin).count();
-    check(out, inp, size, correction);
-    timeSum += timeA - timeB;
-    std::cout << "---------" << std::endl;
+  const int64_t iterations = 100;
+  for (uint64_t size : sizes) {
+    I *inp = new (std::align_val_t(128)) I[size];
+    fillRand(inp, size);
+    for (uint64_t i = 0; i < iterations; i++) {
+      O out = 0;
+      variance_parallel<O, I>(&out, inp, size, correction);
+      check(out, inp, size, correction, "sum_parallel", i);
+    }
+    for (uint64_t i = 0; i < iterations; i++) {
+      O out = 0;
+      variance_1thread<O, I>(&out, inp, size, correction);
+      check(out, inp, size, correction, "sum_1thread", i);
+    }
+    for (uint64_t i = 0; i < iterations; i++) {
+      O out = 0;
+      tcVariance<O, I>(&out, inp, size, correction);
+      check(out, inp, size, correction, "tcSum", i);
+    }
+    delete[] inp;
   }
-  std::cout << "Time diff: " << timeSum / iterations << "us" << std::endl;
 
-  delete[] inp;
+  pool.kill();
 
   return 0;
 }

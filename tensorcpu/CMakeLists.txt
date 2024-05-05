@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.27)
 include(CMakePrintHelpers)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+enable_testing()
 
 execute_process(COMMAND bash -c "uname | tr -d '\n'" OUTPUT_VARIABLE OS)
 execute_process(COMMAND bash -c "uname -p | tr -d '\n'" OUTPUT_VARIABLE ARCH)
-cmake_print_variables(OS ARCH)
+# cmake_print_variables(OS ARCH)
 
 set(CMAKE_CXX_COMPILER g++-13)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ftree-vectorize -ffast-math")
@@ -27,8 +28,6 @@ if (ARCH MATCHES "^x86")
 endif ()
 if (ARCH MATCHES "^arm")
 endif ()
-
-cmake_print_variables(CMAKE_CXX_FLAGS_DEBUG)
 
 project(tensorcpu C CXX)
 
@@ -72,28 +71,44 @@ list(APPEND Test neg_test)
 ###### sum_test
 add_executable(sum_test test/stat/sum_test.cpp)
 list(APPEND Test sum_test)
-add_executable(sum_bench test_bench/stat/sum_test.cpp)
+add_test(NAME sum_test COMMAND sum_test)
+add_executable(sum_bench test_bench/stat/sum_bench.cpp)
 list(APPEND Bench sum_bench)
 
 ###### mean_test
 add_executable(mean_test test/stat/mean_test.cpp)
 list(APPEND Test mean_test)
+add_test(NAME mean_test COMMAND mean_test)
+add_executable(mean_bench test_bench/stat/mean_bench.cpp)
+list(APPEND Bench mean_bench)
 
 ###### variance_test
 add_executable(variance_test test/stat/variance_test.cpp)
 list(APPEND Test variance_test)
+add_test(NAME variance_test COMMAND variance_test)
+add_executable(variance_bench test_bench/stat/variance_bench.cpp)
+list(APPEND Bench variance_bench)
 
 ###### sum2d_test
 add_executable(sum2d_test test/stat/sum2d_test.cpp)
 list(APPEND Test sum2d_test)
+add_test(NAME sum2d_test COMMAND sum2d_test)
+add_executable(sum2d_bench test_bench/stat/sum2d_bench.cpp)
+list(APPEND Bench sum2d_bench)
 
 ###### mean2d_test
 add_executable(mean2d_test test/stat/mean2d_test.cpp)
 list(APPEND Test mean2d_test)
+add_test(NAME mean2d_test COMMAND mean2d_test)
+add_executable(mean2d_bench test_bench/stat/mean2d_bench.cpp)
+list(APPEND Bench mean2d_bench)
 
 ###### variance2d_test
 add_executable(variance2d_test test/stat/variance2d_test.cpp)
 list(APPEND Test variance2d_test)
+add_test(NAME variance2d_test COMMAND variance2d_test)
+add_executable(variance2d_bench test_bench/stat/variance2d_bench.cpp)
+list(APPEND Bench variance2d_bench)
 
 ###### dummy_test
 add_executable(dummy_test test/dummy.cpp)

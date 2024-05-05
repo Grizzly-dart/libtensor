@@ -16,17 +16,17 @@
 template <typename O, typename I>
 void mean_1thread(O *out, I *inp, uint64_t nel) {
   using ISimd = typename MeanSimd<O, I>::ISimdType;
-  using OSimd = typename MeanSimd<O, I>::OSimdType;
+  auto tail = nel % MeanSimd<O, I>::sizeSimd;
+  auto end = nel - tail;
 
   MeanSimd<O, I> mean;
-  for (uint64_t i = 0; i < nel; i += MeanSimd<O, I>::sizeSimd) {
+  for (uint64_t i = 0; i < end; i += MeanSimd<O, I>::sizeSimd) {
     ISimd i1;
     memcpy(&i1, inp + i, sizeof(ISimd));
     mean.consumeSimd(i1);
   }
 
   Mean<O, I> meanFinal = mean.materialize();
-  auto tail = nel % MeanSimd<O, I>::sizeSimd;
   for (uint64_t i = nel - tail; i < nel; i++) {
     meanFinal.consume(inp[i]);
   }

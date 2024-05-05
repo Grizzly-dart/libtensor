@@ -13,22 +13,24 @@ template <typename O, typename I>
 void variance_1thread(O *out, I *inp, uint64_t nel, uint64_t correction) {
   uint64_t laneSize = VarianceSimd<O, I>::sizeSimd;
   using ISimd = typename VarianceSimd<O, I>::ISimdType;
+  auto tail = nel % MeanSimd<O, I>::sizeSimd;
+  auto end = nel - tail;
 
   VarianceSimd<O, I> ret;
-  for (uint64_t lane = 0; lane < nel; lane += laneSize) {
+  for (uint64_t lane = 0; lane < end; lane += laneSize) {
     ISimd i1;
     memcpy(&i1, inp + lane, sizeof(ISimd));
     ret.consumeSimd(i1);
   }
 
   Variance<O, I> reducer = ret.materialize();
-  for (uint64_t i = nel - (nel % laneSize); i < nel; i++) {
+  for (uint64_t i = nel - tail; i < nel; i++) {
     reducer.consume(inp[i]);
   }
   *out = reducer.m2 / (reducer.n - correction);
 }
 
-#define VARIANCE1THREAD(O, I)                                                       \
+#define VARIANCE1THREAD(O, I)                                                  \
   template void variance_1thread<O, I>(                                        \
       O * out, I * inp, uint64_t nel, uint64_t correction                      \
   );
@@ -70,7 +72,7 @@ void variance_parallel(O *out, I *inp, uint64_t nel, uint64_t correction) {
   *out = reducer.m2 / (reducer.n - correction);
 }
 
-#define VARIANCEPARALLEL(O, I)                                                       \
+#define VARIANCEPARALLEL(O, I)                                                 \
   template void variance_parallel<O, I>(                                       \
       O * out, I * inp, uint64_t nel, uint64_t correction                      \
   );

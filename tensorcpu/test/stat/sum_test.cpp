@@ -20,15 +20,19 @@ namespace chrono = std::chrono;
 using std::chrono::steady_clock;
 
 template <typename O, typename I>
-void check(O out, const I *inp, uint64_t nel, const char *name) {
+void check(
+    O out, const I *inp, uint64_t nel, const char *name, uint64_t iteration
+) {
   O res = 0;
   for (uint64_t i = 0; i < nel; i++) {
     res += inp[i];
   }
   O diff = std::abs(res - out);
   if (diff > res * 1e-3) {
-    std::cout << "In " << name << "; size = " << nel << "; Mismatch => " << res << " != " << out
-              << "; " << diff << std::endl;
+    std::cerr << "In " << name << "; size = " << nel
+              << "; Iteration: " << iteration << "; Mismatch => " << res
+              << " != " << out << "; " << diff << std::endl;
+    exit(1);
   }
 }
 
@@ -36,29 +40,27 @@ int main() {
   using I = float;
   using O = float;
 
-  uint64_t sizes[] = {
-      1,    2,         simdSize<O>() - 1, simdSize<O>(), simdSize<O>() + 1,
-      2048, 2048 * 10, 2048 * 100,        2048 * 1000
-  };
+  std::vector<uint64_t> sizes;
+  makeSizes1d(sizes, std::min(simdSize<O>(), simdSize<I>()));
 
-  const int64_t iterations = 1;
+  const int64_t iterations = 100;
   for (uint64_t size : sizes) {
     I *inp = new (std::align_val_t(128)) I[size];
     fillRand(inp, size);
     for (uint64_t i = 0; i < iterations; i++) {
       O out = 0;
-      sum_parsimd<O, I>(&out, inp, size);
-      check(out, inp, size, "sum_parsimd");
+      sum_parallel<O, I>(&out, inp, size);
+      check(out, inp, size, "sum_parallel", i);
     }
     for (uint64_t i = 0; i < iterations; i++) {
       O out = 0;
       sum_1thread<O, I>(&out, inp, size);
-      check(out, inp, size, "sum_1thread");
+      check(out, inp, size, "sum_1thread", i);
     }
     for (uint64_t i = 0; i < iterations; i++) {
       O out = 0;
       tcSum<O, I>(&out, inp, size);
-      check(out, inp, size, "tcSum");
+      check(out, inp, size, "tcSum", i);
     }
     delete[] inp;
   }

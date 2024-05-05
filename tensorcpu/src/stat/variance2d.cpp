@@ -48,7 +48,7 @@ UNWIND2_ALL_2ND(TCVARIANCE2D1THREAD, float)
 UNWIND2_ALL_2ND(TCVARIANCE2D1THREAD, double)
 
 template <typename O, typename I>
-void variance2d_parsimd(
+void variance2d_parallel(
     O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction
 ) {
   using ISimd = VarianceSimd<O, I>::ISimdType;
@@ -80,13 +80,13 @@ void variance2d_parsimd(
   );
 }
 
-#define TCVARIANCE2DPARSIMD(O, I)                                              \
-  template void variance2d_parsimd(                                            \
+#define TCVARIANCE2DPARALLEL(O, I)                                              \
+  template void variance2d_parallel(                                            \
       O *out, I *inp, uint64_t rows, uint64_t cols, uint64_t correction        \
   );
 
-UNWIND2_ALL_2ND(TCVARIANCE2DPARSIMD, float)
-UNWIND2_ALL_2ND(TCVARIANCE2DPARSIMD, double)
+UNWIND2_ALL_2ND(TCVARIANCE2DPARALLEL, float)
+UNWIND2_ALL_2ND(TCVARIANCE2DPARALLEL, double)
 
 template <typename O, typename I>
 void tcVariance2d(
@@ -96,7 +96,7 @@ void tcVariance2d(
     variance2d_1thread(out, inp, rows, cols, correction);
     return;
   } else {
-    variance2d_parsimd(out, inp, rows, cols, correction);
+    variance2d_parallel(out, inp, rows, cols, correction);
     return;
   }
 }

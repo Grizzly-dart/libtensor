@@ -38,15 +38,13 @@ void mean2d_1thread(O *out, I *inp, uint64_t rows, uint64_t cols) {
 }
 
 #define TCMEAN2D1THREAD(O, I)                                                  \
-  template void mean2d_1thread(                                                \
-      O *out, I *inp, uint64_t rows, uint64_t cols                       \
-  );
+  template void mean2d_1thread(O *out, I *inp, uint64_t rows, uint64_t cols);
 
 UNWIND2_ALL_2ND(TCMEAN2D1THREAD, float)
 UNWIND2_ALL_2ND(TCMEAN2D1THREAD, double)
 
 template <typename O, typename I>
-void mean2d_parsimd(O *out, I *inp, uint64_t rows, uint64_t cols) {
+void mean2d_parallel(O *out, I *inp, uint64_t rows, uint64_t cols) {
   constexpr uint64_t laneSize = MeanSimd<O, I>::sizeSimd;
   using ISimd = typename MeanSimd<O, I>::ISimdType;
 
@@ -75,20 +73,20 @@ void mean2d_parsimd(O *out, I *inp, uint64_t rows, uint64_t cols) {
   );
 }
 
-#define TCMEANPARSIMD(O, I)                                                    \
-  template void mean2d_parsimd<O, I>(                                          \
+#define TCMEANPARALLEL(O, I)                                                   \
+  template void mean2d_parallel<O, I>(                                         \
       O * out, I * inp, uint64_t rows, uint64_t cols                           \
   );
 
-UNWIND2_ALL_2ND(TCMEANPARSIMD, float)
-UNWIND2_ALL_2ND(TCMEANPARSIMD, double)
+UNWIND2_ALL_2ND(TCMEANPARALLEL, float)
+UNWIND2_ALL_2ND(TCMEANPARALLEL, double)
 
 template <typename O, typename I>
 void tcMean2d(O *out, I *inp, uint64_t rows, uint64_t cols) {
   if (cols * rows < 1000) {
     mean2d_1thread(out, inp, rows, cols);
   } else {
-    mean2d_parsimd(out, inp, rows, cols);
+    mean2d_parallel(out, inp, rows, cols);
   }
 }
 

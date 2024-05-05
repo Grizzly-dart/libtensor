@@ -23,14 +23,14 @@ void sum_1thread(O *out, I *inp, uint64_t nel) {
   *out = ret;
 }
 
-#define TCSUM1THREAD(O, I)                                                 \
+#define TCSUM1THREAD(O, I)                                                     \
   template void sum_1thread(O *out, I *inp, uint64_t nel);
 
 UNWIND2_UP(TCSUM1THREAD)
 
 template <typename O, typename I>
-void sum_parsimd(O *out, I *inp, uint64_t nel) {
-  constexpr uint64_t laneSize = simdSize<O>();
+void sum_parallel(O *out, I *inp, uint64_t nel) {
+  constexpr uint64_t laneSize = std::min(simdSize<O>(), simdSize<I>());
   typedef I ISimd __attribute__((vector_size(laneSize * sizeof(I))));
   typedef O OSimd __attribute__((vector_size(laneSize * sizeof(O))));
 
@@ -57,23 +57,23 @@ void sum_parsimd(O *out, I *inp, uint64_t nel) {
   for (uint16_t i = 1; i < numThreads; i++) {
     simdSums[0] += simdSums[i];
   }
+
   O ret = 0;
   for (uint64_t i = 0; i < laneSize; i++) {
-    ret += simdSums[0][i];
+    ret += O(simdSums[0][i]);
   }
   uint64_t tail = nel % laneSize;
   inp += nel - tail;
-#pragma GCC ivdep
   for (uint64_t i = 0; i < tail; i++) {
     ret += inp[i];
   }
   *out = ret;
 }
 
-#define TCSUMPARSIMD(O, I)                                                     \
-  template void sum_parsimd<O, I>(O * out, I * inp, uint64_t nel);
+#define TCSUMPARLLEL(O, I)                                                     \
+  template void sum_parallel<O, I>(O * out, I * inp, uint64_t nel);
 
-UNWIND2_UP(TCSUMPARSIMD)
+UNWIND2_UP(TCSUMPARLLEL)
 
 template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
   if (nel <= 20480) {
@@ -81,7 +81,7 @@ template <typename O, typename I> void tcSum(O *out, I *inp, uint64_t nel) {
     return;
   }
 
-  sum_parsimd<O, I>(out, inp, nel);
+  sum_parallel<O, I>(out, inp, nel);
 }
 
 #define TCSUM(O, I) template void tcSum<O, I>(O * out, I * inp, uint64_t nel);
