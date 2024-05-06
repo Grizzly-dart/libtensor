@@ -42,6 +42,10 @@ public:
   uint8_t index;
   uint8_t bytes;
   uint8_t subIndex;
+
+  void *offsetPtr(void *ptr, uint64_t offset) const {
+    return (uint8_t *)ptr + offset * bytes;
+  }
 };
 
 const DType i8 = {0, 1, 0};
@@ -86,6 +90,34 @@ template <typename T> constexpr DType dtypeOf() {
     throw std::invalid_argument("Invalid type");
   }
 }
+
+template <typename T>
+using CastLoader1 = void (*)(T &out, const void *inp, uint64_t offset);
+
+template <typename T>
+using CastStorer1 = void (*)(void *inp, T &out, uint64_t offset);
+
+template <typename T, uint16_t laneSize>
+using CastSimdLoader1 = void (*)(
+    T __attribute__((vector_size(sizeof(T) * laneSize))) & out, const void *inp,
+    uint64_t offset
+);
+
+template <typename T, uint16_t laneSize>
+using CastSimdStorer1 = void (*)(
+    void *out, T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+    uint64_t offset
+);
+
+template <typename T> extern CastLoader1<T> castedLoader(const DType &type);
+
+template <typename T> extern CastStorer1<T> castedStorer(const DType &type);
+
+template <typename T, uint16_t laneSize>
+extern CastSimdLoader1<T, laneSize> castedVectorStore(const DType &type);
+
+template <typename T, uint16_t laneSize>
+extern CastSimdStorer1<T, laneSize> castedVectorStore(const DType &type);
 
 template <typename O, typename I> O castLoader(void *ptr, uint64_t index);
 
