@@ -56,16 +56,22 @@ void make1dTestSizes(std::vector<uint64_t> &sizes, uint64_t laneSize) {
   }
 }
 
-void make2dTestSizes(std::vector<Dim2>& sizes, uint64_t laneSize) {
+void make2dTestSizes(std::vector<Dim2> &sizes, uint64_t laneSize) {
   uint64_t concurrency = std::thread::hardware_concurrency();
 
   sizes.resize(0);
   for (uint64_t col = 1; col < laneSize * 3; col++) {
-    for(uint64_t row = 1; row < concurrency * 3; row++) {
+    for (uint64_t row = 1; row < concurrency * 3; row++) {
       sizes.push_back(Dim2(row, col));
     }
   }
-  // TODO
+  for (uint64_t col :
+       {laneSize * 1000 - 1, laneSize * 1000, laneSize * 1000 + 1}) {
+    for (uint64_t row :
+         {concurrency * 100 - 1, concurrency * 100, concurrency * 100 + 1}) {
+      sizes.push_back(Dim2(row, col));
+    }
+  }
 }
 
 #endif // TENSORCPU_TEST_COMMON_HPP

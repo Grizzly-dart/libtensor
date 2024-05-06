@@ -59,8 +59,10 @@ void sum_parallel(O *out, I *inp, uint64_t nel) {
   }
 
   O ret = 0;
-  for (uint64_t i = 0; i < laneSize; i++) {
-    ret += O(simdSums[0][i]);
+  if(numThreads > 0) {
+    for (uint64_t i = 0; i < laneSize; i++) {
+      ret += O(simdSums[0][i]);
+    }
   }
   uint64_t tail = nel % laneSize;
   inp += nel - tail;
