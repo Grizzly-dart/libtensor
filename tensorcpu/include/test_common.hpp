@@ -56,6 +56,31 @@ void make1dTestSizes(std::vector<uint64_t> &sizes, uint64_t laneSize) {
   }
 }
 
+void make1dBenchSizes(std::vector<uint64_t> &sizes, uint64_t laneSize) {
+  uint64_t con = std::thread::hardware_concurrency();
+  sizes.resize(0);
+  for (uint64_t size : {con * laneSize * 2, con * laneSize * 5, con * laneSize * 10}) {
+    sizes.push_back(size);
+  }
+  {
+    uint64_t tmp[] = {
+        laneSize * 10000 - 1, (laneSize - 1) * 100000 - 1,
+        (laneSize - 1) * 1000000 - 1
+    };
+    sizes.insert(sizes.end(), tmp, tmp + sizeof(tmp) / sizeof(tmp[0]));
+  }
+  {
+    uint64_t tmp[] = {laneSize * 10000, laneSize * 100000, laneSize * 1000000};
+    sizes.insert(sizes.end(), tmp, tmp + sizeof(tmp) / sizeof(tmp[0]));
+  }
+  {
+    uint64_t tmp[] = {
+        laneSize * 10000 + 1, laneSize * 100000 + 1, laneSize * 1000000 + 1
+    };
+    sizes.insert(sizes.end(), tmp, tmp + sizeof(tmp) / sizeof(tmp[0]));
+  }
+}
+
 void make2dTestSizes(std::vector<Dim2> &sizes, uint64_t laneSize) {
   uint64_t concurrency = std::thread::hardware_concurrency();
 
