@@ -48,6 +48,9 @@ target_link_libraries(tensorcpu pthread m)
 add_executable(binary_arith_test test/ewise/binary_arith_test.cpp)
 list(APPEND Test binary_arith_test)
 
+add_executable(plus_bench test_bench/ewise/plus_bench.cpp)
+list(APPEND Bench plus_bench)
+
 ###### mm_test
 add_executable(mm_test test/matrix/mm_test.cpp)
 list(APPEND Test mm_test)
@@ -109,6 +112,13 @@ list(APPEND Test variance2d_test)
 add_test(NAME variance2d_test COMMAND variance2d_test)
 add_executable(variance2d_bench test_bench/stat/variance2d_bench.cpp)
 list(APPEND Bench variance2d_bench)
+
+###### sigmoid_test
+add_executable(sigmoid_test test/nn/activation/sigmoid_test.cpp)
+list(APPEND Test sigmoid_test)
+add_test(NAME sigmoid_test COMMAND sigmoid_test)
+add_executable(sigmoid_bench test_bench/nn/activation/sigmoid_bench.cpp)
+list(APPEND Bench sigmoid_bench)
 
 ###### dummy_test
 add_executable(dummy_test test/dummy.cpp)

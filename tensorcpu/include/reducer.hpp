@@ -19,7 +19,7 @@ public:
 
   Mean(O mean, uint64_t n) : mean(mean), n(n) {}
 
-  void consume(I sample) {
+  void consume(const I &sample) {
     n++;
     auto delta = sample - mean;
     mean += delta / n;
@@ -52,7 +52,12 @@ public:
 
   void consumeSimd(const ISimdType &input) {
     n++;
-    auto delta = __builtin_convertvector(input, OSimdType) - runningMean;
+    OSimdType delta;
+    if constexpr (std::is_same<O, I>::value) {
+      delta = input - runningMean;
+    } else {
+      delta = __builtin_convertvector(input, OSimdType) - runningMean;
+    }
     runningMean += delta / O(n);
   }
 
@@ -102,7 +107,7 @@ public:
 
   Variance(O mean, uint64_t n, O m2) : mean(mean), n(n), m2(m2) {}
 
-  void consume(I sample) {
+  void consume(const I &sample) {
     n++;
     auto delta = sample - mean;
     mean += delta / n;
@@ -140,7 +145,12 @@ public:
 
   void consumeSimd(const ISimdType &input) {
     n++;
-    OSimdType convInput = __builtin_convertvector(input, OSimdType);
+    OSimdType convInput;
+    if constexpr (std::is_same<O, I>::value) {
+      convInput = input;
+    } else {
+      convInput = __builtin_convertvector(input, OSimdType);
+    }
     auto delta = convInput - runningMean;
     runningMean += delta / O(n);
     m2 += delta * (convInput - runningMean);
@@ -176,13 +186,18 @@ public:
 extern void parallelSimdFold(
     uint64_t threadId, uint64_t laneSize,
     const std::function<void(uint16_t, uint64_t, uint64_t)> &kernel,
-    uint16_t& numThreads
+    uint16_t &numThreads
 );
 
 extern void parallelFold2d(
     uint64_t rows,
     const std::function<
         void(uint16_t threadId, uint64_t startRow, uint64_t endRow)> &kernel
+);
+
+extern void parallelSimdTransform(
+    uint64_t nel, uint64_t laneSize,
+    const std::function<void(uint64_t, uint64_t)> &kernel
 );
 
 #endif // TENSORC_REDUCER_HPP

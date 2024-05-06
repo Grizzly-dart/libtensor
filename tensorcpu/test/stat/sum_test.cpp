@@ -45,24 +45,23 @@ int main() {
 
   const int64_t iterations = 100;
   for (uint64_t size : sizes) {
-    I *inp = new (std::align_val_t(128)) I[size];
-    fillRand(inp, size);
+    std::unique_ptr<I> inp(new (std::align_val_t(128)) I[size]);
+    fillRand(inp.get(), size);
     for (uint64_t i = 0; i < iterations; i++) {
       O out = 0;
-      sum_parallel<O, I>(&out, inp, size);
-      check(out, inp, size, "sum_parallel", i);
+      sum_parallel<O, I>(&out, inp.get(), size);
+      check(out, inp.get(), size, "sum_parallel", i);
     }
     for (uint64_t i = 0; i < iterations; i++) {
       O out = 0;
-      sum_1thread<O, I>(&out, inp, size);
-      check(out, inp, size, "sum_1thread", i);
+      sum_1thread<O, I>(&out, inp.get(), size);
+      check(out, inp.get(), size, "sum_1thread", i);
     }
     for (uint64_t i = 0; i < iterations; i++) {
       O out = 0;
-      tcSum<O, I>(&out, inp, size);
-      check(out, inp, size, "tcSum", i);
+      tcSum<O, I>(&out, inp.get(), size);
+      check(out, inp.get(), size, "tcSum", i);
     }
-    delete[] inp;
   }
 
   pool.kill();

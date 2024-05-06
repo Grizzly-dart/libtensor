@@ -6,6 +6,7 @@
 #define TENSORCPU_TEST_COMMON_HPP
 
 #include <cstdint>
+#include <thread>
 
 template <typename T> void fillRand(T *inp, uint64_t size) {
   for (uint64_t i = 0; i < size; i++) {

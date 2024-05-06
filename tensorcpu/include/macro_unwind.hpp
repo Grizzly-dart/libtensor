@@ -100,4 +100,10 @@
   OP(double, float)                                                            \
   OP(double, double)
 
+#define UNWIND2_2(OP, A, B)                                                    \
+  OP(A, A)                                                                     \
+  OP(A, B)                                                                     \
+  OP(B, A)                                                                     \
+  OP(B, B)
+
 #endif // TENSORCPU_MACRO_UNWIND_HPP

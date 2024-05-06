@@ -125,4 +125,6 @@ extern const char *mm(
     uint32_t batchSize, uint8_t bT
 );
 
+template <typename T> extern void sigmoid(T *out, const T *inp, uint64_t nel);
+
 #endif // TENSORC_H

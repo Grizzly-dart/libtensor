@@ -5,8 +5,129 @@
 #include <stdfloat>
 #include <typeinfo>
 
+#include "macro_unwind.hpp"
+#include "reducer.hpp"
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
+
+template <typename I>
+void binaryarith_parallel(
+    I *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster
+) {
+  constexpr uint64_t laneSize = simdSize<I>();
+  typedef I SimdType __attribute__((vector_size(sizeof(I) * laneSize)));
+  using KernelType = std::function<void(uint64_t, uint64_t)>;
+  KernelType kernel;
+  if (op == BinaryOp::Plus) {
+    kernel = [&](uint64_t start, uint64_t end) {
+      for (uint64_t i = start; i < end; i += laneSize) {
+        SimdType a, b;
+        memcpy(&a, inp1 + i, sizeof(SimdType));
+        memcpy(&b, inp2 + i, sizeof(SimdType));
+        SimdType res = a + b;
+        memcpy(out + i, &res, sizeof(SimdType));
+      }
+    };
+  } else if (op == BinaryOp::Minus) {
+    if (!flip) {
+      kernel = [&](uint64_t start, uint64_t end) {
+        for (uint64_t i = start; i < end; i += laneSize) {
+          SimdType a, b;
+          memcpy(&a, inp1 + i, sizeof(SimdType));
+          memcpy(&b, inp2 + i, sizeof(SimdType));
+          SimdType res = a - b;
+          memcpy(out + i, &res, sizeof(SimdType));
+        }
+      };
+    } else {
+      kernel = [&](uint64_t start, uint64_t end) {
+        for (uint64_t i = start; i < end; i += laneSize) {
+          SimdType a, b;
+          memcpy(&a, inp1 + i, sizeof(SimdType));
+          memcpy(&b, inp2 + i, sizeof(SimdType));
+          SimdType res = b - a;
+          memcpy(out + i, &res, sizeof(SimdType));
+        }
+      };
+    }
+  } else if (op == BinaryOp::Mul) {
+    kernel = [&](uint64_t start, uint64_t end) {
+      for (uint64_t i = start; i < end; i += laneSize) {
+        SimdType a, b;
+        memcpy(&a, inp1 + i, sizeof(SimdType));
+        memcpy(&b, inp2 + i, sizeof(SimdType));
+        SimdType res = a * b;
+        memcpy(out + i, &res, sizeof(SimdType));
+      }
+    };
+  } else if (op == BinaryOp::Div) {
+    if (!flip) {
+      kernel = [&](uint64_t start, uint64_t end) {
+        for (uint64_t i = start; i < end; i += laneSize) {
+          SimdType a, b;
+          memcpy(&a, inp1 + i, sizeof(SimdType));
+          memcpy(&b, inp2 + i, sizeof(SimdType));
+          SimdType res = a / b;
+          memcpy(out + i, &res, sizeof(SimdType));
+        }
+      };
+    } else {
+      kernel = [&](uint64_t start, uint64_t end) {
+        for (uint64_t i = start; i < end; i += laneSize) {
+          SimdType a, b;
+          memcpy(&a, inp1 + i, sizeof(SimdType));
+          memcpy(&b, inp2 + i, sizeof(SimdType));
+          SimdType res = b / a;
+          memcpy(out + i, &res, sizeof(SimdType));
+        }
+      };
+    }
+  } else if (op == BinaryOp::Pow) {
+    if (!flip) {
+      kernel = [&](uint64_t start, uint64_t end) {
+        for (uint64_t i = start; i < end; i += laneSize) {
+          SimdType a, b;
+          memcpy(&a, inp1 + i, sizeof(SimdType));
+          memcpy(&b, inp2 + i, sizeof(SimdType));
+          SimdType res;
+          for (uint64_t j = 0; j < laneSize; j++) {
+            res[j] = std::pow(a[j], b[j]);
+          }
+          memcpy(out + i, &res, sizeof(SimdType));
+        }
+      };
+    } else {
+      kernel = [&](uint64_t start, uint64_t end) {
+        for (uint64_t i = start; i < end; i += laneSize) {
+          SimdType a, b;
+          memcpy(&a, inp1 + i, sizeof(SimdType));
+          memcpy(&b, inp2 + i, sizeof(SimdType));
+          SimdType res;
+          for (uint64_t j = 0; j < laneSize; j++) {
+            res[j] = std::pow(b[j], a[j]);
+          }
+          memcpy(out + i, &res, sizeof(SimdType));
+        }
+      };
+    }
+  }
+
+  parallelSimdTransform(nel, laneSize, kernel);
+
+  uint64_t tail = nel % laneSize;
+  for (uint64_t i = nel - tail; i < nel; i++) {
+    out[i] = inp1[i] + inp2[i];
+  }
+}
+
+#define BINARYARITHPARALLEL(I)                                                 \
+  template void binaryarith_parallel<I>(                                       \
+      I * out, I * inp1, I * inp2, BinaryOp op, uint64_t nel, uint8_t flip,    \
+      Dim2 i2broadcaster                                                       \
+  );
+
+UNWIND1_ALL_TYPES(BINARYARITHPARALLEL)
 
 template <typename O, typename I>
 void tcBinaryArith(
@@ -14,7 +135,6 @@ void tcBinaryArith(
     Dim2 i2broadcaster
 ) {
   constexpr size_t width = simdSize<I>();
-  printf("width: %zu\n", width);
   auto i1 = Accessor<I>(inp1, width, nel);
   std::unique_ptr<IAccessor<I>> i2;
   uint64_t snel = i2broadcaster.nel();
@@ -337,53 +457,11 @@ void tcBinaryArithCastedPlain(
       uint8_t i2TID                                                            \
   );
 
-#define UNWIND3_SAME(A, OP, NAME) OP(A, A, A, NAME)
-
 #define UNWIND2_SAME(A, OP) OP(A, A)
-
-#define UWIND3_ALL_TYPES(OP, NAME)                                             \
-  UNWIND3_SAME(int8_t, OP, NAME)                                               \
-  UNWIND3_SAME(int16_t, OP, NAME)                                              \
-  UNWIND3_SAME(int32_t, OP, NAME)                                              \
-  UNWIND3_SAME(int64_t, OP, NAME)                                              \
-  UNWIND3_SAME(uint8_t, OP, NAME)                                              \
-  UNWIND3_SAME(uint16_t, OP, NAME)                                             \
-  UNWIND3_SAME(uint32_t, OP, NAME)                                             \
-  UNWIND3_SAME(uint64_t, OP, NAME)                                             \
-  UNWIND3_SAME(float, OP, NAME)                                                \
-  UNWIND3_SAME(double, OP, NAME)
-
-#define UNWIND2_ALL_TYPES(OP)                                                  \
-  UNWIND2_SAME(int8_t, OP)                                                     \
-  UNWIND2_SAME(int16_t, OP)                                                    \
-  UNWIND2_SAME(int32_t, OP)                                                    \
-  UNWIND2_SAME(int64_t, OP)                                                    \
-  UNWIND2_SAME(uint8_t, OP)                                                    \
-  UNWIND2_SAME(uint16_t, OP)                                                   \
-  UNWIND2_SAME(uint32_t, OP)                                                   \
-  UNWIND2_SAME(uint64_t, OP)                                                   \
-  UNWIND2_SAME(float, OP)                                                      \
-  UNWIND2_SAME(double, OP)
-
-#define UNWIND3_2(A, B, OP, NAME)                                              \
-  OP(A, A, A, NAME)                                                            \
-  OP(A, A, B, NAME)                                                            \
-  OP(A, B, A, NAME)                                                            \
-  OP(A, B, B, NAME)                                                            \
-  OP(B, B, B, NAME)                                                            \
-  OP(B, A, B, NAME)                                                            \
-  OP(B, B, A, NAME)                                                            \
-  OP(B, A, A, NAME)
-
-#define UNWIND2_2(A, B, OP)                                                    \
-  OP(A, A)                                                                     \
-  OP(A, B)                                                                     \
-  OP(B, A)                                                                     \
-  OP(B, B)
 
 UNWIND2_ALL_TYPES(BINARYARITH)
 
-UNWIND2_2(double, int64_t, BINARYARITH_CASTED)
+UNWIND2_2(BINARYARITH_CASTED, double, int64_t)
 
 BINARYARITH_CASTED(float, float)
 
