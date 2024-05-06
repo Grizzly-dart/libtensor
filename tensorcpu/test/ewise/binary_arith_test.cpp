@@ -63,23 +63,32 @@ int main() {
 
   uint8_t flip = 0;
   Dim2 i2broadcaster{0, 0};
-  const int64_t iterations = 100;
   for (uint64_t size : sizes) {
     std::unique_ptr<I> inp1(new (std::align_val_t(128)) I[size]);
     std::unique_ptr<I> inp2(new (std::align_val_t(128)) I[size]);
     fillRand(inp1.get(), size);
     fillRand(inp2.get(), size);
     for (BinaryOp op :
-         {BinaryOp::Plus, BinaryOp::Minus, BinaryOp::Mul, BinaryOp::Div}) {
-      for (uint64_t i = 0; i < iterations; i++) {
+         {BinaryOp::Plus, BinaryOp::Minus, BinaryOp::Mul, BinaryOp::Div,
+          BinaryOp::Pow}) {
+      {
         std::unique_ptr<O> out(new (std::align_val_t(128)) O[size]);
         binaryarith_parallel<I>(
-            out.get(), inp1.get(), inp2.get(), BinaryOp::Plus, size, flip,
-            i2broadcaster
+            out.get(), inp1.get(), inp2.get(), op, size, flip, i2broadcaster
         );
         check(
-            out.get(), inp1.get(), inp2.get(), BinaryOp::Plus, size, flip,
-            i2broadcaster, "sum_parallel", i
+            out.get(), inp1.get(), inp2.get(), op, size, flip, i2broadcaster,
+            "binaryarith_parallel", 0
+        );
+      }
+      {
+        std::unique_ptr<O> out(new (std::align_val_t(128)) O[size]);
+        binaryarith_1thread<I>(
+            out.get(), inp1.get(), inp2.get(), op, size, flip, i2broadcaster
+        );
+        check(
+            out.get(), inp1.get(), inp2.get(), op, size, flip, i2broadcaster,
+            "binaryarith_1thread", 0
         );
       }
     }

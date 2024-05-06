@@ -14,4 +14,10 @@ extern void binaryarith_parallel(
     Dim2 i2broadcaster
 );
 
+template <typename I>
+extern void binaryarith_1thread(
+    I *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster
+);
+
 #endif // TENSORCPU_BINARYARITH_HPP

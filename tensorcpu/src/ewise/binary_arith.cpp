@@ -11,6 +11,68 @@
 #include "typed_array.hpp"
 
 template <typename I>
+void binaryarith_1thread(
+    I *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster
+) {
+  if (op == BinaryOp::Plus) {
+#pragma GCC ivdep
+    for (uint64_t i = 0; i < nel; i++) {
+      out[i] = inp1[i] + inp2[i];
+    }
+  } else if (op == BinaryOp::Minus) {
+    if (!flip) {
+#pragma GCC ivdep
+      for (uint64_t i = 0; i < nel; i++) {
+        out[i] = inp1[i] - inp2[i];
+      }
+    } else {
+#pragma GCC ivdep
+      for (uint64_t i = 0; i < nel; i++) {
+        out[i] = inp2[i] - inp1[i];
+      }
+    }
+  } else if (op == BinaryOp::Mul) {
+#pragma GCC ivdep
+    for (uint64_t i = 0; i < nel; i++) {
+      out[i] = inp1[i] * inp2[i];
+    }
+  } else if (op == BinaryOp::Div) {
+    if (!flip) {
+#pragma GCC ivdep
+      for (uint64_t i = 0; i < nel; i++) {
+        out[i] = inp1[i] / inp2[i];
+      }
+    } else {
+#pragma GCC ivdep
+      for (uint64_t i = 0; i < nel; i++) {
+        out[i] = inp2[i] / inp1[i];
+      }
+    }
+  } else if (op == BinaryOp::Pow) {
+    if (!flip) {
+#pragma GCC ivdep
+      for (uint64_t i = 0; i < nel; i++) {
+        out[i] = std::pow(inp1[i], inp2[i]);
+      }
+    } else {
+#pragma GCC ivdep
+      for (uint64_t i = 0; i < nel; i++) {
+        out[i] = std::pow(inp2[i], inp1[i]);
+      }
+    }
+  }
+}
+
+#define BINARYARITH1THREAD(I)                                                  \
+  template void binaryarith_1thread<I>(                                        \
+      I * out, I * inp1, I * inp2, BinaryOp op, uint64_t nel, uint8_t flip,    \
+      Dim2 i2broadcaster                                                       \
+  );
+
+UNWIND1_ALL_TYPES(BINARYARITH1THREAD)
+
+template <typename I>
 void binaryarith_parallel(
     I *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
     Dim2 i2broadcaster
@@ -116,9 +178,10 @@ void binaryarith_parallel(
   parallelSimdTransform(nel, laneSize, kernel);
 
   uint64_t tail = nel % laneSize;
-  for (uint64_t i = nel - tail; i < nel; i++) {
-    out[i] = inp1[i] + inp2[i];
-  }
+  uint64_t offset = nel - tail;
+  binaryarith_1thread(
+      out + offset, inp1 + offset, inp2 + offset, op, tail, flip, i2broadcaster
+  );
 }
 
 #define BINARYARITHPARALLEL(I)                                                 \
@@ -128,6 +191,43 @@ void binaryarith_parallel(
   );
 
 UNWIND1_ALL_TYPES(BINARYARITHPARALLEL)
+
+template<typename T, uint16_t laneSize>
+[[gnu::always_inline]]
+void castedVectorLoad(T __attribute__((vector_size(sizeof(T) * laneSize))) &out, const void *inp, uint64_t offset, DType type) {
+  memcpy(&out, inp, sizeof(T) * laneSize);
+}
+
+template<typename T, uint16_t laneSize>
+[[gnu::always_inline]]
+void castedVectorStore(void *inp, T __attribute__((vector_size(sizeof(T) * laneSize))) &out) {
+  memcpy(inp, &out, sizeof(T) * laneSize);
+}
+
+template <typename O, typename I>
+void binaryarith_casted_parallel(
+    void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+) {
+  constexpr uint64_t laneSize = std::min(simdSize<O>(), simdSize<I>());
+  typedef I SimdType __attribute__((vector_size(sizeof(I) * laneSize)));
+  typedef O SimdType __attribute__((vector_size(sizeof(O) * laneSize)));
+  using KernelType = std::function<void(uint64_t, uint64_t)>;
+  KernelType kernel;
+  if (op == BinaryOp::Plus) {
+    kernel = [&](uint64_t start, uint64_t end) {
+      for (uint64_t i = start; i < end; i += laneSize) {
+        SimdType a, b;
+        memcpy(&a, inp1 + i, sizeof(SimdType));
+        memcpy(&b, inp2 + i, sizeof(SimdType));
+        SimdType res = a + b;
+        memcpy(out + i, &res, sizeof(SimdType));
+      }
+    };
+  }
+
+  // TODO
+}
 
 template <typename O, typename I>
 void tcBinaryArith(
