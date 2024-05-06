@@ -192,36 +192,400 @@ void binaryarith_parallel(
 
 UNWIND1_ALL_TYPES(BINARYARITHPARALLEL)
 
-template<typename T, uint16_t laneSize>
-[[gnu::always_inline]]
-void castedVectorLoad(T __attribute__((vector_size(sizeof(T) * laneSize))) &out, const void *inp, uint64_t offset, DType type) {
-  memcpy(&out, inp, sizeof(T) * laneSize);
+template <typename T>
+using CastLoader1 = void (*)(T &out, const void *inp, uint64_t offset);
+
+template <typename T> CastLoader1<T> castedLoader(const DType &type) {
+  if (type.index == f32.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((float *)inp)[offset]);
+    };
+  } else if (type.index == f64.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((double *)inp)[offset]);
+    };
+  } else if (type.index == i8.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((int8_t *)inp)[offset]);
+    };
+  } else if (type.index == i16.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((int16_t *)inp)[offset]);
+    };
+  } else if (type.index == i32.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((int32_t *)inp)[offset]);
+    };
+  } else if (type.index == i64.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((int64_t *)inp)[offset]);
+    };
+  } else if (type.index == u8.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((uint8_t *)inp)[offset]);
+    };
+  } else if (type.index == u16.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((uint16_t *)inp)[offset]);
+    };
+  } else if (type.index == u32.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((uint32_t *)inp)[offset]);
+    };
+  } else if (type.index == u64.index) {
+    return [](T &out, const void *inp, uint64_t offset) {
+      out = T(((uint64_t *)inp)[offset]);
+    };
+  }
 }
 
-template<typename T, uint16_t laneSize>
-[[gnu::always_inline]]
-void castedVectorStore(void *inp, T __attribute__((vector_size(sizeof(T) * laneSize))) &out) {
-  memcpy(inp, &out, sizeof(T) * laneSize);
+template <typename T>
+using CastStorer1 = void (*)(void *inp, T &out, uint64_t offset);
+
+template <typename T> CastStorer<T> castedStorer(const DType &type) {
+  if (type.index == f32.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((float *)out)[offset] = inp;
+    };
+  } else if (type.index == f64.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((double *)out)[offset] = inp;
+    };
+  } else if (type.index == i8.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((int8_t *)out)[offset] = inp;
+    };
+  } else if (type.index == i16.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((int16_t *)out)[offset] = inp;
+    };
+  } else if (type.index == i32.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((int32_t *)out)[offset] = inp;
+    };
+  } else if (type.index == i64.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((int64_t *)out)[offset] = inp;
+    };
+  } else if (type.index == u8.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((uint8_t *)out)[offset] = inp;
+    };
+  } else if (type.index == u16.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((uint16_t *)out)[offset] = inp;
+    };
+  } else if (type.index == u32.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((uint32_t *)out)[offset] = inp;
+    };
+  } else if (type.index == u64.index) {
+    return [](void *out, T &inp, uint64_t offset) {
+      ((uint64_t *)out)[offset] = inp;
+    };
+  }
 }
 
-template <typename O, typename I>
+template <typename T, uint16_t laneSize>
+using CastSimdLoader1 = void (*)(
+    T __attribute__((vector_size(sizeof(T) * laneSize))) & out, const void *inp,
+    uint64_t offset
+);
+
+template <typename T, uint16_t laneSize>
+CastSimdLoader1<T, laneSize> castedVectorStore(const DType &type) {
+  if (type.index == f32.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      float __attribute__((vector_size(sizeof(float) * laneSize))) tmp;
+      memcpy(&tmp, ((float *)inp) + offset, sizeof(float) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == f64.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      double __attribute__((vector_size(sizeof(double) * laneSize))) tmp;
+      memcpy(&tmp, ((double *)inp) + offset, sizeof(double) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == i8.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      int8_t __attribute__((vector_size(sizeof(int8_t) * laneSize))) tmp;
+      memcpy(&tmp, ((int8_t *)inp) + offset, sizeof(int8_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == i16.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      int16_t __attribute__((vector_size(sizeof(int16_t) * laneSize))) tmp;
+      memcpy(&tmp, ((int16_t *)inp) + offset, sizeof(int16_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == i32.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      int32_t __attribute__((vector_size(sizeof(int32_t) * laneSize))) tmp;
+      memcpy(&tmp, ((int32_t *)inp) + offset, sizeof(int32_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == i64.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      int64_t __attribute__((vector_size(sizeof(int64_t) * laneSize))) tmp;
+      memcpy(&tmp, ((int64_t *)inp) + offset, sizeof(int64_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == u8.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      uint8_t __attribute__((vector_size(sizeof(uint8_t) * laneSize))) tmp;
+      memcpy(&tmp, ((uint8_t *)inp) + offset, sizeof(uint8_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == u16.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      uint16_t __attribute__((vector_size(sizeof(uint16_t) * laneSize))) tmp;
+      memcpy(&tmp, ((uint16_t *)inp) + offset, sizeof(uint16_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == u32.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      uint32_t __attribute__((vector_size(sizeof(uint32_t) * laneSize))) tmp;
+      memcpy(&tmp, ((uint32_t *)inp) + offset, sizeof(uint32_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  } else if (type.index == u64.index) {
+    return [](T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+              const void *inp, uint64_t offset) {
+      uint64_t __attribute__((vector_size(sizeof(uint64_t) * laneSize))) tmp;
+      memcpy(&tmp, ((uint64_t *)inp) + offset, sizeof(uint64_t) * laneSize);
+      out = __builtin_convertvector(tmp, T);
+    };
+  }
+}
+
+template <typename T, uint16_t laneSize>
+using CastSimdStorer1 = void (*)(
+    void *out, T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+    uint64_t offset
+);
+
+template <typename T, uint16_t laneSize>
+CastSimdStorer1<T, laneSize> castedVectorStore(const DType &type) {
+  if (type.index == f32.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      float __attribute__((vector_size(sizeof(float) * laneSize))) tmp =
+          __builtin_convertvector(
+              inp, float __attribute__((vector_size(sizeof(float) * laneSize)))
+          );
+      memcpy(((float *)out) + offset, &tmp, sizeof(float) * laneSize);
+    };
+  } else if (type.index == f64.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      double __attribute__((vector_size(sizeof(double) * laneSize)))
+      tmp = __builtin_convertvector(
+          inp, double __attribute__((vector_size(sizeof(double) * laneSize)))
+      );
+      memcpy(((double *)out) + offset, &tmp, sizeof(double) * laneSize);
+    };
+  } else if (type.index == i8.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      int8_t __attribute__((vector_size(sizeof(int8_t) * laneSize)))
+      tmp = __builtin_convertvector(
+          inp, int8_t __attribute__((vector_size(sizeof(int8_t) * laneSize)))
+      );
+      memcpy(((int8_t *)out) + offset, &tmp, sizeof(int8_t) * laneSize);
+    };
+  } else if (type.index == i16.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      int16_t __attribute__((vector_size(sizeof(int16_t) * laneSize)))
+      tmp = __builtin_convertvector(
+          inp, int16_t __attribute__((vector_size(sizeof(int16_t) * laneSize)))
+      );
+      memcpy(((int16_t *)out) + offset, &tmp, sizeof(int16_t) * laneSize);
+    };
+  } else if (type.index == i32.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      int32_t __attribute__((vector_size(sizeof(int32_t) * laneSize)))
+      tmp = __builtin_convertvector(
+          inp, int32_t __attribute__((vector_size(sizeof(int32_t) * laneSize)))
+      );
+      memcpy(((int32_t *)out) + offset, &tmp, sizeof(int32_t) * laneSize);
+    };
+  } else if (type.index == i64.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      int64_t __attribute__((vector_size(sizeof(int64_t) * laneSize)))
+      tmp = __builtin_convertvector(
+          inp, int64_t __attribute__((vector_size(sizeof(int64_t) * laneSize)))
+      );
+      memcpy(((int64_t *)out) + offset, &tmp, sizeof(int64_t) * laneSize);
+    };
+  } else if (type.index == u8.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      uint8_t __attribute__((vector_size(sizeof(uint8_t) * laneSize)))
+      tmp = __builtin_convertvector(
+          inp, uint8_t __attribute__((vector_size(sizeof(uint8_t) * laneSize)))
+      );
+      memcpy(((uint8_t *)out) + offset, &tmp, sizeof(uint8_t) * laneSize);
+    };
+  } else if (type.index == u16.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      uint16_t __attribute__((vector_size(sizeof(uint16_t) * laneSize))) tmp =
+          __builtin_convertvector(
+              inp,
+              uint16_t __attribute__((vector_size(sizeof(uint16_t) * laneSize)))
+          );
+      memcpy(((uint16_t *)out) + offset, &tmp, sizeof(uint16_t) * laneSize);
+    };
+  } else if (type.index == u32.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      uint32_t __attribute__((vector_size(sizeof(uint32_t) * laneSize))) tmp =
+          __builtin_convertvector(
+              inp,
+              uint32_t __attribute__((vector_size(sizeof(uint32_t) * laneSize)))
+          );
+      memcpy(((uint32_t *)out) + offset, &tmp, sizeof(uint32_t) * laneSize);
+    };
+  } else if (type.index == u64.index) {
+    return [](void *out,
+              T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+              uint64_t offset) {
+      uint64_t __attribute__((vector_size(sizeof(uint64_t) * laneSize))) tmp =
+          __builtin_convertvector(
+              inp,
+              uint64_t __attribute__((vector_size(sizeof(uint64_t) * laneSize)))
+          );
+      memcpy(((uint64_t *)out) + offset, &tmp, sizeof(uint64_t) * laneSize);
+    };
+  }
+}
+
+template <typename I>
+void binaryarith_casted_1thread(
+    void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
+    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+) {
+  const auto &i1Loader = castedLoader<I>(dtypes[i1TID]);
+  const auto &i2Loader = castedLoader<I>(dtypes[i2TID]);
+  const auto &oStorer = castedStorer<I>(dtypes[outTID]);
+
+  if (op == BinaryOp::Plus) {
+    for (uint64_t i = 0; i < nel; i++) {
+      I a, b;
+      i1Loader(a, inp1, i);
+      i2Loader(b, inp2, i);
+      I res = a + b;
+      oStorer(out, res, i);
+    }
+  } else if (op == BinaryOp::Minus) {
+    if (!flip) {
+      for (uint64_t i = 0; i < nel; i++) {
+        I a, b;
+        i1Loader(a, inp1, i);
+        i2Loader(b, inp2, i);
+        I res = a - b;
+        oStorer(out, res, i);
+      }
+    } else {
+      for (uint64_t i = 0; i < nel; i++) {
+        I a, b;
+        i1Loader(a, inp1, i);
+        i2Loader(b, inp2, i);
+        I res = b - a;
+        oStorer(out, res, i);
+      }
+    }
+  } else if (op == BinaryOp::Mul) {
+    for (uint64_t i = 0; i < nel; i++) {
+      I a, b;
+      i1Loader(a, inp1, i);
+      i2Loader(b, inp2, i);
+      I res = a * b;
+      oStorer(out, res, i);
+    }
+  } else if (op == BinaryOp::Div) {
+    if (!flip) {
+      for (uint64_t i = 0; i < nel; i++) {
+        I a, b;
+        i1Loader(a, inp1, i);
+        i2Loader(b, inp2, i);
+        I res = a / b;
+        oStorer(out, res, i);
+      }
+    } else {
+      for (uint64_t i = 0; i < nel; i++) {
+        I a, b;
+        i1Loader(a, inp1, i);
+        i2Loader(b, inp2, i);
+        I res = b / a;
+        oStorer(out, res, i);
+      }
+    }
+  } else if (op == BinaryOp::Pow) {
+    if (!flip) {
+      for (uint64_t i = 0; i < nel; i++) {
+        I a, b;
+        i1Loader(a, inp1, i);
+        i2Loader(b, inp2, i);
+        I res = std::pow(a, b);
+        oStorer(out, res, i);
+      }
+    } else {
+      for (uint64_t i = 0; i < nel; i++) {
+        I a, b;
+        i1Loader(a, inp1, i);
+        i2Loader(b, inp2, i);
+        I res = std::pow(b, a);
+        oStorer(out, res, i);
+      }
+    }
+  }
+}
+
+template <typename I>
 void binaryarith_casted_parallel(
     void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
     Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
-  constexpr uint64_t laneSize = std::min(simdSize<O>(), simdSize<I>());
+  constexpr uint64_t laneSize = simdSize<I>();
   typedef I SimdType __attribute__((vector_size(sizeof(I) * laneSize)));
-  typedef O SimdType __attribute__((vector_size(sizeof(O) * laneSize)));
+
+  const auto &i1Loader = castedVectorStore<I, laneSize>(dtypes[i1TID]);
+  const auto &i2Loader = castedVectorStore<I, laneSize>(dtypes[i2TID]);
+  const auto &oStorer = castedVectorStore<I, laneSize>(dtypes[outTID]);
+
   using KernelType = std::function<void(uint64_t, uint64_t)>;
   KernelType kernel;
   if (op == BinaryOp::Plus) {
-    kernel = [&](uint64_t start, uint64_t end) {
+    kernel = [out, inp1, inp2, i1Loader, i2Loader,
+              oStorer](uint64_t start, uint64_t end) {
       for (uint64_t i = start; i < end; i += laneSize) {
         SimdType a, b;
-        memcpy(&a, inp1 + i, sizeof(SimdType));
-        memcpy(&b, inp2 + i, sizeof(SimdType));
+        i1Loader(a, inp1, i);
+        i2Loader(b, inp2, i);
         SimdType res = a + b;
-        memcpy(out + i, &res, sizeof(SimdType));
+        oStorer(out, res, i);
       }
     };
   }
