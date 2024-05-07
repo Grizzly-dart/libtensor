@@ -48,16 +48,27 @@ public:
   }
 };
 
-const DType i8 = {0, 1, 0};
-const DType i16 = {1, 2, 1};
-const DType i32 = {2, 4, 2};
-const DType i64 = {3, 8, 3};
-const DType u8 = {4, 1, 4};
-const DType u16 = {5, 2, 5};
-const DType u32 = {6, 4, 6};
-const DType u64 = {7, 8, 7};
-const DType f32 = {8, 4, 2};
-const DType f64 = {9, 4, 3};
+constexpr uint8_t i8Id = 0;
+constexpr uint8_t i16Id = 1;
+constexpr uint8_t i32Id = 2;
+constexpr uint8_t i64Id = 3;
+constexpr uint8_t u8Id = 4;
+constexpr uint8_t u16Id = 5;
+constexpr uint8_t u32Id = 6;
+constexpr uint8_t u64Id = 7;
+constexpr uint8_t f32Id = 8;
+constexpr uint8_t f64Id = 9;
+
+const DType i8 = {i8Id, 1, 0};
+const DType i16 = {i16Id, 2, 1};
+const DType i32 = {i32Id, 4, 2};
+const DType i64 = {i64Id, 8, 3};
+const DType u8 = {u8Id, 1, 4};
+const DType u16 = {u16Id, 2, 5};
+const DType u32 = {u32Id, 4, 6};
+const DType u64 = {u64Id, 8, 7};
+const DType f32 = {f32Id, 4, 2};
+const DType f64 = {f64Id, 4, 3};
 /*const DType bf16 = {10, 2, 0};
 const DType f16 = {11, 2, 1};*/
 
@@ -90,6 +101,41 @@ template <typename T> constexpr DType dtypeOf() {
     throw std::invalid_argument("Invalid type");
   }
 }
+
+template <typename C, uint16_t laneSize> class Caster1 {
+public:
+  typedef C SimdType __attribute__((vector_size(sizeof(C) * laneSize)));
+  const DType &dtype;
+  Caster1(const DType &dtype) : dtype(dtype){};
+
+  template <typename T> void load(T &out, const void *inp, uint64_t offset) {
+    out = (T) * (C *)(dtype.offsetPtr((void *)inp, offset));
+  }
+
+  template <typename T> void store(void *out, T &inp, uint64_t offset) {
+    *(C *)dtype.offsetPtr(out, offset) = (C)inp;
+  }
+
+  template <typename T>
+  void simdLoad(
+      T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
+      const void *inp, uint64_t offset
+  ) {
+    typedef T TSimdType __attribute__((vector_size(sizeof(T) * laneSize)));
+    SimdType tmp;
+    memcpy(&tmp, dtype.offsetPtr((void *)inp, offset), sizeof(SimdType));
+    out = __builtin_convertvector(tmp, TSimdType);
+  }
+
+  template <typename T>
+  void simdStore(
+      void *out, T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
+      uint64_t offset
+  ) {
+    SimdType tmp = __builtin_convertvector(inp, SimdType);
+    memcpy(dtype.offsetPtr(out, offset), &tmp, sizeof(SimdType));
+  }
+};
 
 template <typename T>
 using CastLoader1 = void (*)(T &out, const void *inp, uint64_t offset);
