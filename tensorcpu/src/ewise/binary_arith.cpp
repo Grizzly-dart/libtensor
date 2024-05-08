@@ -432,82 +432,26 @@ void binaryarith_casted_1thread(
     void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
     uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
-  const auto &i1Loader = castedLoader<I>(dtypes[i1TID]);
-  const auto &i2Loader = castedLoader<I>(dtypes[i2TID]);
-  const auto &oStorer = castedStorer<I>(dtypes[outTID]);
+  constexpr uint64_t laneSize = simdSize<I>();
+  typedef I SimdType __attribute__((vector_size(sizeof(I) * laneSize)));
+  const auto &i1Caster = Caster<I, laneSize>(dtypes[i1TID]);
+  const auto &i2Caster = Caster<I, laneSize>(dtypes[i2TID]);
+  const auto &oCaster = Caster<I, laneSize>(dtypes[outTID]);
 
-  // TODO make them use SIMD
+  uint64_t tail = nel % laneSize;
+  uint64_t lanesEnd = nel - tail;
+
   if (op == BinaryOp::Plus) {
-    for (uint64_t i = 0; i < nel; i++) {
-      I a, b;
-      i1Loader(a, inp1, i);
-      i2Loader(b, inp2, i);
-      I res = a + b;
-      oStorer(out, res, i);
-    }
-  } else if (op == BinaryOp::Minus) {
-    if (!flip) {
-      for (uint64_t i = 0; i < nel; i++) {
-        I a, b;
-        i1Loader(a, inp1, i);
-        i2Loader(b, inp2, i);
-        I res = a - b;
-        oStorer(out, res, i);
-      }
-    } else {
-      for (uint64_t i = 0; i < nel; i++) {
-        I a, b;
-        i1Loader(a, inp1, i);
-        i2Loader(b, inp2, i);
-        I res = b - a;
-        oStorer(out, res, i);
-      }
-    }
-  } else if (op == BinaryOp::Mul) {
-    for (uint64_t i = 0; i < nel; i++) {
-      I a, b;
-      i1Loader(a, inp1, i);
-      i2Loader(b, inp2, i);
-      I res = a * b;
-      oStorer(out, res, i);
-    }
-  } else if (op == BinaryOp::Div) {
-    if (!flip) {
-      for (uint64_t i = 0; i < nel; i++) {
-        I a, b;
-        i1Loader(a, inp1, i);
-        i2Loader(b, inp2, i);
-        I res = a / b;
-        oStorer(out, res, i);
-      }
-    } else {
-      for (uint64_t i = 0; i < nel; i++) {
-        I a, b;
-        i1Loader(a, inp1, i);
-        i2Loader(b, inp2, i);
-        I res = b / a;
-        oStorer(out, res, i);
-      }
-    }
-  } else if (op == BinaryOp::Pow) {
-    if (!flip) {
-      for (uint64_t i = 0; i < nel; i++) {
-        I a, b;
-        i1Loader(a, inp1, i);
-        i2Loader(b, inp2, i);
-        I res = std::pow(a, b);
-        oStorer(out, res, i);
-      }
-    } else {
-      for (uint64_t i = 0; i < nel; i++) {
-        I a, b;
-        i1Loader(a, inp1, i);
-        i2Loader(b, inp2, i);
-        I res = std::pow(b, a);
-        oStorer(out, res, i);
-      }
+    for (uint64_t i = 0; i < lanesEnd; i+=laneSize) {
+      SimdType a, b;
+      i1Caster.template simdLoad<I>(a, inp1, i);
+      i2Caster.template simdLoad<I>(b, inp2, i);
+      SimdType res = a + b;
+      oCaster.template simdStore<I>(out, res, i);
     }
   }
+
+  // TODO handle tail
 }
 
 template <typename I>
@@ -515,6 +459,7 @@ void binaryarith_casted_parallel(
     void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
     uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 ) {
+#if 0
   constexpr uint64_t laneSize = simdSize<I>();
   typedef I SimdType __attribute__((vector_size(sizeof(I) * laneSize)));
 
@@ -718,4 +663,5 @@ void binaryarith_casted_parallel(
   uint64_t tail = nel % laneSize;
   uint64_t offset = nel - tail;
   tailKernel(offset, nel);
+#endif
 }

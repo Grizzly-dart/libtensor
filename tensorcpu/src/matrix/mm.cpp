@@ -5,6 +5,7 @@
 #include "matrix.hpp"
 #include "tensorcpu.hpp"
 
+#if 0
 template <typename T>
 const char *mm(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
@@ -41,3 +42,4 @@ const char *mm(
   }
   return nullptr;
 }
+#endif

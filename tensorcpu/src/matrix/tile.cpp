@@ -8,6 +8,7 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
+#if 0
 template <typename T>
 void loadTile(
     T *out, const T *inp, Dim2 size, Dim2 tileOffset, Dim2 tileSize,
@@ -146,3 +147,4 @@ void storeTileCasted(
   );
 
 UNWIND1_ALL_TYPES(STORETILECASTED)
+#endif

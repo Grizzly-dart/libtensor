@@ -7,6 +7,7 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
+#if 0
 template <typename O, typename I>
 static Kernel makeKernel(
     O *out, I *inp, Accessor<I> &i1, uint16_t width, std::function<O(I)> op
@@ -178,3 +179,4 @@ UNWIND2_2ND(double, FUNARY)
 
 UNWIND2_2ND(float, FUNARY_PLAIN)
 UNWIND2_2ND(double, FUNARY_PLAIN)
+#endif

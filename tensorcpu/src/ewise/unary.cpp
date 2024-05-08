@@ -9,6 +9,7 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
+#if 0
 template <typename O, typename I>
 const char *tcCast(O *out, const I *inp, uint64_t nel) {
   std::transform(std::execution::par_unseq, inp, inp + nel, out, [](I a) {
@@ -46,3 +47,4 @@ const char *tcNeg(O *out, const I *inp, uint64_t nel) {
   template const char *tcNeg(O *out, const I *inp, uint64_t nel);
 
 UNWIND2_SIGNED(TCNEG)
+#endif

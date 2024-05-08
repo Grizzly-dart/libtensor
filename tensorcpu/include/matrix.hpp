@@ -9,6 +9,7 @@
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
+#if 0
 template <typename T>
 extern void mm_same_slow(
     T *out, const T *inp1, const T *inp2, Dim2 size, uint32_t k,
@@ -80,5 +81,6 @@ extern void mmBtTile(
     T *out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize,
     uint16_t origTileSize, bool first
 );
+#endif
 
 #endif // TENSORCPU_MATRIX_HPP

@@ -13,6 +13,7 @@
 
 namespace stdx = std::experimental;
 
+#if 0
 template <typename T>
 void mmTile(
     T *out, const T *inp1, const T *inp2, Dim2 tileSize, uint16_t kTileSize,
@@ -139,3 +140,4 @@ void mm_same_slow(
   );
 
 UNWIND1_ALL_TYPES(MM_SLOW)
+#endif

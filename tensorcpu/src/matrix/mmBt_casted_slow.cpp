@@ -14,6 +14,7 @@
 
 namespace stdx = std::experimental;
 
+#if 0
 template <typename T>
 static void gemmRows(
     void *out, void *inp1, void *inp2, Dim2 size, uint32_t k, uint16_t tileSize,
@@ -107,3 +108,4 @@ void mmBt_casted_slow(
   );
 
 UNWIND1_ALL_TYPES(MMBT_CASTED_SLOW)
+#endif
