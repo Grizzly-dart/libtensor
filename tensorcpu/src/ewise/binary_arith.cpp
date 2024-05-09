@@ -454,6 +454,14 @@ void binaryarith_casted_1thread(
   // TODO handle tail
 }
 
+#define BINARYARITHCASTED1THREAD(I)                                            \
+  template void binaryarith_casted_1thread<I>(                                 \
+      void * out, void * inp1, void * inp2, BinaryOp op, uint64_t nel,         \
+      uint8_t flip, uint8_t outTID, uint8_t i1TID, uint8_t i2TID               \
+  );
+
+UNWIND1_ALL_TYPES(BINARYARITHCASTED1THREAD)
+
 template <typename I>
 void binaryarith_casted_parallel(
     void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
