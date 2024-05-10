@@ -72,8 +72,9 @@ int main() {
 
   uint8_t flip = 0;
   for (uint64_t size : sizes) {
-    std::unique_ptr<I> inp1(new (std::align_val_t(128)) I[size]);
-    std::unique_ptr<I> inp2(new (std::align_val_t(128)) I[size]);
+    std::unique_ptr<I> inp1(new I[size]);
+    std::unique_ptr<I> inp2(new I[size]);
+    std::unique_ptr<O> out(new O[size]);
     fillRand(inp1.get(), size);
     fillRand(inp2.get(), size);
     for (BinaryOp op : {
@@ -81,21 +82,21 @@ int main() {
              BinaryOp::Pow*/
          }) {
       {
-        std::unique_ptr<O> out(new (std::align_val_t(128)) O[size]);
+        memset(out.get(), 0, size * sizeof(O));
         binaryarith_parallel<I>(
             out.get(), inp1.get(), inp2.get(), op, size, flip
         );
         check(out.get(), inp1.get(), inp2.get(), op, size, flip, "parallel", 0);
       }
       {
-        std::unique_ptr<O> out(new (std::align_val_t(128)) O[size]);
+        memset(out.get(), 0, size * sizeof(O));
         binaryarith_1thread<I>(
             out.get(), inp1.get(), inp2.get(), op, size, flip
         );
         check(out.get(), inp1.get(), inp2.get(), op, size, flip, "1thread", 0);
       }
       {
-        std::unique_ptr<O> out(new (std::align_val_t(128)) O[size]);
+        memset(out.get(), 0, size * sizeof(O));
         binaryarith_casted_1thread<double>(
             out.get(), inp1.get(), inp2.get(), op, size, flip, f32Id, f32Id,
             f32Id

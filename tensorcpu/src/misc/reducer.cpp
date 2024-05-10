@@ -26,8 +26,11 @@ void parallelSimdTransform(
     remaining = totalLanes % numThreads;
   }
 
-  pool.runTask([lanesPerThread, remaining, kernel,
+  pool.runTask([numThreads, lanesPerThread, remaining, kernel,
                 laneSize](uint64_t threadId) {
+    if (threadId >= numThreads) {
+      return;
+    }
     uint64_t start = threadId * lanesPerThread;
     uint64_t last;
     if (threadId < remaining) {
@@ -64,8 +67,11 @@ void parallelSimdFold(
     remaining = totalLanes % numThreads;
   }
 
-  pool.runTask([lanesPerThread, remaining, kernel,
+  pool.runTask([numThreads, lanesPerThread, remaining, kernel,
                 laneSize](uint64_t threadId) {
+    if (threadId >= numThreads) {
+      return;
+    }
     uint64_t start = threadId * lanesPerThread;
     uint64_t last;
     if (threadId < remaining) {
@@ -98,7 +104,11 @@ void parallelFold2d(
   if (numThreads == 0) {
     return;
   }
-  pool.runTask([rowsPerThread, remainder, kernel](uint64_t threadId) {
+  pool.runTask([numThreads, rowsPerThread, remainder,
+                kernel](uint64_t threadId) {
+    if (threadId >= numThreads) {
+      return;
+    }
     uint64_t startRow = threadId * rowsPerThread;
     uint64_t endRow;
     if (threadId < remainder) {
