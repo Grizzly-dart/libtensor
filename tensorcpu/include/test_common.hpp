@@ -60,6 +60,9 @@ void make1dTestSizes(std::vector<uint64_t> &sizes, uint64_t laneSize) {
 void make1dBenchSizes(std::vector<uint64_t> &sizes, uint64_t laneSize) {
   uint64_t con = std::thread::hardware_concurrency();
   sizes.resize(0);
+  for(uint64_t i = 1; i < laneSize * 3; i++) {
+    sizes.push_back(i);
+  }
   for (uint64_t size : {con * laneSize * 2, con * laneSize * 5, con * laneSize * 10}) {
     sizes.push_back(size);
   }

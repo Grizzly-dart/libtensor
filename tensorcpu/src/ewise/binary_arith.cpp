@@ -434,9 +434,11 @@ void binaryarith_casted_1thread(
 ) {
   constexpr uint64_t laneSize = simdSize<I>();
   typedef I SimdType __attribute__((vector_size(sizeof(I) * laneSize)));
-  const auto &i1Caster = Caster<I, laneSize>(dtypes[i1TID]);
-  const auto &i2Caster = Caster<I, laneSize>(dtypes[i2TID]);
-  const auto &oCaster = Caster<I, laneSize>(dtypes[outTID]);
+
+  Caster<I, laneSize> i1Caster, i2Caster, oCaster;
+  dtypes[i1TID].template caster<I, laneSize>(i1Caster);
+  dtypes[i2TID].template caster<I, laneSize>(i2Caster);
+  dtypes[outTID].template caster<I, laneSize>(oCaster);
 
   uint64_t tail = nel % laneSize;
   uint64_t lanesEnd = nel - tail;
@@ -444,10 +446,17 @@ void binaryarith_casted_1thread(
   if (op == BinaryOp::Plus) {
     for (uint64_t i = 0; i < lanesEnd; i+=laneSize) {
       SimdType a, b;
-      i1Caster.template simdLoad<I>(a, inp1, i);
-      i2Caster.template simdLoad<I>(b, inp2, i);
+      i1Caster.loadSimd(a, inp1, i);
+      i2Caster.loadSimd(b, inp2, i);
       SimdType res = a + b;
-      oCaster.template simdStore<I>(out, res, i);
+      oCaster.storeSimd(out, res, i);
+    }
+    for(uint64_t i = lanesEnd; i < nel; i++) {
+      I a, b;
+      i1Caster.load(a, inp1, i);
+      i2Caster.load(b, inp2, i);
+      I res = a + b;
+      oCaster.store(out, res, i);
     }
   }
 

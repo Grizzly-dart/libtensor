@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <stdfloat>
-#include <map>
 
 #include "binaryarith.hpp"
 #include "tensorcpu.hpp"
@@ -59,6 +59,8 @@ void check(
       exit(1);
     }
   }
+  std::cerr << "In " << name << "; size = " << nel << "; op = " << opNames[op]
+            << "; Iteration: " << iteration << "; OK" << std::endl;
 }
 
 int main() {
@@ -83,20 +85,14 @@ int main() {
         binaryarith_parallel<I>(
             out.get(), inp1.get(), inp2.get(), op, size, flip
         );
-        check(
-            out.get(), inp1.get(), inp2.get(), op, size, flip,
-            "parallel", 0
-        );
+        check(out.get(), inp1.get(), inp2.get(), op, size, flip, "parallel", 0);
       }
       {
         std::unique_ptr<O> out(new (std::align_val_t(128)) O[size]);
         binaryarith_1thread<I>(
             out.get(), inp1.get(), inp2.get(), op, size, flip
         );
-        check(
-            out.get(), inp1.get(), inp2.get(), op, size, flip,
-            "1thread", 0
-        );
+        check(out.get(), inp1.get(), inp2.get(), op, size, flip, "1thread", 0);
       }
       {
         std::unique_ptr<O> out(new (std::align_val_t(128)) O[size]);
@@ -105,8 +101,8 @@ int main() {
             f32Id
         );
         check(
-            out.get(), inp1.get(), inp2.get(), op, size, flip,
-            "1thread_casted", 0
+            out.get(), inp1.get(), inp2.get(), op, size, flip, "1thread_casted",
+            0
         );
       }
     }

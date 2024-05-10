@@ -12,6 +12,17 @@
 #include "range.hpp"
 #include "tensorcpu.hpp"
 
+constexpr uint8_t i8Id = 0;
+constexpr uint8_t i16Id = 1;
+constexpr uint8_t i32Id = 2;
+constexpr uint8_t i64Id = 3;
+constexpr uint8_t u8Id = 4;
+constexpr uint8_t u16Id = 5;
+constexpr uint8_t u32Id = 6;
+constexpr uint8_t u64Id = 7;
+constexpr uint8_t f32Id = 8;
+constexpr uint8_t f64Id = 9;
+
 namespace stdx = std::experimental;
 
 template <typename T> constexpr size_t simdSize() {
@@ -37,6 +48,27 @@ template <typename T> constexpr bool isUInt() {
 
 using Kernel = std::function<void(uint64_t)>;
 
+template <typename T, uint16_t laneSize> class Caster {
+public:
+  typedef T SimdType __attribute__((vector_size(sizeof(T) * laneSize)));
+
+  using CastLoader = void (*)(T &out, const void *inp, uint64_t offset);
+
+  using CastStorer = void (*)(void *inp, T &out, uint64_t offset);
+
+  using CastSimdLoader =
+      void (*)(SimdType &out, const void *inp, uint64_t offset);
+
+  using CastSimdStorer = void (*)(void *out, SimdType &inp, uint64_t offset);
+
+  CastLoader load = nullptr;
+  CastStorer store = nullptr;
+  CastSimdLoader loadSimd = nullptr;
+  CastSimdStorer storeSimd = nullptr;
+
+  Caster() = default;
+};
+
 struct DType {
 public:
   uint8_t index;
@@ -46,18 +78,192 @@ public:
   void *offsetPtr(void *ptr, uint64_t offset) const {
     return (uint8_t *)ptr + offset * bytes;
   }
-};
 
-constexpr uint8_t i8Id = 0;
-constexpr uint8_t i16Id = 1;
-constexpr uint8_t i32Id = 2;
-constexpr uint8_t i64Id = 3;
-constexpr uint8_t u8Id = 4;
-constexpr uint8_t u16Id = 5;
-constexpr uint8_t u32Id = 6;
-constexpr uint8_t u64Id = 7;
-constexpr uint8_t f32Id = 8;
-constexpr uint8_t f64Id = 9;
+  template <typename T, uint16_t laneSize>
+  void caster(Caster<T, laneSize> &caster) const {
+    typedef T TSimd __attribute__((vector_size(sizeof(T) * laneSize)));
+    if (index == f32Id) {
+      typedef float CSimd
+          __attribute__((vector_size(sizeof(float) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset
+                    ) { out = (T) * ((float *)inp + offset); },
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((float *)out + offset) = (float)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (float *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy(((float *)out + offset), &tmp, sizeof(CSimd));
+      };
+    } else if (index == f64Id) {
+      typedef double CSimd
+          __attribute__((vector_size(sizeof(double) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((double *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset
+                     ) { *((double *)out + offset) = (double)inp; },
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (double *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((double *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == i8Id) {
+      typedef int8_t CSimd
+          __attribute__((vector_size(sizeof(int8_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((int8_t *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((int8_t *)out + offset) = (int8_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (int8_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((int8_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == i16Id) {
+      typedef int16_t CSimd
+          __attribute__((vector_size(sizeof(int16_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset
+                    ) { out = (T) * ((int16_t *)inp + offset); },
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((int16_t *)out + offset) = (int16_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (int16_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((int16_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == i32Id) {
+      typedef int32_t CSimd
+          __attribute__((vector_size(sizeof(int32_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((int32_t *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((int32_t *)out + offset) = (int32_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (int32_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((int32_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == i64Id) {
+      typedef int64_t CSimd
+          __attribute__((vector_size(sizeof(int64_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((int64_t *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((int64_t *)out + offset) = (int64_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (int64_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((int64_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == u8Id) {
+      typedef uint8_t CSimd
+          __attribute__((vector_size(sizeof(uint8_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((uint8_t *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((uint8_t *)out + offset) = (uint8_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (uint8_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((uint8_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == u16Id) {
+      typedef uint16_t CSimd
+          __attribute__((vector_size(sizeof(uint16_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((uint16_t *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((uint16_t *)out + offset) = (uint16_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (uint16_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((uint16_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == u32Id) {
+      typedef uint32_t CSimd
+          __attribute__((vector_size(sizeof(uint32_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((uint32_t *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((uint32_t *)out + offset) = (uint32_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (uint32_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((uint32_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else if (index == u64Id) {
+      typedef uint64_t CSimd
+          __attribute__((vector_size(sizeof(uint64_t) * laneSize)));
+      caster.load = [](T &out, const void *inp, uint64_t offset) {
+        out = (T) * ((uint64_t *)inp + offset);
+      };
+      caster.store = [](void *out, T &inp, uint64_t offset) {
+        *((uint64_t *)out + offset) = (uint64_t)inp;
+      };
+      caster.loadSimd = [](TSimd &out, const void *inp, uint64_t offset) {
+        CSimd tmp;
+        memcpy(&tmp, (uint64_t *)inp + offset, sizeof(CSimd));
+        out = __builtin_convertvector(tmp, TSimd);
+      };
+      caster.storeSimd = [](void *out, TSimd &inp, uint64_t offset) {
+        CSimd tmp = __builtin_convertvector(inp, CSimd);
+        memcpy((uint64_t *)out + offset, &tmp, sizeof(CSimd));
+      };
+    } else {
+      throw std::invalid_argument("Invalid type");
+    }
+  }
+};
 
 const DType i8 = {i8Id, 1, 0};
 const DType i16 = {i16Id, 2, 1};
@@ -101,71 +307,6 @@ template <typename T> constexpr DType dtypeOf() {
     throw std::invalid_argument("Invalid type");
   }
 }
-
-template <typename C, uint16_t laneSize> class Caster {
-public:
-  typedef C SimdType __attribute__((vector_size(sizeof(C) * laneSize)));
-  const DType &dtype;
-  Caster(const DType &dtype) : dtype(dtype){};
-
-  template <typename T> void load(T &out, const void *inp, uint64_t offset) const {
-    out = (T) * (C *)(dtype.offsetPtr((void *)inp, offset));
-  }
-
-  template <typename T> void store(void *out, T &inp, uint64_t offset) const {
-    *(C *)dtype.offsetPtr(out, offset) = (C)inp;
-  }
-
-  template <typename T>
-  void simdLoad(
-      T __attribute__((vector_size(sizeof(T) * laneSize))) & out,
-      const void *inp, uint64_t offset
-  ) const {
-    typedef T TSimdType __attribute__((vector_size(sizeof(T) * laneSize)));
-    SimdType tmp;
-    memcpy(&tmp, dtype.offsetPtr((void *)inp, offset), sizeof(SimdType));
-    out = __builtin_convertvector(tmp, TSimdType);
-  }
-
-  template <typename T>
-  void simdStore(
-      void *out, T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
-      uint64_t offset
-  ) const {
-    SimdType tmp = __builtin_convertvector(inp, SimdType);
-    memcpy(dtype.offsetPtr(out, offset), &tmp, sizeof(SimdType));
-  }
-};
-
-/*
-template <typename T>
-using CastLoader = void (*)(T &out, const void *inp, uint64_t offset);
-
-template <typename T>
-using CastStorer = void (*)(void *inp, T &out, uint64_t offset);
-
-template <typename T, uint16_t laneSize>
-using CastSimdLoader = void (*)(
-    T __attribute__((vector_size(sizeof(T) * laneSize))) & out, const void *inp,
-    uint64_t offset
-);
-
-template <typename T, uint16_t laneSize>
-using CastSimdStorer = void (*)(
-    void *out, T __attribute__((vector_size(sizeof(T) * laneSize))) & inp,
-    uint64_t offset
-);
-
-template <typename T> extern CastLoader<T> castedLoader(const DType &type);
-
-template <typename T> extern CastStorer<T> castedStorer(const DType &type);
-
-template <typename T, uint16_t laneSize>
-extern CastSimdLoader<T, laneSize> castedVectorStore(const DType &type);
-
-template <typename T, uint16_t laneSize>
-extern CastSimdStorer<T, laneSize> castedVectorStore(const DType &type);
- */
 
 #endif // TENSORCPU_TYPED_ARRAY_HPP
 

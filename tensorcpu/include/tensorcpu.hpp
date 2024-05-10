@@ -77,20 +77,19 @@ const char *tcNeg(O *out, const I *inp, uint64_t nel);
 
 template <typename O, typename I>
 extern void tcBinaryArith(
-    O *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
-    Dim2 i2broadcaster
+    O *out, I *inp1, I *inp2, BinaryOp op, uint64_t nel, uint8_t flip
 );
 
 template <typename O, typename I>
 extern void tcBinaryArithCasted(
     void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
-    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+    uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 );
 
 template <typename O, typename I1, typename I2>
 extern void tcBinaryArithCastedPlain(
     void *out, void *inp1, void *inp2, BinaryOp op, uint64_t nel, uint8_t flip,
-    Dim2 i2broadcaster, uint8_t outTID, uint8_t i1TID, uint8_t i2TID
+    uint8_t outTID, uint8_t i1TID, uint8_t i2TID
 );
 
 template <typename O, typename I>
