@@ -223,6 +223,25 @@ public:
   [[nodiscard]] uint16_t getConcurrency() const { return concurrency; }
 };
 
+extern void parallelSimdFold(
+    uint64_t threadId, uint64_t laneSize,
+    const std::function<void(uint16_t, uint64_t, uint64_t)> &kernel,
+    uint16_t &numThreads
+);
+
+extern void parallelFold2d(
+    uint64_t rows,
+    const std::function<
+        void(uint16_t threadId, uint64_t startRow, uint64_t endRow)> &kernel
+);
+
+using ParallelSimdTransformKernel = std::function<void(uint64_t, uint64_t)>;
+
+extern void parallelSimdTransform(
+    uint64_t nel, uint64_t laneSize,
+    const ParallelSimdTransformKernel &kernel
+);
+
 extern ThreadPool pool;
 
 #endif // TENSORCPU_THREAD_POOL_HPP

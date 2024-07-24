@@ -1,13 +1,14 @@
 #include <algorithm>
 #include <cmath>
 #include <execution>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
 
 #include "macro_unwind.hpp"
 #include "reducer.hpp"
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
+#include "thread_pool.hpp"
 
 template <typename O, typename I>
 void variance_1thread(O *out, I *inp, uint64_t nel, uint64_t correction) {

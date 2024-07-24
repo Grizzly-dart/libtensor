@@ -183,21 +183,4 @@ public:
   }
 };
 
-extern void parallelSimdFold(
-    uint64_t threadId, uint64_t laneSize,
-    const std::function<void(uint16_t, uint64_t, uint64_t)> &kernel,
-    uint16_t &numThreads
-);
-
-extern void parallelFold2d(
-    uint64_t rows,
-    const std::function<
-        void(uint16_t threadId, uint64_t startRow, uint64_t endRow)> &kernel
-);
-
-extern void parallelSimdTransform(
-    uint64_t nel, uint64_t laneSize,
-    const std::function<void(uint64_t, uint64_t)> &kernel
-);
-
 #endif // TENSORC_REDUCER_HPP

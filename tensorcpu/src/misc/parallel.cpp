@@ -11,12 +11,15 @@ void parallelSimdTransform(
     const std::function<void(uint64_t, uint64_t)> &kernel
 ) {
   uint64_t totalLanes = nel / laneSize;
+  uint64_t numThreads = pool.getConcurrency();
 
   if (totalLanes == 0) {
     return;
+  } else if(totalLanes < numThreads * 100) {
+    kernel(0, totalLanes * laneSize);
+    return;
   }
 
-  uint64_t numThreads = pool.getConcurrency();
   uint64_t lanesPerThread = 1;
   uint64_t remaining = 0;
   if (numThreads > totalLanes) {

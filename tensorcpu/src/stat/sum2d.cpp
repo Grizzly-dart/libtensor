@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 #include "macro_unwind.hpp"
-#include "reducer.hpp"
+#include "thread_pool.hpp"
 #include "tensorcpu.hpp"
 #include "typed_array.hpp"
 
